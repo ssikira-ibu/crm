@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.env
+*.log
+.DS_Store
+
+# Prisma
+prisma/migrations/**/migration_lock.toml
+
+# Docker
+pgdata/
