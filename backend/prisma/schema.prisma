@@ -1,0 +1,133 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id          String         @id @default(uuid()) @db.Uuid
+  userId      String         @map("user_id")
+  companyName String?        @map("company_name")
+  industry    String?
+  website     String?
+  status      CustomerStatus @default(ACTIVE)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  contacts     Contact[]
+  addresses    Address[]
+  phoneNumbers PhoneNumber[]
+  notes        Note[]
+  reminders    Reminder[]
+
+  @@index([userId])
+  @@map("customers")
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+  LEAD
+  PROSPECT
+}
+
+model Contact {
+  id         String   @id @default(uuid()) @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  firstName  String   @map("first_name")
+  lastName   String   @map("last_name")
+  email      String?
+  jobTitle   String?  @map("job_title")
+  isPrimary  Boolean  @default(false) @map("is_primary")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("contacts")
+}
+
+model Address {
+  id         String       @id @default(uuid()) @db.Uuid
+  customerId String       @map("customer_id") @db.Uuid
+  label      AddressLabel @default(MAIN)
+  street1    String       @map("street_1")
+  street2    String?      @map("street_2")
+  city       String
+  state      String
+  zipCode    String       @map("zip_code")
+  country    String       @default("US")
+  createdAt  DateTime     @default(now()) @map("created_at")
+  updatedAt  DateTime     @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("addresses")
+}
+
+enum AddressLabel {
+  MAIN
+  BILLING
+  SHIPPING
+  OTHER
+}
+
+model PhoneNumber {
+  id         String     @id @default(uuid()) @db.Uuid
+  customerId String     @map("customer_id") @db.Uuid
+  label      PhoneLabel @default(WORK)
+  number     String
+  extension  String?
+  isPrimary  Boolean    @default(false) @map("is_primary")
+  createdAt  DateTime   @default(now()) @map("created_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("phone_numbers")
+}
+
+enum PhoneLabel {
+  WORK
+  MOBILE
+  HOME
+  FAX
+  OTHER
+}
+
+model Note {
+  id         String   @id @default(uuid()) @db.Uuid
+  customerId String   @map("customer_id") @db.Uuid
+  title      String
+  body       String   @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@map("notes")
+}
+
+model Reminder {
+  id          String   @id @default(uuid()) @db.Uuid
+  customerId  String   @map("customer_id") @db.Uuid
+  title       String
+  description String?  @db.Text
+  dueDate     DateTime @map("due_date")
+  isCompleted Boolean  @default(false) @map("is_completed")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([dueDate])
+  @@map("reminders")
+}
