@@ -43,8 +43,8 @@ router.get("/customers/:customerId/notes/:noteId", async (ctx) => {
   ctx.body = { data: note };
 });
 
-// PUT /customers/:customerId/notes/:noteId
-router.put(
+// PATCH /customers/:customerId/notes/:noteId
+router.patch(
   "/customers/:customerId/notes/:noteId",
   validate(updateNoteSchema, "body"),
   async (ctx) => {

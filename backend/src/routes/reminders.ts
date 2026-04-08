@@ -53,8 +53,8 @@ router.get(
   },
 );
 
-// PUT /customers/:customerId/reminders/:reminderId
-router.put(
+// PATCH /customers/:customerId/reminders/:reminderId
+router.patch(
   "/customers/:customerId/reminders/:reminderId",
   validate(updateReminderSchema, "body"),
   async (ctx) => {
@@ -63,19 +63,6 @@ router.put(
       ctx.params.customerId,
       ctx.params.reminderId,
       ctx.request.body,
-    );
-    ctx.body = { data: reminder };
-  },
-);
-
-// PATCH /customers/:customerId/reminders/:reminderId/complete
-router.patch(
-  "/customers/:customerId/reminders/:reminderId/complete",
-  async (ctx) => {
-    const reminder = await reminderService.completeReminder(
-      ctx.state.user.uid,
-      ctx.params.customerId,
-      ctx.params.reminderId,
     );
     ctx.body = { data: reminder };
   },

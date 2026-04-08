@@ -39,8 +39,8 @@ router.get("/customers/:customerId", async (ctx) => {
   ctx.body = { data: customer };
 });
 
-// PUT /customers/:customerId
-router.put(
+// PATCH /customers/:customerId
+router.patch(
   "/customers/:customerId",
   validate(updateCustomerSchema, "body"),
   async (ctx) => {

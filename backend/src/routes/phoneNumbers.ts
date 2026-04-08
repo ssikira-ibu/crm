@@ -46,8 +46,8 @@ router.get(
   },
 );
 
-// PUT /customers/:customerId/phone-numbers/:phoneNumberId
-router.put(
+// PATCH /customers/:customerId/phone-numbers/:phoneNumberId
+router.patch(
   "/customers/:customerId/phone-numbers/:phoneNumberId",
   validate(updatePhoneNumberSchema, "body"),
   async (ctx) => {

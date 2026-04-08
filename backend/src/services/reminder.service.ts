@@ -78,24 +78,6 @@ export async function updateReminder(
   return prisma.reminder.update({ where: { id: reminderId }, data });
 }
 
-export async function completeReminder(
-  userId: string,
-  customerId: string,
-  reminderId: string,
-) {
-  await ensureCustomerOwnership(userId, customerId);
-  const reminder = await prisma.reminder.findFirst({
-    where: { id: reminderId, customerId },
-  });
-  if (!reminder) {
-    throw new AppError(404, "REMINDER_NOT_FOUND", "Reminder not found");
-  }
-  return prisma.reminder.update({
-    where: { id: reminderId },
-    data: { dateCompleted: new Date() },
-  });
-}
-
 export async function deleteReminder(
   userId: string,
   customerId: string,
