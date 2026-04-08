@@ -120,8 +120,8 @@ model Reminder {
   customerId  String   @map("customer_id") @db.Uuid
   title       String
   description String?  @db.Text
-  dueDate     DateTime @map("due_date")
-  isCompleted Boolean  @default(false) @map("is_completed")
+  dueDate        DateTime  @map("due_date")
+  dateCompleted  DateTime? @map("date_completed")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 

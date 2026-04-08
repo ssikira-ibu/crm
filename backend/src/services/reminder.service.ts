@@ -14,7 +14,7 @@ export async function listReminders(
   const where: Prisma.ReminderWhereInput = { customerId };
 
   if (completed !== undefined) {
-    where.isCompleted = completed;
+    where.dateCompleted = completed ? { not: null } : null;
   }
   if (dueBefore) {
     where.dueDate = { lte: dueBefore };
@@ -92,7 +92,7 @@ export async function completeReminder(
   }
   return prisma.reminder.update({
     where: { id: reminderId },
-    data: { isCompleted: true },
+    data: { dateCompleted: new Date() },
   });
 }
 

@@ -4,7 +4,7 @@ export const createReminderSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().optional(),
   dueDate: z.coerce.date(),
-  isCompleted: z.boolean().optional(),
+  dateCompleted: z.coerce.date().nullable().optional(),
 });
 
 export type CreateReminderInput = z.infer<typeof createReminderSchema>;
