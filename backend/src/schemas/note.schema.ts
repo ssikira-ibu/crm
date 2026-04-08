@@ -5,4 +5,8 @@ export const createNoteSchema = z.object({
   body: z.string().min(1),
 });
 
+export type CreateNoteInput = z.infer<typeof createNoteSchema>;
+
 export const updateNoteSchema = createNoteSchema.partial();
+
+export type UpdateNoteInput = z.infer<typeof updateNoteSchema>;

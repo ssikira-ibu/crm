@@ -1,7 +1,7 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import type { CreateContactInput, UpdateContactInput } from "../schemas/contact.schema.js";
 
 export async function listContacts(userId: string, customerId: string) {
   await ensureCustomerOwnership(userId, customerId);
@@ -29,7 +29,7 @@ export async function getContact(
 export async function createContact(
   userId: string,
   customerId: string,
-  data: Omit<Prisma.ContactUncheckedCreateInput, "customerId">,
+  data: CreateContactInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   return prisma.contact.create({
@@ -41,7 +41,7 @@ export async function updateContact(
   userId: string,
   customerId: string,
   contactId: string,
-  data: Prisma.ContactUpdateInput,
+  data: UpdateContactInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   const contact = await prisma.contact.findFirst({

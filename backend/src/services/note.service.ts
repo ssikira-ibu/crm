@@ -1,7 +1,7 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import type { CreateNoteInput, UpdateNoteInput } from "../schemas/note.schema.js";
 
 export async function listNotes(userId: string, customerId: string) {
   await ensureCustomerOwnership(userId, customerId);
@@ -29,7 +29,7 @@ export async function getNote(
 export async function createNote(
   userId: string,
   customerId: string,
-  data: Omit<Prisma.NoteUncheckedCreateInput, "customerId">,
+  data: CreateNoteInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   return prisma.note.create({
@@ -41,7 +41,7 @@ export async function updateNote(
   userId: string,
   customerId: string,
   noteId: string,
-  data: Prisma.NoteUpdateInput,
+  data: UpdateNoteInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   const note = await prisma.note.findFirst({

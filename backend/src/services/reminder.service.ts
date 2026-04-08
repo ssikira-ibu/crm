@@ -2,18 +2,12 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
-
-interface ListParams {
-  page: number;
-  limit: number;
-  completed?: boolean;
-  dueBefore?: Date;
-}
+import type { ReminderQueryParams, CreateReminderInput, UpdateReminderInput } from "../schemas/reminder.schema.js";
 
 export async function listReminders(
   userId: string,
   customerId: string,
-  params: ListParams,
+  params: ReminderQueryParams,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   const { page, limit, completed, dueBefore } = params;
@@ -60,7 +54,7 @@ export async function getReminder(
 export async function createReminder(
   userId: string,
   customerId: string,
-  data: Omit<Prisma.ReminderUncheckedCreateInput, "customerId">,
+  data: CreateReminderInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   return prisma.reminder.create({
@@ -72,7 +66,7 @@ export async function updateReminder(
   userId: string,
   customerId: string,
   reminderId: string,
-  data: Prisma.ReminderUpdateInput,
+  data: UpdateReminderInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   const reminder = await prisma.reminder.findFirst({

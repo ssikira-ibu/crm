@@ -8,4 +8,8 @@ export const createContactSchema = z.object({
   isPrimary: z.boolean().optional(),
 });
 
+export type CreateContactInput = z.infer<typeof createContactSchema>;
+
 export const updateContactSchema = createContactSchema.partial();
+
+export type UpdateContactInput = z.infer<typeof updateContactSchema>;

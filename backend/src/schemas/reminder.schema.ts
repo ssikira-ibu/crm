@@ -7,7 +7,11 @@ export const createReminderSchema = z.object({
   isCompleted: z.boolean().optional(),
 });
 
+export type CreateReminderInput = z.infer<typeof createReminderSchema>;
+
 export const updateReminderSchema = createReminderSchema.partial();
+
+export type UpdateReminderInput = z.infer<typeof updateReminderSchema>;
 
 export const reminderQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -18,3 +22,5 @@ export const reminderQuerySchema = z.object({
     .optional(),
   dueBefore: z.coerce.date().optional(),
 });
+
+export type ReminderQueryParams = z.infer<typeof reminderQuerySchema>;

@@ -7,7 +7,11 @@ export const createCustomerSchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE", "LEAD", "PROSPECT"]).optional(),
 });
 
+export type CreateCustomerInput = z.infer<typeof createCustomerSchema>;
+
 export const updateCustomerSchema = createCustomerSchema.partial();
+
+export type UpdateCustomerInput = z.infer<typeof updateCustomerSchema>;
 
 export const customerQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
@@ -15,3 +19,5 @@ export const customerQuerySchema = z.object({
   status: z.enum(["ACTIVE", "INACTIVE", "LEAD", "PROSPECT"]).optional(),
   search: z.string().optional(),
 });
+
+export type CustomerQueryParams = z.infer<typeof customerQuerySchema>;

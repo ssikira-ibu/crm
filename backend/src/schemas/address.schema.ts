@@ -10,4 +10,8 @@ export const createAddressSchema = z.object({
   country: z.string().max(100).optional(),
 });
 
+export type CreateAddressInput = z.infer<typeof createAddressSchema>;
+
 export const updateAddressSchema = createAddressSchema.partial();
+
+export type UpdateAddressInput = z.infer<typeof updateAddressSchema>;

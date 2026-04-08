@@ -5,6 +5,7 @@ import {
   updateCustomerSchema,
   customerQuerySchema,
 } from "../schemas/customer.schema.js";
+import type { CustomerQueryParams } from "../schemas/customer.schema.js";
 import * as customerService from "../services/customer.service.js";
 import type { AppState } from "../types/index.js";
 
@@ -14,7 +15,7 @@ const router = new Router<AppState>();
 router.get("/customers", validate(customerQuerySchema, "query"), async (ctx) => {
   const result = await customerService.listCustomers(
     ctx.state.user.uid,
-    ctx.state.query as { page: number; limit: number; status?: string; search?: string },
+    ctx.state.query as CustomerQueryParams,
   );
   ctx.body = result;
 });

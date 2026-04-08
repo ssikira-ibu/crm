@@ -1,7 +1,7 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import type { CreatePhoneNumberInput, UpdatePhoneNumberInput } from "../schemas/phoneNumber.schema.js";
 
 export async function listPhoneNumbers(userId: string, customerId: string) {
   await ensureCustomerOwnership(userId, customerId);
@@ -29,7 +29,7 @@ export async function getPhoneNumber(
 export async function createPhoneNumber(
   userId: string,
   customerId: string,
-  data: Omit<Prisma.PhoneNumberUncheckedCreateInput, "customerId">,
+  data: CreatePhoneNumberInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   return prisma.phoneNumber.create({
@@ -41,7 +41,7 @@ export async function updatePhoneNumber(
   userId: string,
   customerId: string,
   phoneNumberId: string,
-  data: Prisma.PhoneNumberUpdateInput,
+  data: UpdatePhoneNumberInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   const phone = await prisma.phoneNumber.findFirst({

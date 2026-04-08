@@ -25,8 +25,8 @@ export const errorHandler: Middleware = async (ctx, next) => {
         },
       };
     } else {
-      const error = err as Error;
-      console.error("Unhandled error:", error.stack || error.message);
+      const message = err instanceof Error ? err.stack ?? err.message : String(err);
+      console.error("Unhandled error:", message);
       ctx.status = 500;
       ctx.body = {
         error: {

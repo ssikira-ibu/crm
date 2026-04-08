@@ -1,7 +1,7 @@
-import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import type { CreateAddressInput, UpdateAddressInput } from "../schemas/address.schema.js";
 
 export async function listAddresses(userId: string, customerId: string) {
   await ensureCustomerOwnership(userId, customerId);
@@ -29,7 +29,7 @@ export async function getAddress(
 export async function createAddress(
   userId: string,
   customerId: string,
-  data: Omit<Prisma.AddressUncheckedCreateInput, "customerId">,
+  data: CreateAddressInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   return prisma.address.create({
@@ -41,7 +41,7 @@ export async function updateAddress(
   userId: string,
   customerId: string,
   addressId: string,
-  data: Prisma.AddressUpdateInput,
+  data: UpdateAddressInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   const address = await prisma.address.findFirst({

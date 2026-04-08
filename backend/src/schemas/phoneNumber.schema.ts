@@ -7,4 +7,8 @@ export const createPhoneNumberSchema = z.object({
   isPrimary: z.boolean().optional(),
 });
 
+export type CreatePhoneNumberInput = z.infer<typeof createPhoneNumberSchema>;
+
 export const updatePhoneNumberSchema = createPhoneNumberSchema.partial();
+
+export type UpdatePhoneNumberInput = z.infer<typeof updatePhoneNumberSchema>;

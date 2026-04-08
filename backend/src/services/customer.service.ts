@@ -1,20 +1,14 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import type { CustomerQueryParams, CreateCustomerInput, UpdateCustomerInput } from "../schemas/customer.schema.js";
 
-interface ListParams {
-  page: number;
-  limit: number;
-  status?: string;
-  search?: string;
-}
-
-export async function listCustomers(userId: string, params: ListParams) {
+export async function listCustomers(userId: string, params: CustomerQueryParams) {
   const { page, limit, status, search } = params;
   const where: Prisma.CustomerWhereInput = { userId };
 
   if (status) {
-    where.status = status as Prisma.EnumCustomerStatusFilter;
+    where.status = status;
   }
   if (search) {
     where.OR = [
@@ -58,7 +52,7 @@ export async function getCustomer(userId: string, customerId: string) {
 
 export async function createCustomer(
   userId: string,
-  data: Prisma.CustomerCreateInput,
+  data: CreateCustomerInput,
 ) {
   return prisma.customer.create({
     data: { ...data, userId },
@@ -68,7 +62,7 @@ export async function createCustomer(
 export async function updateCustomer(
   userId: string,
   customerId: string,
-  data: Prisma.CustomerUpdateInput,
+  data: UpdateCustomerInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
   return prisma.customer.update({

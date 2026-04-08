@@ -5,6 +5,7 @@ import {
   updateReminderSchema,
   reminderQuerySchema,
 } from "../schemas/reminder.schema.js";
+import type { ReminderQueryParams } from "../schemas/reminder.schema.js";
 import * as reminderService from "../services/reminder.service.js";
 import type { AppState } from "../types/index.js";
 
@@ -18,12 +19,7 @@ router.get(
     const result = await reminderService.listReminders(
       ctx.state.user.uid,
       ctx.params.customerId,
-      ctx.state.query as {
-        page: number;
-        limit: number;
-        completed?: boolean;
-        dueBefore?: Date;
-      },
+      ctx.state.query as ReminderQueryParams,
     );
     ctx.body = result;
   },
