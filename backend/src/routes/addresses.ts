@@ -1,5 +1,74 @@
 import Router from "@koa/router";
+import { validate } from "../middleware/validate.js";
+import {
+  createAddressSchema,
+  updateAddressSchema,
+} from "../schemas/address.schema.js";
+import * as addressService from "../services/address.service.js";
+import type { AppState } from "../types/index.js";
 
-const router = new Router();
+const router = new Router<AppState>();
+
+// GET /customers/:customerId/addresses
+router.get("/customers/:customerId/addresses", async (ctx) => {
+  const addresses = await addressService.listAddresses(
+    ctx.state.user.uid,
+    ctx.params.customerId,
+  );
+  ctx.body = { data: addresses };
+});
+
+// POST /customers/:customerId/addresses
+router.post(
+  "/customers/:customerId/addresses",
+  validate(createAddressSchema, "body"),
+  async (ctx) => {
+    const address = await addressService.createAddress(
+      ctx.state.user.uid,
+      ctx.params.customerId,
+      ctx.request.body,
+    );
+    ctx.status = 201;
+    ctx.body = { data: address };
+  },
+);
+
+// GET /customers/:customerId/addresses/:addressId
+router.get("/customers/:customerId/addresses/:addressId", async (ctx) => {
+  const address = await addressService.getAddress(
+    ctx.state.user.uid,
+    ctx.params.customerId,
+    ctx.params.addressId,
+  );
+  ctx.body = { data: address };
+});
+
+// PUT /customers/:customerId/addresses/:addressId
+router.put(
+  "/customers/:customerId/addresses/:addressId",
+  validate(updateAddressSchema, "body"),
+  async (ctx) => {
+    const address = await addressService.updateAddress(
+      ctx.state.user.uid,
+      ctx.params.customerId,
+      ctx.params.addressId,
+      ctx.request.body,
+    );
+    ctx.body = { data: address };
+  },
+);
+
+// DELETE /customers/:customerId/addresses/:addressId
+router.delete(
+  "/customers/:customerId/addresses/:addressId",
+  async (ctx) => {
+    await addressService.deleteAddress(
+      ctx.state.user.uid,
+      ctx.params.customerId,
+      ctx.params.addressId,
+    );
+    ctx.status = 204;
+  },
+);
 
 export default router;
