@@ -4,6 +4,7 @@ import {
   createAddressSchema,
   updateAddressSchema,
 } from "../schemas/address.schema.js";
+import type { CreateAddressInput, UpdateAddressInput } from "../schemas/address.schema.js";
 import * as addressService from "../services/address.service.js";
 import type { AppState } from "../types/index.js";
 
@@ -26,7 +27,7 @@ router.post(
     const address = await addressService.createAddress(
       ctx.state.user.uid,
       ctx.params.customerId,
-      ctx.request.body,
+      ctx.state.body as CreateAddressInput,
     );
     ctx.status = 201;
     ctx.body = { data: address };
@@ -52,7 +53,7 @@ router.patch(
       ctx.state.user.uid,
       ctx.params.customerId,
       ctx.params.addressId,
-      ctx.request.body,
+      ctx.state.body as UpdateAddressInput,
     );
     ctx.body = { data: address };
   },

@@ -4,6 +4,7 @@ import {
   createPhoneNumberSchema,
   updatePhoneNumberSchema,
 } from "../schemas/phoneNumber.schema.js";
+import type { CreatePhoneNumberInput, UpdatePhoneNumberInput } from "../schemas/phoneNumber.schema.js";
 import * as phoneNumberService from "../services/phoneNumber.service.js";
 import type { AppState } from "../types/index.js";
 
@@ -26,7 +27,7 @@ router.post(
     const phoneNumber = await phoneNumberService.createPhoneNumber(
       ctx.state.user.uid,
       ctx.params.customerId,
-      ctx.request.body,
+      ctx.state.body as CreatePhoneNumberInput,
     );
     ctx.status = 201;
     ctx.body = { data: phoneNumber };
@@ -55,7 +56,7 @@ router.patch(
       ctx.state.user.uid,
       ctx.params.customerId,
       ctx.params.phoneNumberId,
-      ctx.request.body,
+      ctx.state.body as UpdatePhoneNumberInput,
     );
     ctx.body = { data: phoneNumber };
   },

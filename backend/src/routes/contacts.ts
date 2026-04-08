@@ -4,6 +4,7 @@ import {
   createContactSchema,
   updateContactSchema,
 } from "../schemas/contact.schema.js";
+import type { CreateContactInput, UpdateContactInput } from "../schemas/contact.schema.js";
 import * as contactService from "../services/contact.service.js";
 import type { AppState } from "../types/index.js";
 
@@ -26,7 +27,7 @@ router.post(
     const contact = await contactService.createContact(
       ctx.state.user.uid,
       ctx.params.customerId,
-      ctx.request.body,
+      ctx.state.body as CreateContactInput,
     );
     ctx.status = 201;
     ctx.body = { data: contact };
@@ -52,7 +53,7 @@ router.patch(
       ctx.state.user.uid,
       ctx.params.customerId,
       ctx.params.contactId,
-      ctx.request.body,
+      ctx.state.body as UpdateContactInput,
     );
     ctx.body = { data: contact };
   },

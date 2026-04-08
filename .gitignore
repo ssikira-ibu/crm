@@ -6,6 +6,7 @@ dist/
 
 # Prisma
 prisma/migrations/**/migration_lock.toml
+**/generated/prisma/
 
 # Docker
 pgdata/

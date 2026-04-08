@@ -5,6 +5,7 @@ export interface AuthUser {
 
 export interface AppState {
   user: AuthUser;
+  body?: unknown;
   query?: unknown;
   params?: unknown;
 }

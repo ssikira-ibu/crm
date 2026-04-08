@@ -5,7 +5,7 @@ import {
   updateReminderSchema,
   reminderQuerySchema,
 } from "../schemas/reminder.schema.js";
-import type { ReminderQueryParams } from "../schemas/reminder.schema.js";
+import type { CreateReminderInput, UpdateReminderInput, ReminderQueryParams } from "../schemas/reminder.schema.js";
 import * as reminderService from "../services/reminder.service.js";
 import type { AppState } from "../types/index.js";
 
@@ -33,7 +33,7 @@ router.post(
     const reminder = await reminderService.createReminder(
       ctx.state.user.uid,
       ctx.params.customerId,
-      ctx.request.body,
+      ctx.state.body as CreateReminderInput,
     );
     ctx.status = 201;
     ctx.body = { data: reminder };
@@ -62,7 +62,7 @@ router.patch(
       ctx.state.user.uid,
       ctx.params.customerId,
       ctx.params.reminderId,
-      ctx.request.body,
+      ctx.state.body as UpdateReminderInput,
     );
     ctx.body = { data: reminder };
   },

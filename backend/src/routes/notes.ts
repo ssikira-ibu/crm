@@ -4,6 +4,7 @@ import {
   createNoteSchema,
   updateNoteSchema,
 } from "../schemas/note.schema.js";
+import type { CreateNoteInput, UpdateNoteInput } from "../schemas/note.schema.js";
 import * as noteService from "../services/note.service.js";
 import type { AppState } from "../types/index.js";
 
@@ -26,7 +27,7 @@ router.post(
     const note = await noteService.createNote(
       ctx.state.user.uid,
       ctx.params.customerId,
-      ctx.request.body,
+      ctx.state.body as CreateNoteInput,
     );
     ctx.status = 201;
     ctx.body = { data: note };
@@ -52,7 +53,7 @@ router.patch(
       ctx.state.user.uid,
       ctx.params.customerId,
       ctx.params.noteId,
-      ctx.request.body,
+      ctx.state.body as UpdateNoteInput,
     );
     ctx.body = { data: note };
   },

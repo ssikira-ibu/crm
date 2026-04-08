@@ -5,7 +5,7 @@ import {
   updateCustomerSchema,
   customerQuerySchema,
 } from "../schemas/customer.schema.js";
-import type { CustomerQueryParams } from "../schemas/customer.schema.js";
+import type { CreateCustomerInput, UpdateCustomerInput, CustomerQueryParams } from "../schemas/customer.schema.js";
 import * as customerService from "../services/customer.service.js";
 import type { AppState } from "../types/index.js";
 
@@ -24,7 +24,7 @@ router.get("/customers", validate(customerQuerySchema, "query"), async (ctx) => 
 router.post("/customers", validate(createCustomerSchema, "body"), async (ctx) => {
   const customer = await customerService.createCustomer(
     ctx.state.user.uid,
-    ctx.request.body,
+    ctx.state.body as CreateCustomerInput,
   );
   ctx.status = 201;
   ctx.body = { data: customer };
@@ -47,7 +47,7 @@ router.patch(
     const customer = await customerService.updateCustomer(
       ctx.state.user.uid,
       ctx.params.customerId,
-      ctx.request.body,
+      ctx.state.body as UpdateCustomerInput,
     );
     ctx.body = { data: customer };
   },

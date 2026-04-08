@@ -1,10 +1,10 @@
 import type { Middleware } from "koa";
-import { ZodSchema, ZodError } from "zod";
+import { z } from "zod";
 import { AppError } from "./errorHandler.js";
 
 type Source = "body" | "query" | "params";
 
-export function validate(schema: ZodSchema, source: Source): Middleware {
+export function validate(schema: z.ZodType, source: Source): Middleware {
   return async (ctx, next) => {
     let data: unknown;
     if (source === "body") {
@@ -17,15 +17,9 @@ export function validate(schema: ZodSchema, source: Source): Middleware {
 
     try {
       const parsed = schema.parse(data);
-      if (source === "body") {
-        ctx.request.body = parsed;
-      } else if (source === "query") {
-        ctx.state.query = parsed;
-      } else {
-        ctx.state.params = parsed;
-      }
+      ctx.state[source] = parsed;
     } catch (err) {
-      if (err instanceof ZodError) {
+      if (err instanceof z.ZodError) {
         throw new AppError(400, "VALIDATION_ERROR", "Invalid request data", err.issues);
       }
       throw err;
