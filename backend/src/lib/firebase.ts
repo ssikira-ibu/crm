@@ -1,4 +1,5 @@
 import admin from "firebase-admin";
+import type { Auth } from "firebase-admin/auth";
 import { config } from "../config.js";
 
 const app = admin.initializeApp({
@@ -9,4 +10,4 @@ const app = admin.initializeApp({
   }),
 });
 
-export const auth: import("firebase-admin/auth").Auth = app.auth();
+export const auth: Auth = app.auth();
