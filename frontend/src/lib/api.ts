@@ -1,4 +1,4 @@
-import { auth } from "./firebase";
+import { getFirebaseAuth } from "./firebase";
 import type {
   Address,
   AddressCreate,
@@ -63,7 +63,7 @@ type RequestOptions = {
 
 async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { method = "GET", query, body, signal } = opts;
-  const token = await auth.currentUser?.getIdToken();
+  const token = await getFirebaseAuth().currentUser?.getIdToken();
   const headers: Record<string, string> = {
     Accept: "application/json",
   };

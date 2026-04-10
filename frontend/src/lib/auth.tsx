@@ -17,7 +17,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { auth } from "./firebase";
+import { getFirebaseAuth } from "./firebase";
 
 type AuthContextValue = {
   user: User | null;
@@ -35,7 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onIdTokenChanged(auth, (next) => {
+    return onIdTokenChanged(getFirebaseAuth(), (next) => {
       setUser(next);
       setLoading(false);
     });
@@ -46,16 +46,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       signInWithEmail: async (email, password) => {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
       },
       signInWithGoogle: async () => {
-        await signInWithPopup(auth, new GoogleAuthProvider());
+        await signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider());
       },
       signOut: async () => {
-        await firebaseSignOut(auth);
+        await firebaseSignOut(getFirebaseAuth());
       },
       getIdToken: async () => {
-        const current = auth.currentUser;
+        const current = getFirebaseAuth().currentUser;
         return current ? current.getIdToken() : null;
       },
     }),
