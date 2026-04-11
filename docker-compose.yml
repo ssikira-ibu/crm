@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:17-alpine
     restart: unless-stopped
     ports:
       - "5432:5432"
@@ -27,16 +27,31 @@ services:
       DATABASE_URL: postgresql://crm_user:crm_password@db:5432/crm_dev?schema=public
       PORT: "3000"
       NODE_ENV: development
-      FIREBASE_PROJECT_ID: ${FIREBASE_PROJECT_ID}
-      FIREBASE_CLIENT_EMAIL: ${FIREBASE_CLIENT_EMAIL}
-      FIREBASE_PRIVATE_KEY: ${FIREBASE_PRIVATE_KEY}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
     volumes:
       - ./backend/src:/app/src
       - ./backend/prisma:/app/prisma
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
     depends_on:
       db:
         condition: service_healthy
-    command: npx tsx watch src/index.ts
+    command: >
+      sh -c "npx prisma migrate deploy && npx tsx watch src/index.ts"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      target: development
+    ports:
+      - "3001:3001"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:3000
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
+    depends_on:
+      - backend
 
 volumes:
   pgdata:

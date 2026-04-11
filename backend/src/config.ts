@@ -6,9 +6,7 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  FIREBASE_PROJECT_ID: z.string().min(1),
-  FIREBASE_CLIENT_EMAIL: z.string().email(),
-  FIREBASE_PRIVATE_KEY: z.string().min(1),
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1),
 });
 
 export const config = envSchema.parse(process.env);
