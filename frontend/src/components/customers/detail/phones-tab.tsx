@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { EmptyState } from "@/components/empty-state";
 import { api } from "@/lib/api";
 import { describeError } from "@/lib/errors";
 import type { PhoneNumber } from "@/lib/types";
@@ -54,9 +55,17 @@ export function PhonesTab({ customerId, items, onChanged }: Props) {
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No phone numbers yet.
-        </div>
+        <EmptyState
+          icon={Phone}
+          title="No phone numbers yet"
+          description="Keep work, mobile, and other numbers in one place."
+          action={
+            <Button size="sm" onClick={startCreate}>
+              <Plus className="size-4" />
+              Add number
+            </Button>
+          }
+        />
       ) : (
         <ul className="divide-y rounded-md border">
           {items.map((p) => (

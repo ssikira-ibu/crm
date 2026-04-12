@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { MapPin, Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { EmptyState } from "@/components/empty-state";
 import { api } from "@/lib/api";
 import { describeError } from "@/lib/errors";
 import type { Address } from "@/lib/types";
@@ -62,9 +63,17 @@ export function AddressesTab({ customerId, items, onChanged }: Props) {
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No addresses yet.
-        </div>
+        <EmptyState
+          icon={MapPin}
+          title="No addresses yet"
+          description="Record main, billing, and shipping locations."
+          action={
+            <Button size="sm" onClick={startCreate}>
+              <Plus className="size-4" />
+              Add address
+            </Button>
+          }
+        />
       ) : (
         <ul className="divide-y rounded-md border">
           {items.map((a) => (

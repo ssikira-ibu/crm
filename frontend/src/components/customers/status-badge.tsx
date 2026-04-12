@@ -2,15 +2,18 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import type { CustomerStatus } from "@/lib/types";
 
-const STYLES: Record<CustomerStatus, string> = {
-  ACTIVE:
-    "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-500/30 dark:bg-emerald-500/15 dark:text-emerald-200",
-  INACTIVE:
-    "border-border bg-muted text-muted-foreground",
-  LEAD:
-    "border-sky-200 bg-sky-50 text-sky-900 dark:border-sky-500/30 dark:bg-sky-500/15 dark:text-sky-200",
-  PROSPECT:
-    "border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/15 dark:text-amber-200",
+const LABELS: Record<CustomerStatus, string> = {
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
+  LEAD: "Lead",
+  PROSPECT: "Prospect",
+};
+
+const DOT: Record<CustomerStatus, string> = {
+  ACTIVE: "bg-emerald-500",
+  INACTIVE: "bg-muted-foreground/60",
+  LEAD: "bg-sky-500",
+  PROSPECT: "bg-amber-500",
 };
 
 export function CustomerStatusBadge({
@@ -21,8 +24,12 @@ export function CustomerStatusBadge({
   className?: string;
 }) {
   return (
-    <Badge variant="outline" className={cn(STYLES[status], className)}>
-      {status}
+    <Badge variant="outline" className={cn("gap-1.5 font-medium", className)}>
+      <span
+        aria-hidden
+        className={cn("size-1.5 rounded-full", DOT[status])}
+      />
+      {LABELS[status]}
     </Badge>
   );
 }

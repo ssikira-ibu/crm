@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { Pencil, Plus } from "lucide-react";
+import { FileText, Pencil, Plus } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { EmptyState } from "@/components/empty-state";
 import { api } from "@/lib/api";
 import { describeError } from "@/lib/errors";
 import type { Note } from "@/lib/types";
@@ -54,9 +55,17 @@ export function NotesTab({ customerId, items, onChanged }: Props) {
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No notes yet.
-        </div>
+        <EmptyState
+          icon={FileText}
+          title="No notes yet"
+          description="Capture conversations, meeting notes, and reminders."
+          action={
+            <Button size="sm" onClick={startCreate}>
+              <Plus className="size-4" />
+              Add note
+            </Button>
+          }
+        />
       ) : (
         <div className="space-y-3">
           {items.map((n) => (

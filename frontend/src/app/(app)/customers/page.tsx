@@ -2,10 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus, Search } from "lucide-react";
+import { Plus, Search, Users } from "lucide-react";
 import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/empty-state";
 import { Input } from "@/components/ui/input";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -36,6 +45,13 @@ import {
 const PAGE_SIZE = 20;
 const ANY = "ANY" as const;
 type StatusFilter = CustomerStatus | typeof ANY;
+
+const STATUS_LABEL: Record<CustomerStatus, string> = {
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
+  LEAD: "Lead",
+  PROSPECT: "Prospect",
+};
 
 function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -106,12 +122,14 @@ export default function CustomersPage() {
   const totalPages = meta?.totalPages ?? 1;
   const canPrev = page > 1 && !loading;
   const canNext = page < totalPages && !loading;
+  const hasFilters =
+    debouncedSearch.trim().length > 0 || statusFilter !== ANY;
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Customers</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4 sm:p-6">
+        <div className="space-y-0.5">
+          <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
           <p className="text-sm text-muted-foreground">
             {meta ? `${meta.total} total` : "\u00A0"}
           </p>
@@ -122,121 +140,152 @@ export default function CustomersPage() {
         </Button>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b p-4">
+      <div className="flex flex-wrap items-center gap-2 border-b p-4 sm:px-6">
         <div className="relative flex-1 min-w-[12rem]">
-          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search company or industry"
             className="pl-8"
+            aria-label="Search customers"
           />
         </div>
         <Select
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as StatusFilter)}
         >
-          <SelectTrigger className="w-[10rem]">
+          <SelectTrigger className="w-[10rem]" aria-label="Filter by status">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ANY}>All statuses</SelectItem>
             {CUSTOMER_STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
-                {s}
+                {STATUS_LABEL[s]}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
+      {error && !loading ? (
+        <div className="p-4 sm:p-6">
+          <Alert variant="destructive">
+            <AlertTitle>Unable to load customers</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      ) : null}
+
       <div className="flex-1 overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="min-w-[14rem]">Company</TableHead>
-              <TableHead>Industry</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Created</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={`sk-${i}`}>
-                  <TableCell>
-                    <Skeleton className="h-4 w-48" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-32" />
-                  </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-5 w-16" />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Skeleton className="ml-auto h-4 w-24" />
-                  </TableCell>
-                </TableRow>
-              ))
-            ) : customers.length === 0 ? (
+        {!loading && !error && customers.length === 0 ? (
+          <div className="p-4 sm:p-6">
+            <EmptyState
+              icon={Users}
+              title={hasFilters ? "No matching customers" : "No customers yet"}
+              description={
+                hasFilters
+                  ? "Try adjusting your search or filters."
+                  : "Add your first customer to start tracking relationships."
+              }
+              action={
+                !hasFilters ? (
+                  <Button size="sm" onClick={() => setCreateOpen(true)}>
+                    <Plus className="size-4" />
+                    New customer
+                  </Button>
+                ) : null
+              }
+            />
+          </div>
+        ) : (
+          <Table>
+            <TableHeader>
               <TableRow>
-                <TableCell
-                  colSpan={4}
-                  className="h-32 text-center text-sm text-muted-foreground"
-                >
-                  {error
-                    ? "Failed to load customers."
-                    : "No customers match your filters."}
-                </TableCell>
+                <TableHead className="min-w-[14rem]">Company</TableHead>
+                <TableHead>Industry</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Created</TableHead>
               </TableRow>
-            ) : (
-              customers.map((c) => (
-                <TableRow
-                  key={c.id}
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/customers/${c.id}`)}
-                >
-                  <TableCell className="font-medium">{describeName(c)}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {c.industry ?? "—"}
-                  </TableCell>
-                  <TableCell>
-                    <CustomerStatusBadge status={c.status} />
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground">
-                    {formatDate(c.createdAt)}
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {loading
+                ? Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={`sk-${i}`}>
+                      <TableCell>
+                        <Skeleton className="h-4 w-48" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-4 w-32" />
+                      </TableCell>
+                      <TableCell>
+                        <Skeleton className="h-5 w-20" />
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Skeleton className="ml-auto h-4 w-24" />
+                      </TableCell>
+                    </TableRow>
+                  ))
+                : customers.map((c) => (
+                    <TableRow
+                      key={c.id}
+                      className="cursor-pointer"
+                      onClick={() => router.push(`/customers/${c.id}`)}
+                    >
+                      <TableCell className="font-medium">
+                        {describeName(c)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {c.industry ?? "—"}
+                      </TableCell>
+                      <TableCell>
+                        <CustomerStatusBadge status={c.status} />
+                      </TableCell>
+                      <TableCell className="text-right text-muted-foreground">
+                        {formatDate(c.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+            </TableBody>
+          </Table>
+        )}
       </div>
 
-      <div className="flex items-center justify-between border-t p-3 text-sm">
+      <div className="flex items-center justify-between border-t p-3 text-sm sm:px-6">
         <div className="text-muted-foreground">
           {meta ? `Page ${meta.page} of ${meta.totalPages || 1}` : "\u00A0"}
         </div>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!canPrev}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-          >
-            <ChevronLeft className="size-4" />
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!canNext}
-            onClick={() => setPage((p) => p + 1)}
-          >
-            Next
-            <ChevronRight className="size-4" />
-          </Button>
-        </div>
+        <Pagination className="mx-0 w-auto justify-end">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                aria-disabled={!canPrev}
+                className={
+                  !canPrev ? "pointer-events-none opacity-50" : undefined
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (canPrev) setPage((p) => Math.max(1, p - 1));
+                }}
+                href="#"
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                aria-disabled={!canNext}
+                className={
+                  !canNext ? "pointer-events-none opacity-50" : undefined
+                }
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (canNext) setPage((p) => p + 1);
+                }}
+                href="#"
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
       </div>
 
       <CreateCustomerDialog

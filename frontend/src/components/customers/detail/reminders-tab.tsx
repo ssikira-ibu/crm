@@ -2,11 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { format, formatDistanceToNow, isPast } from "date-fns";
-import { AlertTriangle, CheckCircle2, Clock, Pencil, Plus } from "lucide-react";
+import {
+  AlertTriangle,
+  BellRing,
+  CheckCircle2,
+  Clock,
+  Pencil,
+  Plus,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
+import { EmptyState } from "@/components/empty-state";
 import { api } from "@/lib/api";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -113,9 +121,17 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
       </div>
 
       {sorted.length === 0 ? (
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          No reminders yet.
-        </div>
+        <EmptyState
+          icon={BellRing}
+          title="No reminders yet"
+          description="Set follow-ups so nothing slips through the cracks."
+          action={
+            <Button size="sm" onClick={startCreate}>
+              <Plus className="size-4" />
+              Add reminder
+            </Button>
+          }
+        />
       ) : (
         <ul className="space-y-2">
           {sorted.map((r) => {
