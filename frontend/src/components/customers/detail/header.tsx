@@ -1,13 +1,23 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, Loader2, Pencil } from "lucide-react";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -30,44 +40,57 @@ type Props = {
   onUpdated: (customer: Customer) => void;
 };
 
+const schema = z.object({
+  companyName: z.string().trim().min(1, "Company name is required."),
+  industry: z.string().trim().optional(),
+  website: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (v) => !v || /^https?:\/\/.+/i.test(v),
+      "Enter a valid URL (including http:// or https://).",
+    ),
+  status: z.enum(CUSTOMER_STATUSES),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+function toValues(customer: Customer): FormValues {
+  return {
+    companyName: customer.companyName ?? "",
+    industry: customer.industry ?? "",
+    website: customer.website ?? "",
+    status: customer.status,
+  };
+}
+
 export function CustomerHeader({ customer, onUpdated }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
-  const [companyName, setCompanyName] = useState(customer.companyName ?? "");
-  const [industry, setIndustry] = useState(customer.industry ?? "");
-  const [website, setWebsite] = useState(customer.website ?? "");
-  const [status, setStatus] = useState<CustomerStatus>(customer.status);
-  const [pending, setPending] = useState(false);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: toValues(customer),
+  });
+  const pending = form.formState.isSubmitting;
 
-  function enterEdit() {
-    setCompanyName(customer.companyName ?? "");
-    setIndustry(customer.industry ?? "");
-    setWebsite(customer.website ?? "");
-    setStatus(customer.status);
-    setEditing(true);
-  }
+  useEffect(() => {
+    if (editing) form.reset(toValues(customer));
+  }, [editing, customer, form]);
 
-  function cancelEdit() {
-    setEditing(false);
-  }
-
-  async function onSave(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
+  async function onSave(values: FormValues) {
     try {
       const res = await api.customers.update(customer.id, {
-        companyName: companyName.trim() || undefined,
-        industry: industry.trim() || undefined,
-        website: website.trim() || undefined,
-        status,
+        companyName: values.companyName.trim(),
+        industry: values.industry?.trim() || undefined,
+        website: values.website?.trim() || undefined,
+        status: values.status,
       });
       onUpdated(res.data);
       setEditing(false);
       toast.success("Customer updated.");
     } catch (err) {
       toast.error(describeError(err));
-    } finally {
-      setPending(false);
     }
   }
 
@@ -90,7 +113,11 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
         </Button>
         {!editing && (
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={enterEdit}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditing(true)}
+            >
               <Pencil className="size-4" />
               Edit
             </Button>
@@ -109,76 +136,102 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
       </div>
 
       {editing ? (
-        <form onSubmit={onSave} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="editCompany">Company name</Label>
-              <Input
-                id="editCompany"
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                disabled={pending}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSave)}
+            className="space-y-4"
+            noValidate
+          >
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="companyName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Company name</FormLabel>
+                    <FormControl>
+                      <Input disabled={pending} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="industry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Industry</FormLabel>
+                    <FormControl>
+                      <Input disabled={pending} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="website"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Website</FormLabel>
+                    <FormControl>
+                      <Input type="url" disabled={pending} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => field.onChange(v as CustomerStatus)}
+                      disabled={pending}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CUSTOMER_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {s}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="editIndustry">Industry</Label>
-              <Input
-                id="editIndustry"
-                value={industry}
-                onChange={(e) => setIndustry(e.target.value)}
-                disabled={pending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="editWebsite">Website</Label>
-              <Input
-                id="editWebsite"
-                type="url"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                disabled={pending}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="editStatus">Status</Label>
-              <Select
-                value={status}
-                onValueChange={(v) => setStatus(v as CustomerStatus)}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditing(false)}
                 disabled={pending}
               >
-                <SelectTrigger id="editStatus">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CUSTOMER_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {s}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Saving
+                  </>
+                ) : (
+                  "Save"
+                )}
+              </Button>
             </div>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={cancelEdit}
-              disabled={pending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Saving
-                </>
-              ) : (
-                "Save"
-              )}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </Form>
       ) : (
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-3">

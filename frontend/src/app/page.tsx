@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FirebaseError } from "firebase/app";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -13,8 +16,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { useAuth, useRedirectIfAuthed } from "@/lib/auth";
 
@@ -36,26 +46,31 @@ function describeError(err: unknown): string {
   return "Something went wrong.";
 }
 
+const schema = z.object({
+  email: z.string().min(1, "Email is required.").email("Enter a valid email."),
+  password: z.string().min(1, "Password is required."),
+});
+
+type FormValues = z.infer<typeof schema>;
+
 export default function LoginPage() {
   const router = useRouter();
   const { signInWithEmail, signInWithGoogle, loading } = useAuth();
   useRedirectIfAuthed("/customers");
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [pending, setPending] = useState(false);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { email: "", password: "" },
+  });
   const [googlePending, setGooglePending] = useState(false);
+  const pending = form.formState.isSubmitting;
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
+  async function onSubmit(values: FormValues) {
     try {
-      await signInWithEmail(email, password);
+      await signInWithEmail(values.email, values.password);
       router.replace("/customers");
     } catch (err) {
       toast.error(describeError(err));
-    } finally {
-      setPending(false);
     }
   }
 
@@ -81,41 +96,59 @@ export default function LoginPage() {
           <CardDescription>Use your CRM account to continue.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <form onSubmit={onSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={disabled}
+          <Form {...form}>
+            <form
+              onSubmit={form.handleSubmit(onSubmit)}
+              className="space-y-4"
+              noValidate
+            >
+              <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="email"
+                        autoComplete="email"
+                        disabled={disabled}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={disabled}
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Password</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="password"
+                        autoComplete="current-password"
+                        disabled={disabled}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </div>
-            <Button type="submit" className="w-full" disabled={disabled}>
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Signing in
-                </>
-              ) : (
-                "Sign in"
-              )}
-            </Button>
-          </form>
+              <Button type="submit" className="w-full" disabled={disabled}>
+                {pending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Signing in
+                  </>
+                ) : (
+                  "Sign in"
+                )}
+              </Button>
+            </form>
+          </Form>
 
           <div className="relative">
             <Separator />

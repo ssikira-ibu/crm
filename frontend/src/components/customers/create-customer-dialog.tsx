@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,8 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -36,38 +45,50 @@ function describe(err: unknown): string {
   return "Failed to create customer.";
 }
 
+const schema = z.object({
+  companyName: z.string().trim().min(1, "Company name is required."),
+  industry: z.string().trim().optional().or(z.literal("")),
+  website: z
+    .string()
+    .trim()
+    .optional()
+    .refine(
+      (v) => !v || /^https?:\/\/.+/i.test(v),
+      "Enter a valid URL (including http:// or https://).",
+    ),
+  status: z.enum(CUSTOMER_STATUSES),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+const defaults: FormValues = {
+  companyName: "",
+  industry: "",
+  website: "",
+  status: "LEAD",
+};
+
 export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
-  const [companyName, setCompanyName] = useState("");
-  const [industry, setIndustry] = useState("");
-  const [website, setWebsite] = useState("");
-  const [status, setStatus] = useState<CustomerStatus>("LEAD");
-  const [pending, setPending] = useState(false);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: defaults,
+  });
+  const pending = form.formState.isSubmitting;
 
-  function reset() {
-    setCompanyName("");
-    setIndustry("");
-    setWebsite("");
-    setStatus("LEAD");
-  }
-
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
+  async function onSubmit(values: FormValues) {
     try {
       const res = await api.customers.create({
-        companyName: companyName.trim() || undefined,
-        industry: industry.trim() || undefined,
-        website: website.trim() || undefined,
-        status,
+        companyName: values.companyName.trim(),
+        industry: values.industry?.trim() || undefined,
+        website: values.website?.trim() || undefined,
+        status: values.status,
       });
       toast.success("Customer created.");
       onCreated(res.data);
-      reset();
+      form.reset(defaults);
       onOpenChange(false);
     } catch (err) {
       toast.error(describe(err));
-    } finally {
-      setPending(false);
     }
   }
 
@@ -75,7 +96,9 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!pending) onOpenChange(next);
+        if (pending) return;
+        if (!next) form.reset(defaults);
+        onOpenChange(next);
       }}
     >
       <DialogContent className="sm:max-w-lg">
@@ -85,77 +108,113 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
             Add a company to your CRM. You can edit details later.
           </DialogDescription>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="companyName">Company name</Label>
-            <Input
-              id="companyName"
-              value={companyName}
-              onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="Acme, Inc."
-              disabled={pending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="industry">Industry</Label>
-            <Input
-              id="industry"
-              value={industry}
-              onChange={(e) => setIndustry(e.target.value)}
-              placeholder="Software"
-              disabled={pending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="website">Website</Label>
-            <Input
-              id="website"
-              type="url"
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="https://example.com"
-              disabled={pending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="status">Status</Label>
-            <Select
-              value={status}
-              onValueChange={(v) => setStatus(v as CustomerStatus)}
-              disabled={pending}
-            >
-              <SelectTrigger id="status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CUSTOMER_STATUSES.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={pending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Creating
-                </>
-              ) : (
-                "Create"
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+            noValidate
+          >
+            <FormField
+              control={form.control}
+              name="companyName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Company name</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Acme, Inc."
+                      disabled={pending}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </Button>
-          </DialogFooter>
-        </form>
+            />
+            <FormField
+              control={form.control}
+              name="industry"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Industry</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Software"
+                      disabled={pending}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="website"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Website</FormLabel>
+                  <FormControl>
+                    <Input
+                      type="url"
+                      placeholder="https://example.com"
+                      disabled={pending}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="status"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Status</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => field.onChange(v as CustomerStatus)}
+                    disabled={pending}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {CUSTOMER_STATUSES.map((s) => (
+                        <SelectItem key={s} value={s}>
+                          {s}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={pending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Creating
+                  </>
+                ) : (
+                  "Create"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

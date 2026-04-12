@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -13,8 +16,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -48,6 +58,25 @@ function initialDate(editing: Reminder | null): Date {
   return d;
 }
 
+const schema = z.object({
+  title: z.string().trim().min(1, "Title is required."),
+  description: z.string().trim().optional(),
+  dueDate: z.date(),
+  time: z.string().regex(/^\d{2}:\d{2}$/, "Enter a valid time."),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+function toValues(editing: Reminder | null): FormValues {
+  const d = initialDate(editing);
+  return {
+    title: editing?.title ?? "",
+    description: editing?.description ?? "",
+    dueDate: d,
+    time: format(d, "HH:mm"),
+  };
+}
+
 export function ReminderDialog({
   customerId,
   open,
@@ -55,29 +84,22 @@ export function ReminderDialog({
   editing,
   onSaved,
 }: Props) {
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState<Date>(() => initialDate(editing));
-  const [time, setTime] = useState("09:00");
-  const [pending, setPending] = useState(false);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: toValues(editing),
+  });
+  const pending = form.formState.isSubmitting;
 
   useEffect(() => {
-    if (!open) return;
-    setTitle(editing?.title ?? "");
-    setDescription(editing?.description ?? "");
-    const d = initialDate(editing);
-    setDueDate(d);
-    setTime(format(d, "HH:mm"));
-  }, [open, editing]);
+    if (open) form.reset(toValues(editing));
+  }, [open, editing, form]);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
+  async function onSubmit(values: FormValues) {
     try {
-      const due = withTime(dueDate, time);
+      const due = withTime(values.dueDate, values.time);
       const input = {
-        title: title.trim(),
-        description: description.trim() || undefined,
+        title: values.title.trim(),
+        description: values.description?.trim() || undefined,
         dueDate: due.toISOString(),
       };
       if (editing) {
@@ -91,8 +113,6 @@ export function ReminderDialog({
       onOpenChange(false);
     } catch (err) {
       toast.error(describeError(err));
-    } finally {
-      setPending(false);
     }
   }
 
@@ -104,88 +124,112 @@ export function ReminderDialog({
             {editing ? "Edit reminder" : "New reminder"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="reminderTitle">Title</Label>
-            <Input
-              id="reminderTitle"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={pending}
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+            noValidate
+          >
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input disabled={pending} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="reminderDescription">Description</Label>
-            <Textarea
-              id="reminderDescription"
-              rows={3}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={pending}
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description</FormLabel>
+                  <FormControl>
+                    <Textarea rows={3} disabled={pending} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
-            <div className="space-y-2">
-              <Label>Due date</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start font-normal",
-                      !dueDate && "text-muted-foreground",
-                    )}
-                    disabled={pending}
-                  >
-                    <CalendarIcon className="size-4" />
-                    {format(dueDate, "PPP")}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={dueDate}
-                    onSelect={(d) => d && setDueDate(d)}
-                    autoFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="time">Time</Label>
-              <Input
-                id="time"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                disabled={pending}
+            <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+              <FormField
+                control={form.control}
+                name="dueDate"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Due date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start font-normal",
+                              !field.value && "text-muted-foreground",
+                            )}
+                            disabled={pending}
+                          >
+                            <CalendarIcon className="size-4" />
+                            {field.value ? format(field.value, "PPP") : "Pick a date"}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={(d) => d && field.onChange(d)}
+                          autoFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="time"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Time</FormLabel>
+                    <FormControl>
+                      <Input type="time" disabled={pending} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={pending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Saving
-                </>
-              ) : editing ? (
-                "Save"
-              ) : (
-                "Add"
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={pending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Saving
+                  </>
+                ) : editing ? (
+                  "Save"
+                ) : (
+                  "Add"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

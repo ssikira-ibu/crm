@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -11,8 +14,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { api } from "@/lib/api";
 import { describeError } from "@/lib/errors";
@@ -26,6 +36,17 @@ type Props = {
   onSaved: () => void;
 };
 
+const schema = z.object({
+  title: z.string().trim().min(1, "Title is required."),
+  body: z.string().trim().min(1, "Body is required."),
+});
+
+type FormValues = z.infer<typeof schema>;
+
+function toValues(editing: Note | null): FormValues {
+  return { title: editing?.title ?? "", body: editing?.body ?? "" };
+}
+
 export function NoteDialog({
   customerId,
   open,
@@ -33,21 +54,19 @@ export function NoteDialog({
   editing,
   onSaved,
 }: Props) {
-  const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
-  const [pending, setPending] = useState(false);
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: toValues(editing),
+  });
+  const pending = form.formState.isSubmitting;
 
   useEffect(() => {
-    if (!open) return;
-    setTitle(editing?.title ?? "");
-    setBody(editing?.body ?? "");
-  }, [open, editing]);
+    if (open) form.reset(toValues(editing));
+  }, [open, editing, form]);
 
-  async function onSubmit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPending(true);
+  async function onSubmit(values: FormValues) {
     try {
-      const input = { title: title.trim(), body: body.trim() };
+      const input = { title: values.title.trim(), body: values.body.trim() };
       if (editing) {
         await api.notes.update(customerId, editing.id, input);
         toast.success("Note updated.");
@@ -59,8 +78,6 @@ export function NoteDialog({
       onOpenChange(false);
     } catch (err) {
       toast.error(describeError(err));
-    } finally {
-      setPending(false);
     }
   }
 
@@ -70,50 +87,61 @@ export function NoteDialog({
         <DialogHeader>
           <DialogTitle>{editing ? "Edit note" : "New note"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={onSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="noteTitle">Title</Label>
-            <Input
-              id="noteTitle"
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              disabled={pending}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="noteBody">Body</Label>
-            <Textarea
-              id="noteBody"
-              required
-              rows={6}
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              disabled={pending}
-            />
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={pending}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={pending}>
-              {pending ? (
-                <>
-                  <Loader2 className="size-4 animate-spin" /> Saving
-                </>
-              ) : editing ? (
-                "Save"
-              ) : (
-                "Add"
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-4"
+            noValidate
+          >
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input disabled={pending} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
               )}
-            </Button>
-          </DialogFooter>
-        </form>
+            />
+            <FormField
+              control={form.control}
+              name="body"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Body</FormLabel>
+                  <FormControl>
+                    <Textarea rows={6} disabled={pending} {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+                disabled={pending}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? (
+                  <>
+                    <Loader2 className="size-4 animate-spin" /> Saving
+                  </>
+                ) : editing ? (
+                  "Save"
+                ) : (
+                  "Add"
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );

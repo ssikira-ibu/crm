@@ -1,26 +1,26 @@
-export type CustomerStatus = "ACTIVE" | "INACTIVE" | "LEAD" | "PROSPECT";
-export type AddressLabel = "MAIN" | "BILLING" | "SHIPPING" | "OTHER";
-export type PhoneLabel = "WORK" | "MOBILE" | "HOME" | "FAX" | "OTHER";
-
-export const CUSTOMER_STATUSES: CustomerStatus[] = [
+export const CUSTOMER_STATUSES = [
   "ACTIVE",
   "INACTIVE",
   "LEAD",
   "PROSPECT",
-];
-export const ADDRESS_LABELS: AddressLabel[] = [
+] as const;
+export const ADDRESS_LABELS = [
   "MAIN",
   "BILLING",
   "SHIPPING",
   "OTHER",
-];
-export const PHONE_LABELS: PhoneLabel[] = [
+] as const;
+export const PHONE_LABELS = [
   "WORK",
   "MOBILE",
   "HOME",
   "FAX",
   "OTHER",
-];
+] as const;
+
+export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number];
+export type AddressLabel = (typeof ADDRESS_LABELS)[number];
+export type PhoneLabel = (typeof PHONE_LABELS)[number];
 
 export type Customer = {
   id: string;
