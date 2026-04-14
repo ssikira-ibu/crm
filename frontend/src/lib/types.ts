@@ -90,6 +90,27 @@ export type Reminder = {
   updatedAt: string;
 };
 
+export type CustomerWithCounts = Customer & {
+  _count: { contacts: number; reminders: number; notes: number };
+};
+
+export type ReminderWithCustomer = Reminder & {
+  customer: { id: string; companyName: string | null; status: CustomerStatus };
+};
+
+export type NoteWithCustomer = Note & {
+  customer: { id: string; companyName: string | null };
+};
+
+export type DashboardData = {
+  reminders: ReminderWithCustomer[];
+  recentNotes: NoteWithCustomer[];
+  stats: {
+    total: number;
+    byStatus: Partial<Record<CustomerStatus, number>>;
+  };
+};
+
 export type CustomerWithRelations = Customer & {
   contacts: Contact[];
   addresses: Address[];

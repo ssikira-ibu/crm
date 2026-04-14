@@ -68,7 +68,7 @@ export default function LoginPage() {
   async function onSubmit(values: FormValues) {
     try {
       await signInWithEmail(values.email, values.password);
-      router.replace("/customers");
+      router.replace("/home");
     } catch (err) {
       toast.error(describeError(err));
     }
@@ -78,7 +78,7 @@ export default function LoginPage() {
     setGooglePending(true);
     try {
       await signInWithGoogle();
-      router.replace("/customers");
+      router.replace("/home");
     } catch (err) {
       toast.error(describeError(err));
     } finally {

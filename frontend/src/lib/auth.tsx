@@ -85,7 +85,7 @@ export function useRequireAuth(redirectTo = "/") {
   return { user, loading };
 }
 
-export function useRedirectIfAuthed(target = "/customers") {
+export function useRedirectIfAuthed(target = "/home") {
   const { user, loading } = useAuth();
   const router = useRouter();
 

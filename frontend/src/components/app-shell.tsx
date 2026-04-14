@@ -3,14 +3,13 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Loader2, Users } from "lucide-react";
+import { Home, Loader2, Users } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -20,11 +19,13 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { Separator } from "@/components/ui/separator";
 import { useRequireAuth } from "@/lib/auth";
 import { UserMenu } from "./user-menu";
 
-const NAV = [{ href: "/customers", label: "Customers", icon: Users }] as const;
+const NAV = [
+  { href: "/home", label: "Home", icon: Home },
+  { href: "/customers", label: "Customers", icon: Users },
+] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading } = useRequireAuth("/");
@@ -33,7 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   if (loading || !user) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <Loader2 className="size-4 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -42,13 +43,18 @@ export function AppShell({ children }: { children: ReactNode }) {
     <SidebarProvider>
       <Sidebar collapsible="icon">
         <SidebarHeader>
-          <div className="flex h-10 items-center px-2 font-semibold tracking-tight">
-            CRM
-          </div>
+          <Link
+            href="/home"
+            className="flex h-10 items-center gap-2 px-2 font-semibold tracking-tight"
+          >
+            <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">
+              C
+            </div>
+            <span className="group-data-[collapsible=icon]:hidden">CRM</span>
+          </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
-            <SidebarGroupLabel>Workspace</SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {NAV.map(({ href, label, icon: Icon }) => {
@@ -75,15 +81,9 @@ export function AppShell({ children }: { children: ReactNode }) {
         <SidebarRail />
       </Sidebar>
       <SidebarInset>
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur">
+        <div className="sticky top-0 z-10 flex h-10 items-center px-3 md:hidden">
           <SidebarTrigger />
-          <Separator orientation="vertical" className="h-5" />
-          <span className="text-sm font-medium text-muted-foreground">
-            {NAV.find(
-              ({ href }) => pathname === href || pathname.startsWith(`${href}/`),
-            )?.label ?? "CRM"}
-          </span>
-        </header>
+        </div>
         <main className="flex flex-1 flex-col">{children}</main>
       </SidebarInset>
     </SidebarProvider>

@@ -8,6 +8,8 @@ import type {
   ContactCreate,
   ContactUpdate,
   Customer,
+  CustomerWithCounts,
+  DashboardData,
   CustomerCreate,
   CustomerListParams,
   CustomerUpdate,
@@ -95,9 +97,14 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   return json as T;
 }
 
+const dashboard = {
+  get: (signal?: AbortSignal) =>
+    request<Single<DashboardData>>("/dashboard", { signal }),
+};
+
 const customers = {
   list: (params?: CustomerListParams, signal?: AbortSignal) =>
-    request<Paginated<Customer>>("/customers", { query: params, signal }),
+    request<Paginated<CustomerWithCounts>>("/customers", { query: params, signal }),
   get: (id: string, signal?: AbortSignal) =>
     request<Single<CustomerWithRelations>>(`/customers/${id}`, { signal }),
   create: (input: CustomerCreate) =>
@@ -174,6 +181,7 @@ const reminders = {
 };
 
 export const api = {
+  dashboard,
   customers,
   contacts,
   addresses,
