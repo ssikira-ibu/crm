@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Loader2 } from "lucide-react";
+import { FileWarning, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { EmptyState } from "@/components/empty-state";
 import { CustomerHeader } from "@/components/customers/detail/header";
 import { ContactsTab } from "@/components/customers/detail/contacts-tab";
 import { AddressesTab } from "@/components/customers/detail/addresses-tab";
@@ -68,8 +70,12 @@ export default function CustomerDetailPage() {
 
   if (!data) {
     return (
-      <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-muted-foreground">
-        {error ?? "Customer unavailable."}
+      <div className="flex flex-1 items-center justify-center p-6">
+        <EmptyState
+          icon={FileWarning}
+          title="Customer unavailable"
+          description={error ?? "We couldn't load this customer."}
+        />
       </div>
     );
   }
@@ -80,20 +86,35 @@ export default function CustomerDetailPage() {
 
       <Tabs defaultValue="contacts" className="flex-1 p-4 sm:p-6">
         <TabsList>
-          <TabsTrigger value="contacts">
-            Contacts ({data.contacts.length})
+          <TabsTrigger value="contacts" className="gap-2">
+            Contacts
+            <Badge variant="secondary" className="h-5 px-1.5">
+              {data.contacts.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="addresses">
-            Addresses ({data.addresses.length})
+          <TabsTrigger value="addresses" className="gap-2">
+            Addresses
+            <Badge variant="secondary" className="h-5 px-1.5">
+              {data.addresses.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="phones">
-            Phones ({data.phoneNumbers.length})
+          <TabsTrigger value="phones" className="gap-2">
+            Phones
+            <Badge variant="secondary" className="h-5 px-1.5">
+              {data.phoneNumbers.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="notes">
-            Notes ({data.notes.length})
+          <TabsTrigger value="notes" className="gap-2">
+            Notes
+            <Badge variant="secondary" className="h-5 px-1.5">
+              {data.notes.length}
+            </Badge>
           </TabsTrigger>
-          <TabsTrigger value="reminders">
-            Reminders ({data.reminders.length})
+          <TabsTrigger value="reminders" className="gap-2">
+            Reminders
+            <Badge variant="secondary" className="h-5 px-1.5">
+              {data.reminders.length}
+            </Badge>
           </TabsTrigger>
         </TabsList>
         <TabsContent value="contacts" className="mt-4">

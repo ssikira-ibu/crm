@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/table";
 import { CreateCustomerDialog } from "@/components/customers/create-customer-dialog";
 import { CustomerStatusBadge } from "@/components/customers/status-badge";
+import { PageHeader } from "@/components/page-header";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api, ApiError } from "@/lib/api";
 import {
@@ -127,18 +128,16 @@ export default function CustomersPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b p-4 sm:p-6">
-        <div className="space-y-0.5">
-          <h1 className="text-2xl font-semibold tracking-tight">Customers</h1>
-          <p className="text-sm text-muted-foreground">
-            {meta ? `${meta.total} total` : "\u00A0"}
-          </p>
-        </div>
-        <Button onClick={() => setCreateOpen(true)}>
-          <Plus className="size-4" />
-          New customer
-        </Button>
-      </div>
+      <PageHeader
+        title="Customers"
+        description={meta ? `${meta.total} total` : "\u00A0"}
+        actions={
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="size-4" />
+            New customer
+          </Button>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-2 border-b p-4 sm:px-6">
         <div className="relative flex-1 min-w-[12rem]">
