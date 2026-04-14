@@ -1,5 +1,6 @@
 import Router from "@koa/router";
 import healthRouter from "./health.js";
+import dashboardRoutes from "./dashboard.js";
 import customerRoutes from "./customers.js";
 import contactRoutes from "./contacts.js";
 import addressRoutes from "./addresses.js";
@@ -9,6 +10,10 @@ import reminderRoutes from "./reminders.js";
 
 const apiRouter = new Router({ prefix: "/api" });
 
+apiRouter.use(
+  dashboardRoutes.routes(),
+  dashboardRoutes.allowedMethods(),
+);
 apiRouter.use(
   customerRoutes.routes(),
   customerRoutes.allowedMethods(),

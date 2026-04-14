@@ -23,6 +23,9 @@ export async function listCustomers(userId: string, params: CustomerQueryParams)
       skip: (page - 1) * limit,
       take: limit,
       orderBy: { createdAt: "desc" },
+      include: {
+        _count: { select: { contacts: true, reminders: true, notes: true } },
+      },
     }),
     prisma.customer.count({ where }),
   ]);
