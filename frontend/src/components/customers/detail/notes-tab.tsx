@@ -45,12 +45,12 @@ export function NotesTab({ customerId, items, onChanged }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {items.length} note{items.length === 1 ? "" : "s"}
         </p>
-        <Button size="sm" onClick={startCreate}>
-          <Plus className="size-4" />
-          Add note
+        <Button size="xs" variant="outline" onClick={startCreate}>
+          <Plus className="size-3" />
+          Add
         </Button>
       </div>
 
@@ -61,35 +61,35 @@ export function NotesTab({ customerId, items, onChanged }: Props) {
           description="Capture conversations, meeting notes, and reminders."
           action={
             <Button size="sm" onClick={startCreate}>
-              <Plus className="size-4" />
+              <Plus className="size-3.5" />
               Add note
             </Button>
           }
         />
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {items.map((n) => (
             <article
               key={n.id}
-              className="rounded-md border bg-card p-4 text-sm"
+              className="group rounded-lg border bg-card p-3 text-sm"
             >
-              <header className="mb-2 flex items-start justify-between gap-2">
+              <header className="flex items-start justify-between gap-2">
                 <div>
-                  <h3 className="font-medium">{n.title}</h3>
-                  <p className="text-xs text-muted-foreground">
+                  <h3 className="text-sm font-medium">{n.title}</h3>
+                  <p className="text-[11px] text-muted-foreground">
                     {formatDistanceToNow(new Date(n.updatedAt), {
                       addSuffix: true,
                     })}
                   </p>
                 </div>
-                <div className="flex items-center">
+                <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button
                     variant="ghost"
-                    size="icon"
+                    size="icon-xs"
                     onClick={() => startEdit(n)}
                     aria-label="Edit note"
                   >
-                    <Pencil className="size-4" />
+                    <Pencil className="size-3" />
                   </Button>
                   <ConfirmDeleteButton
                     title="Delete note?"
@@ -97,7 +97,7 @@ export function NotesTab({ customerId, items, onChanged }: Props) {
                   />
                 </div>
               </header>
-              <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+              <p className="mt-2 whitespace-pre-wrap text-sm text-muted-foreground leading-relaxed">
                 {n.body}
               </p>
             </article>

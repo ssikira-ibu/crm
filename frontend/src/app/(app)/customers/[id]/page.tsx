@@ -17,6 +17,15 @@ import { api, ApiError } from "@/lib/api";
 import { describeError } from "@/lib/errors";
 import type { Customer, CustomerWithRelations } from "@/lib/types";
 
+function TabCount({ count }: { count: number }) {
+  if (count === 0) return null;
+  return (
+    <Badge variant="secondary" className="ml-1.5 h-4 min-w-4 px-1 text-[10px]">
+      {count}
+    </Badge>
+  );
+}
+
 export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
@@ -63,7 +72,7 @@ export default function CustomerDetailPage() {
   if (loading && !data) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        <Loader2 className="size-4 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -84,74 +93,63 @@ export default function CustomerDetailPage() {
     <div className="flex flex-1 flex-col">
       <CustomerHeader customer={data} onUpdated={handleHeaderUpdated} />
 
-      <Tabs defaultValue="contacts" className="flex-1 p-4 sm:p-6">
-        <TabsList>
-          <TabsTrigger value="contacts" className="gap-2">
-            Contacts
-            <Badge variant="secondary" className="h-5 px-1.5">
-              {data.contacts.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="addresses" className="gap-2">
-            Addresses
-            <Badge variant="secondary" className="h-5 px-1.5">
-              {data.addresses.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="phones" className="gap-2">
-            Phones
-            <Badge variant="secondary" className="h-5 px-1.5">
-              {data.phoneNumbers.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="notes" className="gap-2">
-            Notes
-            <Badge variant="secondary" className="h-5 px-1.5">
-              {data.notes.length}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="reminders" className="gap-2">
-            Reminders
-            <Badge variant="secondary" className="h-5 px-1.5">
-              {data.reminders.length}
-            </Badge>
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="contacts" className="mt-4">
-          <ContactsTab
-            customerId={data.id}
-            items={data.contacts}
-            onChanged={refresh}
-          />
-        </TabsContent>
-        <TabsContent value="addresses" className="mt-4">
-          <AddressesTab
-            customerId={data.id}
-            items={data.addresses}
-            onChanged={refresh}
-          />
-        </TabsContent>
-        <TabsContent value="phones" className="mt-4">
-          <PhonesTab
-            customerId={data.id}
-            items={data.phoneNumbers}
-            onChanged={refresh}
-          />
-        </TabsContent>
-        <TabsContent value="notes" className="mt-4">
-          <NotesTab
-            customerId={data.id}
-            items={data.notes}
-            onChanged={refresh}
-          />
-        </TabsContent>
-        <TabsContent value="reminders" className="mt-4">
-          <RemindersTab
-            customerId={data.id}
-            items={data.reminders}
-            onChanged={refresh}
-          />
-        </TabsContent>
+      <Tabs defaultValue="contacts" className="flex-1">
+        <div className="border-b px-6">
+          <TabsList variant="line" className="-mb-px">
+            <TabsTrigger value="contacts">
+              Contacts <TabCount count={data.contacts.length} />
+            </TabsTrigger>
+            <TabsTrigger value="notes">
+              Notes <TabCount count={data.notes.length} />
+            </TabsTrigger>
+            <TabsTrigger value="reminders">
+              Reminders <TabCount count={data.reminders.length} />
+            </TabsTrigger>
+            <TabsTrigger value="addresses">
+              Addresses <TabCount count={data.addresses.length} />
+            </TabsTrigger>
+            <TabsTrigger value="phones">
+              Phones <TabCount count={data.phoneNumbers.length} />
+            </TabsTrigger>
+          </TabsList>
+        </div>
+        <div className="flex-1 overflow-auto px-6 py-4">
+          <TabsContent value="contacts">
+            <ContactsTab
+              customerId={data.id}
+              items={data.contacts}
+              onChanged={refresh}
+            />
+          </TabsContent>
+          <TabsContent value="notes">
+            <NotesTab
+              customerId={data.id}
+              items={data.notes}
+              onChanged={refresh}
+            />
+          </TabsContent>
+          <TabsContent value="reminders">
+            <RemindersTab
+              customerId={data.id}
+              items={data.reminders}
+              onChanged={refresh}
+            />
+          </TabsContent>
+          <TabsContent value="addresses">
+            <AddressesTab
+              customerId={data.id}
+              items={data.addresses}
+              onChanged={refresh}
+            />
+          </TabsContent>
+          <TabsContent value="phones">
+            <PhonesTab
+              customerId={data.id}
+              items={data.phoneNumbers}
+              onChanged={refresh}
+            />
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   );

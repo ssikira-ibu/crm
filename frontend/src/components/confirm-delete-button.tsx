@@ -53,11 +53,11 @@ export function ConfirmDeleteButton({
         {trigger ?? (
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-xs"
             disabled={disabled}
             aria-label="Delete"
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-3" />
           </Button>
         )}
       </AlertDialogTrigger>
@@ -79,7 +79,7 @@ export function ConfirmDeleteButton({
           >
             {pending ? (
               <>
-                <Loader2 className="size-4 animate-spin" /> Deleting
+                <Loader2 className="size-3.5 animate-spin" /> Deleting
               </>
             ) : (
               "Delete"

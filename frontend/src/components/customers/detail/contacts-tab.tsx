@@ -45,12 +45,12 @@ export function ContactsTab({ customerId, items, onChanged }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {items.length} contact{items.length === 1 ? "" : "s"}
         </p>
-        <Button size="sm" onClick={startCreate}>
-          <Plus className="size-4" />
-          Add contact
+        <Button size="xs" variant="outline" onClick={startCreate}>
+          <Plus className="size-3" />
+          Add
         </Button>
       </div>
 
@@ -61,31 +61,31 @@ export function ContactsTab({ customerId, items, onChanged }: Props) {
           description="Add people you work with at this company."
           action={
             <Button size="sm" onClick={startCreate}>
-              <Plus className="size-4" />
+              <Plus className="size-3.5" />
               Add contact
             </Button>
           }
         />
       ) : (
-        <ul className="divide-y rounded-md border">
+        <div className="divide-y rounded-lg border">
           {items.map((c) => (
-            <li key={c.id} className="flex items-center gap-3 p-3">
+            <div key={c.id} className="group flex items-center gap-3 px-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate font-medium">
+                  <span className="truncate text-sm font-medium">
                     {c.firstName} {c.lastName}
                   </span>
                   {c.isPrimary && (
-                    <Badge variant="secondary" className="gap-1">
-                      <Star className="size-3" /> Primary
+                    <Badge variant="secondary" className="gap-1 text-[10px]">
+                      <Star className="size-2.5" /> Primary
                     </Badge>
                   )}
                 </div>
-                <div className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                <div className="mt-0.5 flex flex-wrap gap-x-3 text-xs text-muted-foreground">
                   {c.jobTitle && <span>{c.jobTitle}</span>}
                   {c.email && (
                     <a
-                      className="inline-flex items-center gap-1 hover:underline"
+                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
                       href={`mailto:${c.email}`}
                     >
                       <Mail className="size-3" />
@@ -94,22 +94,24 @@ export function ContactsTab({ customerId, items, onChanged }: Props) {
                   )}
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => startEdit(c)}
-                aria-label="Edit contact"
-              >
-                <Pencil className="size-4" />
-              </Button>
-              <ConfirmDeleteButton
-                title="Delete contact?"
-                description={`${c.firstName} ${c.lastName} will be removed.`}
-                onConfirm={() => onDelete(c)}
-              />
-            </li>
+              <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => startEdit(c)}
+                  aria-label="Edit contact"
+                >
+                  <Pencil className="size-3" />
+                </Button>
+                <ConfirmDeleteButton
+                  title="Delete contact?"
+                  description={`${c.firstName} ${c.lastName} will be removed.`}
+                  onConfirm={() => onDelete(c)}
+                />
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       <ContactDialog

@@ -19,11 +19,11 @@ type Props = {
 };
 
 function formatAddress(a: Address): string {
-  const lines = [a.street1];
-  if (a.street2) lines.push(a.street2);
-  lines.push(`${a.city}, ${a.state} ${a.zipCode}`);
-  if (a.country && a.country !== "US") lines.push(a.country);
-  return lines.join(" · ");
+  const parts = [a.street1];
+  if (a.street2) parts.push(a.street2);
+  parts.push(`${a.city}, ${a.state} ${a.zipCode}`);
+  if (a.country && a.country !== "US") parts.push(a.country);
+  return parts.join(" · ");
 }
 
 export function AddressesTab({ customerId, items, onChanged }: Props) {
@@ -53,12 +53,12 @@ export function AddressesTab({ customerId, items, onChanged }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {items.length} address{items.length === 1 ? "" : "es"}
         </p>
-        <Button size="sm" onClick={startCreate}>
-          <Plus className="size-4" />
-          Add address
+        <Button size="xs" variant="outline" onClick={startCreate}>
+          <Plus className="size-3" />
+          Add
         </Button>
       </div>
 
@@ -69,36 +69,36 @@ export function AddressesTab({ customerId, items, onChanged }: Props) {
           description="Record main, billing, and shipping locations."
           action={
             <Button size="sm" onClick={startCreate}>
-              <Plus className="size-4" />
+              <Plus className="size-3.5" />
               Add address
             </Button>
           }
         />
       ) : (
-        <ul className="divide-y rounded-md border">
+        <div className="divide-y rounded-lg border">
           {items.map((a) => (
-            <li key={a.id} className="flex items-center gap-3 p-3">
+            <div key={a.id} className="group flex items-center gap-3 px-3 py-2.5">
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{a.label}</Badge>
-                </div>
-                <div className="mt-1 truncate text-sm">{formatAddress(a)}</div>
+                <Badge variant="secondary" className="text-[10px]">{a.label}</Badge>
+                <p className="mt-1 truncate text-sm">{formatAddress(a)}</p>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => startEdit(a)}
-                aria-label="Edit address"
-              >
-                <Pencil className="size-4" />
-              </Button>
-              <ConfirmDeleteButton
-                title="Delete address?"
-                onConfirm={() => onDelete(a)}
-              />
-            </li>
+              <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => startEdit(a)}
+                  aria-label="Edit address"
+                >
+                  <Pencil className="size-3" />
+                </Button>
+                <ConfirmDeleteButton
+                  title="Delete address?"
+                  onConfirm={() => onDelete(a)}
+                />
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       <AddressDialog

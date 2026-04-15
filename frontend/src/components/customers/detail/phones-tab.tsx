@@ -45,12 +45,12 @@ export function PhonesTab({ customerId, items, onChanged }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {items.length} number{items.length === 1 ? "" : "s"}
         </p>
-        <Button size="sm" onClick={startCreate}>
-          <Plus className="size-4" />
-          Add number
+        <Button size="xs" variant="outline" onClick={startCreate}>
+          <Plus className="size-3" />
+          Add
         </Button>
       </div>
 
@@ -61,51 +61,53 @@ export function PhonesTab({ customerId, items, onChanged }: Props) {
           description="Keep work, mobile, and other numbers in one place."
           action={
             <Button size="sm" onClick={startCreate}>
-              <Plus className="size-4" />
+              <Plus className="size-3.5" />
               Add number
             </Button>
           }
         />
       ) : (
-        <ul className="divide-y rounded-md border">
+        <div className="divide-y rounded-lg border">
           {items.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 p-3">
+            <div key={p.id} className="group flex items-center gap-3 px-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <Badge variant="secondary">{p.label}</Badge>
+                  <Badge variant="secondary" className="text-[10px]">{p.label}</Badge>
                   {p.isPrimary && (
-                    <Badge variant="outline" className="gap-1">
-                      <Star className="size-3" /> Primary
+                    <Badge variant="outline" className="gap-1 text-[10px]">
+                      <Star className="size-2.5" /> Primary
                     </Badge>
                   )}
                 </div>
                 <div className="mt-1 flex items-center gap-2 text-sm">
                   <Phone className="size-3 text-muted-foreground" />
-                  <a className="hover:underline" href={`tel:${p.number}`}>
+                  <a className="hover:text-foreground transition-colors" href={`tel:${p.number}`}>
                     {p.number}
                   </a>
                   {p.extension && (
-                    <span className="text-muted-foreground">
+                    <span className="text-muted-foreground text-xs">
                       ext. {p.extension}
                     </span>
                   )}
                 </div>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => startEdit(p)}
-                aria-label="Edit phone"
-              >
-                <Pencil className="size-4" />
-              </Button>
-              <ConfirmDeleteButton
-                title="Delete phone number?"
-                onConfirm={() => onDelete(p)}
-              />
-            </li>
+              <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                <Button
+                  variant="ghost"
+                  size="icon-xs"
+                  onClick={() => startEdit(p)}
+                  aria-label="Edit phone"
+                >
+                  <Pencil className="size-3" />
+                </Button>
+                <ConfirmDeleteButton
+                  title="Delete phone number?"
+                  onConfirm={() => onDelete(p)}
+                />
+              </div>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
 
       <PhoneDialog

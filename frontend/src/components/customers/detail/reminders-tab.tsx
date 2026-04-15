@@ -34,19 +34,12 @@ function statusOf(r: Reminder): Status {
   return isPast(new Date(r.dueDate)) ? "overdue" : "upcoming";
 }
 
-const STATUS_STYLES: Record<Status, string> = {
-  overdue: "border-destructive/40 bg-destructive/5",
-  upcoming: "border-border bg-card",
-  completed: "border-border bg-muted/40",
-};
-
 function StatusIcon({ status }: { status: Status }) {
-  const common = "size-4 shrink-0";
   if (status === "overdue")
-    return <AlertTriangle className={cn(common, "text-destructive")} />;
+    return <AlertTriangle className="size-3.5 shrink-0 text-destructive" />;
   if (status === "completed")
-    return <CheckCircle2 className={cn(common, "text-emerald-600 dark:text-emerald-400")} />;
-  return <Clock className={cn(common, "text-muted-foreground")} />;
+    return <CheckCircle2 className="size-3.5 shrink-0 text-emerald-600 dark:text-emerald-400" />;
+  return <Clock className="size-3.5 shrink-0 text-muted-foreground" />;
 }
 
 export function RemindersTab({ customerId, items, onChanged }: Props) {
@@ -56,17 +49,10 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
 
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
-      const sa = statusOf(a);
-      const sb = statusOf(b);
-      const rank: Record<Status, number> = {
-        overdue: 0,
-        upcoming: 1,
-        completed: 2,
-      };
-      if (rank[sa] !== rank[sb]) return rank[sa] - rank[sb];
-      return (
-        new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-      );
+      const rank: Record<Status, number> = { overdue: 0, upcoming: 1, completed: 2 };
+      const diff = rank[statusOf(a)] - rank[statusOf(b)];
+      if (diff !== 0) return diff;
+      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
     });
   }, [items]);
 
@@ -111,12 +97,12 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-xs text-muted-foreground">
           {items.length} reminder{items.length === 1 ? "" : "s"}
         </p>
-        <Button size="sm" onClick={startCreate}>
-          <Plus className="size-4" />
-          Add reminder
+        <Button size="xs" variant="outline" onClick={startCreate}>
+          <Plus className="size-3" />
+          Add
         </Button>
       </div>
 
@@ -127,23 +113,24 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
           description="Set follow-ups so nothing slips through the cracks."
           action={
             <Button size="sm" onClick={startCreate}>
-              <Plus className="size-4" />
+              <Plus className="size-3.5" />
               Add reminder
             </Button>
           }
         />
       ) : (
-        <ul className="space-y-2">
+        <div className="space-y-1.5">
           {sorted.map((r) => {
             const s = statusOf(r);
             const due = new Date(r.dueDate);
             const completed = s === "completed";
             return (
-              <li
+              <div
                 key={r.id}
                 className={cn(
-                  "flex items-start gap-3 rounded-md border p-3",
-                  STATUS_STYLES[s],
+                  "group flex items-start gap-3 rounded-lg border px-3 py-2.5",
+                  s === "overdue" && "border-destructive/20 bg-destructive/5 dark:bg-destructive/10",
+                  s === "completed" && "bg-muted/30",
                 )}
               >
                 <Checkbox
@@ -151,14 +138,13 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
                   checked={completed}
                   disabled={toggling.has(r.id)}
                   onCheckedChange={(v) => onToggle(r, v === true)}
-                  aria-label={completed ? "Mark pending" : "Mark completed"}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <StatusIcon status={s} />
                     <span
                       className={cn(
-                        "truncate font-medium",
+                        "truncate text-sm font-medium",
                         completed && "line-through text-muted-foreground",
                       )}
                     >
@@ -166,37 +152,37 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
                     </span>
                   </div>
                   {r.description && (
-                    <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+                    <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
                       {r.description}
                     </p>
                   )}
                   <p
                     className={cn(
-                      "mt-1 text-xs",
-                      s === "overdue"
-                        ? "text-destructive"
-                        : "text-muted-foreground",
+                      "mt-1 text-[11px]",
+                      s === "overdue" ? "text-destructive" : "text-muted-foreground",
                     )}
                   >
-                    {format(due, "PPp")} · {formatDistanceToNow(due, { addSuffix: true })}
+                    {format(due, "MMM d, yyyy 'at' h:mm a")} · {formatDistanceToNow(due, { addSuffix: true })}
                   </p>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => startEdit(r)}
-                  aria-label="Edit reminder"
-                >
-                  <Pencil className="size-4" />
-                </Button>
-                <ConfirmDeleteButton
-                  title="Delete reminder?"
-                  onConfirm={() => onDelete(r)}
-                />
-              </li>
+                <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Button
+                    variant="ghost"
+                    size="icon-xs"
+                    onClick={() => startEdit(r)}
+                    aria-label="Edit reminder"
+                  >
+                    <Pencil className="size-3" />
+                  </Button>
+                  <ConfirmDeleteButton
+                    title="Delete reminder?"
+                    onConfirm={() => onDelete(r)}
+                  />
+                </div>
+              </div>
             );
           })}
-        </ul>
+        </div>
       )}
 
       <ReminderDialog

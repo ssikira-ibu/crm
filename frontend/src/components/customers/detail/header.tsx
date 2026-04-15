@@ -1,14 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ExternalLink, Loader2, Pencil } from "lucide-react";
+import { ArrowLeft, ExternalLink, Loader2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Form,
   FormControl,
@@ -74,10 +80,6 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
   });
   const pending = form.formState.isSubmitting;
 
-  useEffect(() => {
-    if (editing) form.reset(toValues(customer));
-  }, [editing, customer, form]);
-
   async function onSave(values: FormValues) {
     try {
       const res = await api.customers.update(customer.id, {
@@ -102,46 +104,18 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
 
   const displayName = customer.companyName?.trim() || "Untitled customer";
 
-  return (
-    <div className="border-b p-4 sm:p-6">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <Button asChild variant="ghost" size="sm">
+  if (editing) {
+    form.reset(toValues(customer));
+    return (
+      <div className="border-b px-6 py-4">
+        <Button asChild variant="ghost" size="sm" className="mb-3 -ml-2">
           <Link href="/customers">
-            <ArrowLeft className="size-4" />
+            <ArrowLeft className="size-3.5" />
             Customers
           </Link>
         </Button>
-        {!editing && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setEditing(true)}
-            >
-              <Pencil className="size-4" />
-              Edit
-            </Button>
-            <ConfirmDeleteButton
-              title="Delete customer?"
-              description="This will permanently remove the customer and all related data."
-              onConfirm={onDelete}
-              trigger={
-                <Button variant="outline" size="sm">
-                  Delete
-                </Button>
-              }
-            />
-          </div>
-        )}
-      </div>
-
-      {editing ? (
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(onSave)}
-            className="space-y-4"
-            noValidate
-          >
+          <form onSubmit={form.handleSubmit(onSave)} className="space-y-4" noValidate>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -214,16 +188,17 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
             <div className="flex justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
+                size="sm"
                 onClick={() => setEditing(false)}
                 disabled={pending}
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
+              <Button type="submit" size="sm" disabled={pending}>
                 {pending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Saving
+                    <Loader2 className="size-3.5 animate-spin" /> Saving
                   </>
                 ) : (
                   "Save"
@@ -232,30 +207,66 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
             </div>
           </form>
         </Form>
-      ) : (
-        <div className="space-y-2">
-          <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-2xl font-semibold tracking-tight">
-              {displayName}
-            </h1>
-            <CustomerStatusBadge status={customer.status} />
-          </div>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-            {customer.industry && <span>{customer.industry}</span>}
-            {customer.website && (
-              <a
-                href={customer.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 hover:underline"
-              >
-                {customer.website}
-                <ExternalLink className="size-3" />
-              </a>
-            )}
-          </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="border-b px-6 py-4">
+      <div className="flex items-center justify-between gap-2">
+        <Button asChild variant="ghost" size="sm" className="-ml-2">
+          <Link href="/customers">
+            <ArrowLeft className="size-3.5" />
+            Customers
+          </Link>
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm">
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => setEditing(true)}>
+              Edit details
+            </DropdownMenuItem>
+            <ConfirmDeleteButton
+              title="Delete customer?"
+              description="This will permanently remove the customer and all related data."
+              onConfirm={onDelete}
+              trigger={
+                <DropdownMenuItem
+                  onSelect={(e) => e.preventDefault()}
+                  className="text-destructive focus:text-destructive"
+                >
+                  Delete customer
+                </DropdownMenuItem>
+              }
+            />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="mt-2 space-y-1">
+        <div className="flex items-center gap-2.5">
+          <h1 className="text-lg font-semibold tracking-tight">{displayName}</h1>
+          <CustomerStatusBadge status={customer.status} />
         </div>
-      )}
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+          {customer.industry && <span>{customer.industry}</span>}
+          {customer.website && (
+            <a
+              href={customer.website}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 transition-colors hover:text-foreground"
+            >
+              {customer.website.replace(/^https?:\/\//, "")}
+              <ExternalLink className="size-3" />
+            </a>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
