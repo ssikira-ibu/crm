@@ -1,5 +1,5 @@
 {
   "name": "crm",
   "private": true,
-  "workspaces": ["backend", "frontend"]
+  "workspaces": ["packages/shared", "backend", "frontend"]
 }
