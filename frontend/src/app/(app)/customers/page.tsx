@@ -2,19 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Search, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Search, Users } from "lucide-react";
 import { toast } from "sonner";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
 import { Input } from "@/components/ui/input";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationItem,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
 import {
   Select,
   SelectContent,
@@ -23,22 +15,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { CreateCustomerDialog } from "@/components/customers/create-customer-dialog";
 import { CustomerStatusBadge } from "@/components/customers/status-badge";
-import { PageHeader } from "@/components/page-header";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { api, ApiError } from "@/lib/api";
+import { cn } from "@/lib/utils";
 import {
   CUSTOMER_STATUSES,
-  type Customer,
+  type CustomerWithCounts,
   type CustomerStatus,
   type PageMeta,
 } from "@/lib/types";
@@ -54,19 +38,6 @@ const STATUS_LABEL: Record<CustomerStatus, string> = {
   PROSPECT: "Prospect",
 };
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function describeName(c: Customer): string {
-  return c.companyName?.trim() || "Untitled customer";
-}
-
 function describe(err: unknown): string {
   if (err instanceof ApiError) return err.message;
   if (err instanceof Error) return err.message;
@@ -79,7 +50,7 @@ export default function CustomersPage() {
   const debouncedSearch = useDebouncedValue(search, 250);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ANY);
   const [page, setPage] = useState(1);
-  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [customers, setCustomers] = useState<CustomerWithCounts[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,25 +99,29 @@ export default function CustomersPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <PageHeader
-        title="Customers"
-        description={meta ? `${meta.total} total` : "\u00A0"}
-        actions={
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus className="size-4" />
-            New customer
-          </Button>
-        }
-      />
+      {/* Header */}
+      <div className="flex items-center justify-between gap-3 border-b px-6 py-4">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Customers</h1>
+          <p className="text-sm text-muted-foreground">
+            {meta ? `${meta.total} total` : "\u00A0"}
+          </p>
+        </div>
+        <Button size="sm" onClick={() => setCreateOpen(true)}>
+          <Plus className="size-3.5" />
+          New customer
+        </Button>
+      </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b p-4 sm:px-6">
-        <div className="relative flex-1 min-w-[12rem]">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+      {/* Filters */}
+      <div className="flex items-center gap-2 border-b px-6 py-2.5">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search company or industry"
-            className="pl-8"
+            placeholder="Search..."
+            className="h-7 pl-8 text-sm"
             aria-label="Search customers"
           />
         </div>
@@ -154,7 +129,7 @@ export default function CustomersPage() {
           value={statusFilter}
           onValueChange={(v) => setStatusFilter(v as StatusFilter)}
         >
-          <SelectTrigger className="w-[10rem]" aria-label="Filter by status">
+          <SelectTrigger className="h-7 w-[8rem] text-sm" aria-label="Filter by status">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -168,18 +143,18 @@ export default function CustomersPage() {
         </Select>
       </div>
 
-      {error && !loading ? (
-        <div className="p-4 sm:p-6">
-          <Alert variant="destructive">
-            <AlertTitle>Unable to load customers</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        </div>
-      ) : null}
-
+      {/* List */}
       <div className="flex-1 overflow-auto">
-        {!loading && !error && customers.length === 0 ? (
-          <div className="p-4 sm:p-6">
+        {error && !loading ? (
+          <div className="p-6">
+            <EmptyState
+              icon={Users}
+              title="Unable to load customers"
+              description={error}
+            />
+          </div>
+        ) : !loading && !error && customers.length === 0 ? (
+          <div className="p-6">
             <EmptyState
               icon={Users}
               title={hasFilters ? "No matching customers" : "No customers yet"}
@@ -191,7 +166,7 @@ export default function CustomersPage() {
               action={
                 !hasFilters ? (
                   <Button size="sm" onClick={() => setCreateOpen(true)}>
-                    <Plus className="size-4" />
+                    <Plus className="size-3.5" />
                     New customer
                   </Button>
                 ) : null
@@ -199,93 +174,79 @@ export default function CustomersPage() {
             />
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="min-w-[14rem]">Company</TableHead>
-                <TableHead>Industry</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Created</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading
-                ? Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={`sk-${i}`}>
-                      <TableCell>
-                        <Skeleton className="h-4 w-48" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-4 w-32" />
-                      </TableCell>
-                      <TableCell>
-                        <Skeleton className="h-5 w-20" />
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Skeleton className="ml-auto h-4 w-24" />
-                      </TableCell>
-                    </TableRow>
-                  ))
-                : customers.map((c) => (
-                    <TableRow
-                      key={c.id}
-                      className="cursor-pointer"
-                      onClick={() => router.push(`/customers/${c.id}`)}
-                    >
-                      <TableCell className="font-medium">
-                        {describeName(c)}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {c.industry ?? "—"}
-                      </TableCell>
-                      <TableCell>
+          <div className="divide-y">
+            {loading && customers.length === 0
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <div key={`sk-${i}`} className="flex items-center gap-4 px-6 py-3">
+                    <Skeleton className="h-4 w-40" />
+                    <Skeleton className="h-4 w-20" />
+                    <div className="flex-1" />
+                    <Skeleton className="h-4 w-16" />
+                  </div>
+                ))
+              : customers.map((c) => (
+                  <div
+                    key={c.id}
+                    className="group flex cursor-pointer items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/50"
+                    onClick={() => router.push(`/customers/${c.id}`)}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2.5">
+                        <span className="truncate text-sm font-medium">
+                          {c.companyName?.trim() || "Untitled customer"}
+                        </span>
                         <CustomerStatusBadge status={c.status} />
-                      </TableCell>
-                      <TableCell className="text-right text-muted-foreground">
-                        {formatDate(c.createdAt)}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-            </TableBody>
-          </Table>
+                      </div>
+                      {c.industry && (
+                        <p className="mt-0.5 truncate text-xs text-muted-foreground">
+                          {c.industry}
+                        </p>
+                      )}
+                    </div>
+                    <div className="hidden shrink-0 items-center gap-4 text-xs text-muted-foreground sm:flex">
+                      {c._count.contacts > 0 && (
+                        <span>{c._count.contacts} contact{c._count.contacts !== 1 ? "s" : ""}</span>
+                      )}
+                      {c._count.notes > 0 && (
+                        <span>{c._count.notes} note{c._count.notes !== 1 ? "s" : ""}</span>
+                      )}
+                      {c._count.reminders > 0 && (
+                        <span>{c._count.reminders} reminder{c._count.reminders !== 1 ? "s" : ""}</span>
+                      )}
+                    </div>
+                    <ChevronRight className="size-4 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground" />
+                  </div>
+                ))}
+          </div>
         )}
       </div>
 
-      <div className="flex items-center justify-between border-t p-3 text-sm sm:px-6">
-        <div className="text-muted-foreground">
-          {meta ? `Page ${meta.page} of ${meta.totalPages || 1}` : "\u00A0"}
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between border-t px-6 py-2.5 text-xs text-muted-foreground">
+          <span>
+            Page {meta?.page ?? 1} of {totalPages}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              disabled={!canPrev}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="size-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              disabled={!canNext}
+              onClick={() => setPage((p) => p + 1)}
+            >
+              <ChevronRight className="size-3.5" />
+            </Button>
+          </div>
         </div>
-        <Pagination className="mx-0 w-auto justify-end">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious
-                aria-disabled={!canPrev}
-                className={
-                  !canPrev ? "pointer-events-none opacity-50" : undefined
-                }
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (canPrev) setPage((p) => Math.max(1, p - 1));
-                }}
-                href="#"
-              />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext
-                aria-disabled={!canNext}
-                className={
-                  !canNext ? "pointer-events-none opacity-50" : undefined
-                }
-                onClick={(e) => {
-                  e.preventDefault();
-                  if (canNext) setPage((p) => p + 1);
-                }}
-                href="#"
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      </div>
+      )}
 
       <CreateCustomerDialog
         open={createOpen}
