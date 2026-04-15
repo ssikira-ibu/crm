@@ -118,7 +118,7 @@ export function ReminderDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
             {editing ? "Edit reminder" : "New reminder"}
@@ -127,7 +127,7 @@ export function ReminderDialog({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
+            className="space-y-3"
             noValidate
           >
             <FormField
@@ -137,7 +137,7 @@ export function ReminderDialog({
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input disabled={pending} {...field} />
+                    <Input placeholder="Follow up on proposal" disabled={pending} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -150,13 +150,18 @@ export function ReminderDialog({
                 <FormItem>
                   <FormLabel>Description</FormLabel>
                   <FormControl>
-                    <Textarea rows={3} disabled={pending} {...field} />
+                    <Textarea
+                      rows={2}
+                      placeholder="Optional details..."
+                      disabled={pending}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="grid gap-4 sm:grid-cols-[1fr_auto]">
+            <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
               <FormField
                 control={form.control}
                 name="dueDate"
@@ -175,7 +180,7 @@ export function ReminderDialog({
                             )}
                             disabled={pending}
                           >
-                            <CalendarIcon className="size-4" />
+                            <CalendarIcon className="size-3.5" />
                             {field.value ? format(field.value, "PPP") : "Pick a date"}
                           </Button>
                         </FormControl>
@@ -207,10 +212,10 @@ export function ReminderDialog({
                 )}
               />
             </div>
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => onOpenChange(false)}
                 disabled={pending}
               >
@@ -219,7 +224,7 @@ export function ReminderDialog({
               <Button type="submit" disabled={pending}>
                 {pending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Saving
+                    <Loader2 className="size-3.5 animate-spin" /> Saving
                   </>
                 ) : editing ? (
                   "Save"

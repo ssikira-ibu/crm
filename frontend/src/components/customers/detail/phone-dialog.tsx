@@ -43,6 +43,14 @@ type Props = {
   onSaved: () => void;
 };
 
+const LABEL_DISPLAY: Record<PhoneLabel, string> = {
+  WORK: "Work",
+  MOBILE: "Mobile",
+  HOME: "Home",
+  FAX: "Fax",
+  OTHER: "Other",
+};
+
 const schema = z.object({
   label: z.enum(PHONE_LABELS),
   number: z.string().trim().min(1, "Number is required."),
@@ -102,7 +110,7 @@ export function PhoneDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>
             {editing ? "Edit phone number" : "New phone number"}
@@ -111,16 +119,16 @@ export function PhoneDialog({
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
+            className="space-y-3"
             noValidate
           >
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="label"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Label</FormLabel>
+                    <FormLabel>Type</FormLabel>
                     <Select
                       value={field.value}
                       onValueChange={(v) => field.onChange(v as PhoneLabel)}
@@ -134,7 +142,7 @@ export function PhoneDialog({
                       <SelectContent>
                         {PHONE_LABELS.map((l) => (
                           <SelectItem key={l} value={l}>
-                            {l}
+                            {LABEL_DISPLAY[l]}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -150,7 +158,7 @@ export function PhoneDialog({
                   <FormItem>
                     <FormLabel>Extension</FormLabel>
                     <FormControl>
-                      <Input disabled={pending} {...field} />
+                      <Input placeholder="123" disabled={pending} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -191,10 +199,10 @@ export function PhoneDialog({
                 </FormItem>
               )}
             />
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => onOpenChange(false)}
                 disabled={pending}
               >
@@ -203,7 +211,7 @@ export function PhoneDialog({
               <Button type="submit" disabled={pending}>
                 {pending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Saving
+                    <Loader2 className="size-3.5 animate-spin" /> Saving
                   </>
                 ) : editing ? (
                   "Save"

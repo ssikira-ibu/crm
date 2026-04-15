@@ -105,17 +105,17 @@ export function ContactDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit contact" : "New contact"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
+            className="space-y-3"
             noValidate
           >
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="firstName"
@@ -123,7 +123,7 @@ export function ContactDialog({
                   <FormItem>
                     <FormLabel>First name</FormLabel>
                     <FormControl>
-                      <Input disabled={pending} {...field} />
+                      <Input placeholder="Jane" disabled={pending} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -136,7 +136,7 @@ export function ContactDialog({
                   <FormItem>
                     <FormLabel>Last name</FormLabel>
                     <FormControl>
-                      <Input disabled={pending} {...field} />
+                      <Input placeholder="Smith" disabled={pending} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -150,7 +150,7 @@ export function ContactDialog({
                 <FormItem>
                   <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input type="email" disabled={pending} {...field} />
+                    <Input type="email" placeholder="jane@company.com" disabled={pending} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -163,7 +163,7 @@ export function ContactDialog({
                 <FormItem>
                   <FormLabel>Job title</FormLabel>
                   <FormControl>
-                    <Input disabled={pending} {...field} />
+                    <Input placeholder="VP of Engineering" disabled={pending} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -185,10 +185,10 @@ export function ContactDialog({
                 </FormItem>
               )}
             />
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => onOpenChange(false)}
                 disabled={pending}
               >
@@ -197,7 +197,7 @@ export function ContactDialog({
               <Button type="submit" disabled={pending}>
                 {pending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Saving
+                    <Loader2 className="size-3.5 animate-spin" /> Saving
                   </>
                 ) : editing ? (
                   "Save"

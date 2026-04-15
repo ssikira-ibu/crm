@@ -83,14 +83,14 @@ export function NoteDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit note" : "New note"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
+            className="space-y-3"
             noValidate
           >
             <FormField
@@ -100,7 +100,7 @@ export function NoteDialog({
                 <FormItem>
                   <FormLabel>Title</FormLabel>
                   <FormControl>
-                    <Input disabled={pending} {...field} />
+                    <Input placeholder="Meeting notes, call summary..." disabled={pending} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -113,16 +113,21 @@ export function NoteDialog({
                 <FormItem>
                   <FormLabel>Body</FormLabel>
                   <FormControl>
-                    <Textarea rows={6} disabled={pending} {...field} />
+                    <Textarea
+                      rows={5}
+                      placeholder="Write your note here..."
+                      disabled={pending}
+                      {...field}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => onOpenChange(false)}
                 disabled={pending}
               >
@@ -131,7 +136,7 @@ export function NoteDialog({
               <Button type="submit" disabled={pending}>
                 {pending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Saving
+                    <Loader2 className="size-3.5 animate-spin" /> Saving
                   </>
                 ) : editing ? (
                   "Save"

@@ -39,11 +39,12 @@ type Props = {
   onCreated: (customer: Customer) => void;
 };
 
-function describe(err: unknown): string {
-  if (err instanceof ApiError) return err.message;
-  if (err instanceof Error) return err.message;
-  return "Failed to create customer.";
-}
+const STATUS_LABEL: Record<CustomerStatus, string> = {
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
+  LEAD: "Lead",
+  PROSPECT: "Prospect",
+};
 
 const schema = z.object({
   companyName: z.string().trim().min(1, "Company name is required."),
@@ -88,7 +89,8 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
       form.reset(defaults);
       onOpenChange(false);
     } catch (err) {
-      toast.error(describe(err));
+      const msg = err instanceof ApiError ? err.message : "Failed to create customer.";
+      toast.error(msg);
     }
   }
 
@@ -101,17 +103,17 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>New customer</DialogTitle>
           <DialogDescription>
-            Add a company to your CRM. You can edit details later.
+            Add a company to your CRM. You can fill in more details later.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
+            className="space-y-3"
             noValidate
           >
             <FormField
@@ -131,23 +133,53 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="industry"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Industry</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder="Software"
+            <div className="grid gap-3 sm:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="industry"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Industry</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Software"
+                        disabled={pending}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select
+                      value={field.value}
+                      onValueChange={(v) => field.onChange(v as CustomerStatus)}
                       disabled={pending}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {CUSTOMER_STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {STATUS_LABEL[s]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
             <FormField
               control={form.control}
               name="website"
@@ -166,38 +198,10 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select
-                    value={field.value}
-                    onValueChange={(v) => field.onChange(v as CustomerStatus)}
-                    disabled={pending}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {CUSTOMER_STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {s}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => onOpenChange(false)}
                 disabled={pending}
               >
@@ -206,7 +210,7 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
               <Button type="submit" disabled={pending}>
                 {pending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Creating
+                    <Loader2 className="size-3.5 animate-spin" /> Creating
                   </>
                 ) : (
                   "Create"

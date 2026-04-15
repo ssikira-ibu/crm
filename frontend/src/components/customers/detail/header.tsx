@@ -41,6 +41,13 @@ import {
   type CustomerStatus,
 } from "@/lib/types";
 
+const STATUS_LABEL: Record<CustomerStatus, string> = {
+  ACTIVE: "Active",
+  INACTIVE: "Inactive",
+  LEAD: "Lead",
+  PROSPECT: "Prospect",
+};
+
 type Props = {
   customer: Customer;
   onUpdated: (customer: Customer) => void;
@@ -115,7 +122,7 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
           </Link>
         </Button>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSave)} className="space-y-4" noValidate>
+          <form onSubmit={form.handleSubmit(onSave)} className="space-y-3" noValidate>
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField
                 control={form.control}
@@ -175,7 +182,7 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
                       <SelectContent>
                         {CUSTOMER_STATUSES.map((s) => (
                           <SelectItem key={s} value={s}>
-                            {s}
+                            {STATUS_LABEL[s]}
                           </SelectItem>
                         ))}
                       </SelectContent>

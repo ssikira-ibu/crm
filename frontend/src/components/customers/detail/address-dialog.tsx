@@ -42,6 +42,13 @@ type Props = {
   onSaved: () => void;
 };
 
+const LABEL_DISPLAY: Record<AddressLabel, string> = {
+  MAIN: "Main",
+  BILLING: "Billing",
+  SHIPPING: "Shipping",
+  OTHER: "Other",
+};
+
 const schema = z.object({
   label: z.enum(ADDRESS_LABELS),
   street1: z.string().trim().min(1, "Street is required."),
@@ -110,14 +117,14 @@ export function AddressDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{editing ? "Edit address" : "New address"}</DialogTitle>
         </DialogHeader>
         <Form {...form}>
           <form
             onSubmit={form.handleSubmit(onSubmit)}
-            className="space-y-4"
+            className="space-y-3"
             noValidate
           >
             <FormField
@@ -125,7 +132,7 @@ export function AddressDialog({
               name="label"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Label</FormLabel>
+                  <FormLabel>Type</FormLabel>
                   <Select
                     value={field.value}
                     onValueChange={(v) => field.onChange(v as AddressLabel)}
@@ -139,7 +146,7 @@ export function AddressDialog({
                     <SelectContent>
                       {ADDRESS_LABELS.map((l) => (
                         <SelectItem key={l} value={l}>
-                          {l}
+                          {LABEL_DISPLAY[l]}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -153,9 +160,9 @@ export function AddressDialog({
               name="street1"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Street 1</FormLabel>
+                  <FormLabel>Street</FormLabel>
                   <FormControl>
-                    <Input disabled={pending} {...field} />
+                    <Input placeholder="123 Main St" disabled={pending} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -168,13 +175,13 @@ export function AddressDialog({
                 <FormItem>
                   <FormLabel>Street 2</FormLabel>
                   <FormControl>
-                    <Input disabled={pending} {...field} />
+                    <Input placeholder="Suite 100" disabled={pending} {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               <FormField
                 control={form.control}
                 name="city"
@@ -182,7 +189,7 @@ export function AddressDialog({
                   <FormItem className="sm:col-span-2">
                     <FormLabel>City</FormLabel>
                     <FormControl>
-                      <Input disabled={pending} {...field} />
+                      <Input placeholder="San Francisco" disabled={pending} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -195,14 +202,14 @@ export function AddressDialog({
                   <FormItem>
                     <FormLabel>State</FormLabel>
                     <FormControl>
-                      <Input disabled={pending} {...field} />
+                      <Input placeholder="CA" disabled={pending} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-            <div className="grid gap-4 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               <FormField
                 control={form.control}
                 name="zipCode"
@@ -210,7 +217,7 @@ export function AddressDialog({
                   <FormItem>
                     <FormLabel>Zip code</FormLabel>
                     <FormControl>
-                      <Input disabled={pending} {...field} />
+                      <Input placeholder="94102" disabled={pending} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -223,17 +230,17 @@ export function AddressDialog({
                   <FormItem>
                     <FormLabel>Country</FormLabel>
                     <FormControl>
-                      <Input disabled={pending} {...field} />
+                      <Input placeholder="US" disabled={pending} {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             </div>
-            <DialogFooter>
+            <DialogFooter className="pt-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 onClick={() => onOpenChange(false)}
                 disabled={pending}
               >
@@ -242,7 +249,7 @@ export function AddressDialog({
               <Button type="submit" disabled={pending}>
                 {pending ? (
                   <>
-                    <Loader2 className="size-4 animate-spin" /> Saving
+                    <Loader2 className="size-3.5 animate-spin" /> Saving
                   </>
                 ) : editing ? (
                   "Save"
