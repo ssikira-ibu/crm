@@ -1,0 +1,10 @@
+node_modules
+.git
+.next
+dist
+*.log
+.env*
+!frontend/.env.local
+.agents
+.claude
+.playwright-mcp

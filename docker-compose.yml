@@ -18,8 +18,8 @@ services:
 
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
       target: development
     ports:
       - "3000:3000"
@@ -27,29 +27,33 @@ services:
       DATABASE_URL: postgresql://crm_user:crm_password@db:5432/crm_dev?schema=public
       PORT: "3000"
       NODE_ENV: development
-      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
+      GOOGLE_APPLICATION_CREDENTIALS: /app/backend/firebase-service-account.json
     volumes:
-      - ./backend/src:/app/src
-      - ./backend/prisma:/app/prisma
-      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+      - ./backend/src:/app/backend/src
+      - ./backend/prisma:/app/backend/prisma
+      - ./packages/shared/src:/app/packages/shared/src
+      - ./firebase-service-account.json:/app/backend/firebase-service-account.json:ro
     depends_on:
       db:
         condition: service_healthy
     command: >
-      sh -c "npx prisma migrate deploy && npx tsx watch src/index.ts"
+      sh -c "cd /app/backend && npx prisma migrate deploy && npx tsx watch src/index.ts"
 
   frontend:
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: frontend/Dockerfile
       target: development
     ports:
       - "3001:3001"
+    env_file:
+      - ./frontend/.env.local
     environment:
       NEXT_PUBLIC_API_URL: http://localhost:3000
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/public:/app/public
+      - ./frontend/src:/app/frontend/src
+      - ./frontend/public:/app/frontend/public
+      - ./packages/shared/src:/app/packages/shared/src
     depends_on:
       - backend
 
