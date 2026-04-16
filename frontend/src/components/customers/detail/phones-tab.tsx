@@ -14,11 +14,12 @@ import { PhoneDialog } from "./phone-dialog";
 
 type Props = {
   customerId: string;
+  contactId: string;
   items: PhoneNumber[];
   onChanged: () => void;
 };
 
-export function PhonesTab({ customerId, items, onChanged }: Props) {
+export function PhonesTab({ customerId, contactId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<PhoneNumber | null>(null);
 
@@ -33,7 +34,7 @@ export function PhonesTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(p: PhoneNumber) {
     try {
-      await api.phoneNumbers.remove(customerId, p.id);
+      await api.phoneNumbers.remove(customerId, contactId, p.id);
       toast.success("Phone number deleted.");
       onChanged();
     } catch (err) {
@@ -112,6 +113,7 @@ export function PhonesTab({ customerId, items, onChanged }: Props) {
 
       <PhoneDialog
         customerId={customerId}
+        contactId={contactId}
         open={open}
         onOpenChange={setOpen}
         editing={editing}

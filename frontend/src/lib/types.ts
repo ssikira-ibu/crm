@@ -1,184 +1,67 @@
-export const CUSTOMER_STATUSES = [
-  "ACTIVE",
-  "INACTIVE",
-  "LEAD",
-  "PROSPECT",
-] as const;
-export const ADDRESS_LABELS = [
-  "MAIN",
-  "BILLING",
-  "SHIPPING",
-  "OTHER",
-] as const;
-export const PHONE_LABELS = [
-  "WORK",
-  "MOBILE",
-  "HOME",
-  "FAX",
-  "OTHER",
-] as const;
+export {
+  CUSTOMER_STATUSES,
+  ADDRESS_LABELS,
+  PHONE_LABELS,
+  ACTIVITY_TYPES,
+  DEAL_STATUSES,
+} from "@crm/shared";
 
-export type CustomerStatus = (typeof CUSTOMER_STATUSES)[number];
-export type AddressLabel = (typeof ADDRESS_LABELS)[number];
-export type PhoneLabel = (typeof PHONE_LABELS)[number];
+export type {
+  CustomerStatus,
+  AddressLabel,
+  PhoneLabel,
+  ActivityType,
+  DealStatus,
+  Customer,
+  Contact,
+  Address,
+  PhoneNumber,
+  Note,
+  Reminder,
+  Deal,
+  Activity,
+  Tag,
+  CustomerWithCounts,
+  CustomerWithRelations,
+  ReminderWithCustomer,
+  NoteWithCustomer,
+  DealWithCustomer,
+  ActivityWithCustomer,
+  DashboardData,
+  PageMeta,
+  Single,
+  Paginated,
+  ApiErrorBody,
+  CreateCustomerInput as CustomerCreate,
+  UpdateCustomerInput as CustomerUpdate,
+  CustomerQueryParams as CustomerListParams,
+  CreateContactInput as ContactCreate,
+  UpdateContactInput as ContactUpdate,
+  CreateAddressInput as AddressCreate,
+  UpdateAddressInput as AddressUpdate,
+  CreatePhoneNumberInput as PhoneNumberCreate,
+  UpdatePhoneNumberInput as PhoneNumberUpdate,
+  CreateNoteInput as NoteCreate,
+  UpdateNoteInput as NoteUpdate,
+  CreateTagInput as TagCreate,
+  UpdateTagInput as TagUpdate,
+} from "@crm/shared";
 
-export type Customer = {
-  id: string;
-  userId: string;
-  companyName: string | null;
-  industry: string | null;
-  website: string | null;
-  status: CustomerStatus;
-  createdAt: string;
-  updatedAt: string;
-};
+import type { ActivityType, DealStatus } from "@crm/shared";
 
-export type Contact = {
-  id: string;
-  customerId: string;
-  firstName: string;
-  lastName: string;
-  email: string | null;
-  jobTitle: string | null;
-  isPrimary: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
+// Frontend sends dates as ISO strings over JSON.
+// The backend Zod schemas use z.coerce.date() for validation,
+// so these types reflect the wire format rather than the parsed type.
 
-export type Address = {
-  id: string;
-  customerId: string;
-  label: AddressLabel;
-  street1: string;
-  street2: string | null;
-  city: string;
-  state: string;
-  zipCode: string;
-  country: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type PhoneNumber = {
-  id: string;
-  customerId: string;
-  label: PhoneLabel;
-  number: string;
-  extension: string | null;
-  isPrimary: boolean;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type Note = {
-  id: string;
-  customerId: string;
+export type ReminderCreate = {
   title: string;
-  body: string;
-  createdAt: string;
-  updatedAt: string;
-};
-
-export type Reminder = {
-  id: string;
-  customerId: string;
-  title: string;
-  description: string | null;
+  description?: string;
   dueDate: string;
-  dateCompleted: string | null;
-  createdAt: string;
-  updatedAt: string;
+  dateCompleted?: string | null;
+  contactId?: string;
+  dealId?: string;
 };
-
-export type CustomerWithCounts = Customer & {
-  _count: { contacts: number; reminders: number; notes: number };
-};
-
-export type ReminderWithCustomer = Reminder & {
-  customer: { id: string; companyName: string | null; status: CustomerStatus };
-};
-
-export type NoteWithCustomer = Note & {
-  customer: { id: string; companyName: string | null };
-};
-
-export type DashboardData = {
-  reminders: ReminderWithCustomer[];
-  recentNotes: NoteWithCustomer[];
-  stats: {
-    total: number;
-    byStatus: Partial<Record<CustomerStatus, number>>;
-  };
-};
-
-export type CustomerWithRelations = Customer & {
-  contacts: Contact[];
-  addresses: Address[];
-  phoneNumbers: PhoneNumber[];
-  notes: Note[];
-  reminders: Reminder[];
-};
-
-export type PageMeta = {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-};
-
-export type Single<T> = { data: T };
-export type Paginated<T> = { data: T[]; meta: PageMeta };
-
-export type ApiErrorBody = {
-  error: { code: string; message: string; details?: unknown };
-};
-
-export type CustomerListParams = {
-  page?: number;
-  limit?: number;
-  status?: CustomerStatus;
-  search?: string;
-};
-
-export type CustomerCreate = {
-  companyName?: string;
-  industry?: string;
-  website?: string;
-  status?: CustomerStatus;
-};
-export type CustomerUpdate = Partial<CustomerCreate>;
-
-export type ContactCreate = {
-  firstName: string;
-  lastName: string;
-  email?: string;
-  jobTitle?: string;
-  isPrimary?: boolean;
-};
-export type ContactUpdate = Partial<ContactCreate>;
-
-export type AddressCreate = {
-  label?: AddressLabel;
-  street1: string;
-  street2?: string;
-  city: string;
-  state: string;
-  zipCode: string;
-  country?: string;
-};
-export type AddressUpdate = Partial<AddressCreate>;
-
-export type PhoneNumberCreate = {
-  label?: PhoneLabel;
-  number: string;
-  extension?: string;
-  isPrimary?: boolean;
-};
-export type PhoneNumberUpdate = Partial<PhoneNumberCreate>;
-
-export type NoteCreate = { title: string; body: string };
-export type NoteUpdate = Partial<NoteCreate>;
-
+export type ReminderUpdate = Partial<ReminderCreate>;
 export type ReminderListParams = {
   page?: number;
   limit?: number;
@@ -186,10 +69,32 @@ export type ReminderListParams = {
   dueBefore?: string;
 };
 
-export type ReminderCreate = {
+export type DealCreate = {
   title: string;
   description?: string;
-  dueDate: string;
-  dateCompleted?: string | null;
+  value: number;
+  status?: DealStatus;
+  expectedCloseDate?: string;
+  contactId?: string;
 };
-export type ReminderUpdate = Partial<ReminderCreate>;
+export type DealUpdate = Partial<DealCreate>;
+export type DealListParams = {
+  page?: number;
+  limit?: number;
+  status?: DealStatus;
+};
+
+export type ActivityCreate = {
+  type: ActivityType;
+  title: string;
+  description?: string;
+  date: string;
+  contactId?: string;
+  dealId?: string;
+};
+export type ActivityUpdate = Partial<ActivityCreate>;
+export type ActivityListParams = {
+  page?: number;
+  limit?: number;
+  type?: ActivityType;
+};

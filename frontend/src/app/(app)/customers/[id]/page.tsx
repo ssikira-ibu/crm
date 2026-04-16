@@ -10,7 +10,6 @@ import { EmptyState } from "@/components/empty-state";
 import { CustomerHeader } from "@/components/customers/detail/header";
 import { ContactsTab } from "@/components/customers/detail/contacts-tab";
 import { AddressesTab } from "@/components/customers/detail/addresses-tab";
-import { PhonesTab } from "@/components/customers/detail/phones-tab";
 import { NotesTab } from "@/components/customers/detail/notes-tab";
 import { RemindersTab } from "@/components/customers/detail/reminders-tab";
 import { api, ApiError } from "@/lib/api";
@@ -108,9 +107,6 @@ export default function CustomerDetailPage() {
             <TabsTrigger value="addresses">
               Addresses <TabCount count={data.addresses.length} />
             </TabsTrigger>
-            <TabsTrigger value="phones">
-              Phones <TabCount count={data.phoneNumbers.length} />
-            </TabsTrigger>
           </TabsList>
         </div>
         <div className="flex-1 overflow-auto px-6 py-4">
@@ -139,13 +135,6 @@ export default function CustomerDetailPage() {
             <AddressesTab
               customerId={data.id}
               items={data.addresses}
-              onChanged={refresh}
-            />
-          </TabsContent>
-          <TabsContent value="phones">
-            <PhonesTab
-              customerId={data.id}
-              items={data.phoneNumbers}
               onChanged={refresh}
             />
           </TabsContent>

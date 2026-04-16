@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Contact as ContactIcon, Mail, Pencil, Plus, Star } from "lucide-react";
+import { Contact as ContactIcon, Mail, Pencil, Phone, Plus, Star } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,29 +9,31 @@ import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { EmptyState } from "@/components/empty-state";
 import { api } from "@/lib/api";
 import { describeError } from "@/lib/errors";
-import type { Contact } from "@/lib/types";
+import type { Contact, PhoneNumber } from "@/lib/types";
 import { ContactDialog } from "./contact-dialog";
+
+type ContactWithPhones = Contact & { phoneNumbers: PhoneNumber[] };
 
 type Props = {
   customerId: string;
-  items: Contact[];
+  items: ContactWithPhones[];
   onChanged: () => void;
 };
 
 export function ContactsTab({ customerId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Contact | null>(null);
+  const [editing, setEditing] = useState<ContactWithPhones | null>(null);
 
   function startCreate() {
     setEditing(null);
     setOpen(true);
   }
-  function startEdit(c: Contact) {
+  function startEdit(c: ContactWithPhones) {
     setEditing(c);
     setOpen(true);
   }
 
-  async function onDelete(c: Contact) {
+  async function onDelete(c: ContactWithPhones) {
     try {
       await api.contacts.remove(customerId, c.id);
       toast.success("Contact deleted.");
@@ -92,6 +94,16 @@ export function ContactsTab({ customerId, items, onChanged }: Props) {
                       {c.email}
                     </a>
                   )}
+                  {c.phoneNumbers.map((p) => (
+                    <a
+                      key={p.id}
+                      className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                      href={`tel:${p.number}`}
+                    >
+                      <Phone className="size-3" />
+                      {p.number}
+                    </a>
+                  ))}
                 </div>
               </div>
               <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">

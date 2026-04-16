@@ -3,6 +3,10 @@ import type {
   Address,
   AddressCreate,
   AddressUpdate,
+  Activity,
+  ActivityCreate,
+  ActivityListParams,
+  ActivityUpdate,
   ApiErrorBody,
   Contact,
   ContactCreate,
@@ -14,6 +18,10 @@ import type {
   CustomerListParams,
   CustomerUpdate,
   CustomerWithRelations,
+  Deal,
+  DealCreate,
+  DealListParams,
+  DealUpdate,
   Note,
   NoteCreate,
   NoteUpdate,
@@ -26,6 +34,9 @@ import type {
   ReminderListParams,
   ReminderUpdate,
   Single,
+  Tag,
+  TagCreate,
+  TagUpdate,
 } from "./types";
 
 const BASE_URL =
@@ -57,7 +68,7 @@ function buildQuery(params?: Query): string {
 }
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PATCH" | "DELETE";
+  method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
   query?: Query;
   body?: unknown;
   signal?: AbortSignal;
@@ -142,16 +153,16 @@ const addresses = {
 };
 
 const phoneNumbers = {
-  list: (customerId: string, signal?: AbortSignal) =>
-    request<Paginated<PhoneNumber>>(`/customers/${customerId}/phone-numbers`, { signal }),
-  get: (customerId: string, phoneNumberId: string, signal?: AbortSignal) =>
-    request<Single<PhoneNumber>>(`/customers/${customerId}/phone-numbers/${phoneNumberId}`, { signal }),
-  create: (customerId: string, input: PhoneNumberCreate) =>
-    request<Single<PhoneNumber>>(`/customers/${customerId}/phone-numbers`, { method: "POST", body: input }),
-  update: (customerId: string, phoneNumberId: string, input: PhoneNumberUpdate) =>
-    request<Single<PhoneNumber>>(`/customers/${customerId}/phone-numbers/${phoneNumberId}`, { method: "PATCH", body: input }),
-  remove: (customerId: string, phoneNumberId: string) =>
-    request<void>(`/customers/${customerId}/phone-numbers/${phoneNumberId}`, { method: "DELETE" }),
+  list: (customerId: string, contactId: string, signal?: AbortSignal) =>
+    request<Paginated<PhoneNumber>>(`/customers/${customerId}/contacts/${contactId}/phone-numbers`, { signal }),
+  get: (customerId: string, contactId: string, phoneNumberId: string, signal?: AbortSignal) =>
+    request<Single<PhoneNumber>>(`/customers/${customerId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`, { signal }),
+  create: (customerId: string, contactId: string, input: PhoneNumberCreate) =>
+    request<Single<PhoneNumber>>(`/customers/${customerId}/contacts/${contactId}/phone-numbers`, { method: "POST", body: input }),
+  update: (customerId: string, contactId: string, phoneNumberId: string, input: PhoneNumberUpdate) =>
+    request<Single<PhoneNumber>>(`/customers/${customerId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`, { method: "PATCH", body: input }),
+  remove: (customerId: string, contactId: string, phoneNumberId: string) =>
+    request<void>(`/customers/${customerId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`, { method: "DELETE" }),
 };
 
 const notes = {
@@ -180,6 +191,47 @@ const reminders = {
     request<void>(`/customers/${customerId}/reminders/${reminderId}`, { method: "DELETE" }),
 };
 
+const deals = {
+  list: (customerId: string, params?: DealListParams, signal?: AbortSignal) =>
+    request<Paginated<Deal>>(`/customers/${customerId}/deals`, { query: params, signal }),
+  get: (customerId: string, dealId: string, signal?: AbortSignal) =>
+    request<Single<Deal>>(`/customers/${customerId}/deals/${dealId}`, { signal }),
+  create: (customerId: string, input: DealCreate) =>
+    request<Single<Deal>>(`/customers/${customerId}/deals`, { method: "POST", body: input }),
+  update: (customerId: string, dealId: string, input: DealUpdate) =>
+    request<Single<Deal>>(`/customers/${customerId}/deals/${dealId}`, { method: "PATCH", body: input }),
+  remove: (customerId: string, dealId: string) =>
+    request<void>(`/customers/${customerId}/deals/${dealId}`, { method: "DELETE" }),
+};
+
+const activities = {
+  list: (customerId: string, params?: ActivityListParams, signal?: AbortSignal) =>
+    request<Paginated<Activity>>(`/customers/${customerId}/activities`, { query: params, signal }),
+  get: (customerId: string, activityId: string, signal?: AbortSignal) =>
+    request<Single<Activity>>(`/customers/${customerId}/activities/${activityId}`, { signal }),
+  create: (customerId: string, input: ActivityCreate) =>
+    request<Single<Activity>>(`/customers/${customerId}/activities`, { method: "POST", body: input }),
+  update: (customerId: string, activityId: string, input: ActivityUpdate) =>
+    request<Single<Activity>>(`/customers/${customerId}/activities/${activityId}`, { method: "PATCH", body: input }),
+  remove: (customerId: string, activityId: string) =>
+    request<void>(`/customers/${customerId}/activities/${activityId}`, { method: "DELETE" }),
+};
+
+const tags = {
+  list: (signal?: AbortSignal) =>
+    request<Single<Tag[]>>("/tags", { signal }),
+  create: (input: TagCreate) =>
+    request<Single<Tag>>("/tags", { method: "POST", body: input }),
+  update: (tagId: string, input: TagUpdate) =>
+    request<Single<Tag>>(`/tags/${tagId}`, { method: "PATCH", body: input }),
+  remove: (tagId: string) =>
+    request<void>(`/tags/${tagId}`, { method: "DELETE" }),
+  addToCustomer: (customerId: string, tagId: string) =>
+    request<void>(`/customers/${customerId}/tags/${tagId}`, { method: "PUT" }),
+  removeFromCustomer: (customerId: string, tagId: string) =>
+    request<void>(`/customers/${customerId}/tags/${tagId}`, { method: "DELETE" }),
+};
+
 export const api = {
   dashboard,
   customers,
@@ -188,4 +240,7 @@ export const api = {
   phoneNumbers,
   notes,
   reminders,
+  deals,
+  activities,
+  tags,
 };
