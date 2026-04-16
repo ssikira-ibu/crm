@@ -7,6 +7,9 @@ import addressRoutes from "./addresses.js";
 import phoneNumberRoutes from "./phoneNumbers.js";
 import noteRoutes from "./notes.js";
 import reminderRoutes from "./reminders.js";
+import dealRoutes from "./deals.js";
+import activityRoutes from "./activities.js";
+import tagRoutes from "./tags.js";
 
 const apiRouter = new Router({ prefix: "/api" });
 
@@ -37,6 +40,18 @@ apiRouter.use(
 apiRouter.use(
   reminderRoutes.routes(),
   reminderRoutes.allowedMethods(),
+);
+apiRouter.use(
+  dealRoutes.routes(),
+  dealRoutes.allowedMethods(),
+);
+apiRouter.use(
+  activityRoutes.routes(),
+  activityRoutes.allowedMethods(),
+);
+apiRouter.use(
+  tagRoutes.routes(),
+  tagRoutes.allowedMethods(),
 );
 
 export { healthRouter, apiRouter };

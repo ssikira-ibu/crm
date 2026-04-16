@@ -1,7 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import type { CustomerQueryParams, CreateCustomerInput, UpdateCustomerInput } from "../schemas/customer.schema.js";
+import type { CustomerQueryParams, CreateCustomerInput, UpdateCustomerInput } from "@crm/shared";
 
 export async function listCustomers(userId: string, params: CustomerQueryParams) {
   const { page, limit, status, search } = params;
@@ -24,7 +24,15 @@ export async function listCustomers(userId: string, params: CustomerQueryParams)
       take: limit,
       orderBy: { createdAt: "desc" },
       include: {
-        _count: { select: { contacts: true, reminders: true, notes: true } },
+        _count: {
+          select: {
+            contacts: true,
+            reminders: true,
+            notes: true,
+            deals: true,
+            activities: true,
+          },
+        },
       },
     }),
     prisma.customer.count({ where }),
@@ -40,17 +48,20 @@ export async function getCustomer(userId: string, customerId: string) {
   const customer = await prisma.customer.findFirst({
     where: { id: customerId, userId },
     include: {
-      contacts: true,
+      contacts: { include: { phoneNumbers: true } },
       addresses: true,
-      phoneNumbers: true,
+      deals: { orderBy: { createdAt: "desc" } },
+      activities: { orderBy: { date: "desc" } },
       notes: { orderBy: { createdAt: "desc" } },
       reminders: { orderBy: { dueDate: "asc" } },
+      tags: { include: { tag: true } },
     },
   });
   if (!customer) {
     throw new AppError(404, "CUSTOMER_NOT_FOUND", "Customer not found");
   }
-  return customer;
+  const { tags: customerTags, ...rest } = customer;
+  return { ...rest, tags: customerTags.map((ct) => ct.tag) };
 }
 
 export async function createCustomer(

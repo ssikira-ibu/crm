@@ -4,8 +4,8 @@ import {
   createReminderSchema,
   updateReminderSchema,
   reminderQuerySchema,
-} from "../schemas/reminder.schema.js";
-import type { CreateReminderInput, UpdateReminderInput, ReminderQueryParams } from "../schemas/reminder.schema.js";
+} from "@crm/shared";
+import type { CreateReminderInput, UpdateReminderInput, ReminderQueryParams } from "@crm/shared";
 import * as reminderService from "../services/reminder.service.js";
 import type { AppState } from "../types/index.js";
 

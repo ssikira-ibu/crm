@@ -3,8 +3,8 @@ import { validate } from "../middleware/validate.js";
 import {
   createAddressSchema,
   updateAddressSchema,
-} from "../schemas/address.schema.js";
-import type { CreateAddressInput, UpdateAddressInput } from "../schemas/address.schema.js";
+} from "@crm/shared";
+import type { CreateAddressInput, UpdateAddressInput } from "@crm/shared";
 import * as addressService from "../services/address.service.js";
 import type { AppState } from "../types/index.js";
 

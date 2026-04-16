@@ -1,12 +1,13 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
-import type { CreateContactInput, UpdateContactInput } from "../schemas/contact.schema.js";
+import type { CreateContactInput, UpdateContactInput } from "@crm/shared";
 
 export async function listContacts(userId: string, customerId: string) {
   await ensureCustomerOwnership(userId, customerId);
   return prisma.contact.findMany({
     where: { customerId },
+    include: { phoneNumbers: true },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -19,6 +20,7 @@ export async function getContact(
   await ensureCustomerOwnership(userId, customerId);
   const contact = await prisma.contact.findFirst({
     where: { id: contactId, customerId },
+    include: { phoneNumbers: true },
   });
   if (!contact) {
     throw new AppError(404, "CONTACT_NOT_FOUND", "Contact not found");
@@ -34,6 +36,7 @@ export async function createContact(
   await ensureCustomerOwnership(userId, customerId);
   return prisma.contact.create({
     data: { ...data, customerId },
+    include: { phoneNumbers: true },
   });
 }
 
@@ -50,7 +53,11 @@ export async function updateContact(
   if (!contact) {
     throw new AppError(404, "CONTACT_NOT_FOUND", "Contact not found");
   }
-  return prisma.contact.update({ where: { id: contactId }, data });
+  return prisma.contact.update({
+    where: { id: contactId },
+    data,
+    include: { phoneNumbers: true },
+  });
 }
 
 export async function deleteContact(

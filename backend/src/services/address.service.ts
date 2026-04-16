@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
-import type { CreateAddressInput, UpdateAddressInput } from "../schemas/address.schema.js";
+import type { CreateAddressInput, UpdateAddressInput } from "@crm/shared";
 
 export async function listAddresses(userId: string, customerId: string) {
   await ensureCustomerOwnership(userId, customerId);

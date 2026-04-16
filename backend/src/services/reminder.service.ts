@@ -2,7 +2,7 @@ import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
-import type { ReminderQueryParams, CreateReminderInput, UpdateReminderInput } from "../schemas/reminder.schema.js";
+import type { ReminderQueryParams, CreateReminderInput, UpdateReminderInput } from "@crm/shared";
 
 export async function listReminders(
   userId: string,

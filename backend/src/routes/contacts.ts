@@ -3,8 +3,8 @@ import { validate } from "../middleware/validate.js";
 import {
   createContactSchema,
   updateContactSchema,
-} from "../schemas/contact.schema.js";
-import type { CreateContactInput, UpdateContactInput } from "../schemas/contact.schema.js";
+} from "@crm/shared";
+import type { CreateContactInput, UpdateContactInput } from "@crm/shared";
 import * as contactService from "../services/contact.service.js";
 import type { AppState } from "../types/index.js";
 

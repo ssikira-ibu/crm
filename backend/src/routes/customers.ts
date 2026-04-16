@@ -4,8 +4,8 @@ import {
   createCustomerSchema,
   updateCustomerSchema,
   customerQuerySchema,
-} from "../schemas/customer.schema.js";
-import type { CreateCustomerInput, UpdateCustomerInput, CustomerQueryParams } from "../schemas/customer.schema.js";
+} from "@crm/shared";
+import type { CreateCustomerInput, UpdateCustomerInput, CustomerQueryParams } from "@crm/shared";
 import * as customerService from "../services/customer.service.js";
 import type { AppState } from "../types/index.js";
 

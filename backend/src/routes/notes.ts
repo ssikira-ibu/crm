@@ -3,8 +3,8 @@ import { validate } from "../middleware/validate.js";
 import {
   createNoteSchema,
   updateNoteSchema,
-} from "../schemas/note.schema.js";
-import type { CreateNoteInput, UpdateNoteInput } from "../schemas/note.schema.js";
+} from "@crm/shared";
+import type { CreateNoteInput, UpdateNoteInput } from "@crm/shared";
 import * as noteService from "../services/note.service.js";
 import type { AppState } from "../types/index.js";
 

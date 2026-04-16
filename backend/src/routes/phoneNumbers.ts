@@ -3,30 +3,33 @@ import { validate } from "../middleware/validate.js";
 import {
   createPhoneNumberSchema,
   updatePhoneNumberSchema,
-} from "../schemas/phoneNumber.schema.js";
-import type { CreatePhoneNumberInput, UpdatePhoneNumberInput } from "../schemas/phoneNumber.schema.js";
+} from "@crm/shared";
+import type { CreatePhoneNumberInput, UpdatePhoneNumberInput } from "@crm/shared";
 import * as phoneNumberService from "../services/phoneNumber.service.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
 
-// GET /customers/:customerId/phone-numbers
-router.get("/customers/:customerId/phone-numbers", async (ctx) => {
-  const phoneNumbers = await phoneNumberService.listPhoneNumbers(
-    ctx.state.user.uid,
-    ctx.params.customerId,
-  );
-  ctx.body = { data: phoneNumbers };
-});
+router.get(
+  "/customers/:customerId/contacts/:contactId/phone-numbers",
+  async (ctx) => {
+    const phoneNumbers = await phoneNumberService.listPhoneNumbers(
+      ctx.state.user.uid,
+      ctx.params.customerId,
+      ctx.params.contactId,
+    );
+    ctx.body = { data: phoneNumbers };
+  },
+);
 
-// POST /customers/:customerId/phone-numbers
 router.post(
-  "/customers/:customerId/phone-numbers",
+  "/customers/:customerId/contacts/:contactId/phone-numbers",
   validate(createPhoneNumberSchema, "body"),
   async (ctx) => {
     const phoneNumber = await phoneNumberService.createPhoneNumber(
       ctx.state.user.uid,
       ctx.params.customerId,
+      ctx.params.contactId,
       ctx.state.body as CreatePhoneNumberInput,
     );
     ctx.status = 201;
@@ -34,27 +37,27 @@ router.post(
   },
 );
 
-// GET /customers/:customerId/phone-numbers/:phoneNumberId
 router.get(
-  "/customers/:customerId/phone-numbers/:phoneNumberId",
+  "/customers/:customerId/contacts/:contactId/phone-numbers/:phoneNumberId",
   async (ctx) => {
     const phoneNumber = await phoneNumberService.getPhoneNumber(
       ctx.state.user.uid,
       ctx.params.customerId,
+      ctx.params.contactId,
       ctx.params.phoneNumberId,
     );
     ctx.body = { data: phoneNumber };
   },
 );
 
-// PATCH /customers/:customerId/phone-numbers/:phoneNumberId
 router.patch(
-  "/customers/:customerId/phone-numbers/:phoneNumberId",
+  "/customers/:customerId/contacts/:contactId/phone-numbers/:phoneNumberId",
   validate(updatePhoneNumberSchema, "body"),
   async (ctx) => {
     const phoneNumber = await phoneNumberService.updatePhoneNumber(
       ctx.state.user.uid,
       ctx.params.customerId,
+      ctx.params.contactId,
       ctx.params.phoneNumberId,
       ctx.state.body as UpdatePhoneNumberInput,
     );
@@ -62,13 +65,13 @@ router.patch(
   },
 );
 
-// DELETE /customers/:customerId/phone-numbers/:phoneNumberId
 router.delete(
-  "/customers/:customerId/phone-numbers/:phoneNumberId",
+  "/customers/:customerId/contacts/:contactId/phone-numbers/:phoneNumberId",
   async (ctx) => {
     await phoneNumberService.deletePhoneNumber(
       ctx.state.user.uid,
       ctx.params.customerId,
+      ctx.params.contactId,
       ctx.params.phoneNumberId,
     );
     ctx.status = 204;

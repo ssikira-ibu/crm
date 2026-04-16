@@ -1,7 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
-import type { CreateNoteInput, UpdateNoteInput } from "../schemas/note.schema.js";
+import type { CreateNoteInput, UpdateNoteInput } from "@crm/shared";
 
 export async function listNotes(userId: string, customerId: string) {
   await ensureCustomerOwnership(userId, customerId);
