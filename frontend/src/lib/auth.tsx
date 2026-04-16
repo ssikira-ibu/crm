@@ -19,13 +19,21 @@ import {
 } from "firebase/auth";
 import { getFirebaseAuth } from "./firebase";
 
+async function exchangeTokenForSession(user: User) {
+  const idToken = await user.getIdToken();
+  await fetch("/api/auth/session", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ idToken }),
+  });
+}
+
 type AuthContextValue = {
   user: User | null;
   loading: boolean;
   signInWithEmail: (email: string, password: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
-  getIdToken: () => Promise<string | null>;
 };
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -35,8 +43,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    return onIdTokenChanged(getFirebaseAuth(), (next) => {
+    return onIdTokenChanged(getFirebaseAuth(), async (next) => {
       setUser(next);
+      if (next) {
+        await exchangeTokenForSession(next);
+      }
       setLoading(false);
     });
   }, []);
@@ -46,17 +57,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       signInWithEmail: async (email, password) => {
-        await signInWithEmailAndPassword(getFirebaseAuth(), email, password);
+        const result = await signInWithEmailAndPassword(
+          getFirebaseAuth(),
+          email,
+          password,
+        );
+        await exchangeTokenForSession(result.user);
       },
       signInWithGoogle: async () => {
-        await signInWithPopup(getFirebaseAuth(), new GoogleAuthProvider());
+        const result = await signInWithPopup(
+          getFirebaseAuth(),
+          new GoogleAuthProvider(),
+        );
+        await exchangeTokenForSession(result.user);
       },
       signOut: async () => {
+        await fetch("/api/auth/session", { method: "DELETE" });
         await firebaseSignOut(getFirebaseAuth());
-      },
-      getIdToken: async () => {
-        const current = getFirebaseAuth().currentUser;
-        return current ? current.getIdToken() : null;
       },
     }),
     [user, loading],
