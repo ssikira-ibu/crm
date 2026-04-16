@@ -17,11 +17,13 @@ model Customer {
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
-  contacts     Contact[]
-  addresses    Address[]
-  phoneNumbers PhoneNumber[]
-  notes        Note[]
-  reminders    Reminder[]
+  contacts   Contact[]
+  addresses  Address[]
+  deals      Deal[]
+  activities Activity[]
+  notes      Note[]
+  reminders  Reminder[]
+  tags       CustomerTag[]
 
   @@index([userId])
   @@map("customers")
@@ -45,7 +47,12 @@ model Contact {
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  phoneNumbers PhoneNumber[]
+  deals        Deal[]
+  activities   Activity[]
+  notes        Note[]
+  reminders    Reminder[]
 
   @@index([customerId])
   @@map("contacts")
@@ -78,18 +85,18 @@ enum AddressLabel {
 }
 
 model PhoneNumber {
-  id         String     @id @default(uuid()) @db.Uuid
-  customerId String     @map("customer_id") @db.Uuid
-  label      PhoneLabel @default(WORK)
-  number     String
-  extension  String?
-  isPrimary  Boolean    @default(false) @map("is_primary")
-  createdAt  DateTime   @default(now()) @map("created_at")
-  updatedAt  DateTime   @updatedAt @map("updated_at")
+  id        String     @id @default(uuid()) @db.Uuid
+  contactId String     @map("contact_id") @db.Uuid
+  label     PhoneLabel @default(WORK)
+  number    String
+  extension String?
+  isPrimary Boolean    @default(false) @map("is_primary")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
-  @@index([customerId])
+  @@index([contactId])
   @@map("phone_numbers")
 }
 
@@ -101,33 +108,130 @@ enum PhoneLabel {
   OTHER
 }
 
+model Deal {
+  id                String     @id @default(uuid()) @db.Uuid
+  customerId        String     @map("customer_id") @db.Uuid
+  contactId         String?    @map("contact_id") @db.Uuid
+  title             String
+  description       String?    @db.Text
+  value             Decimal    @default(0) @db.Decimal(12, 2)
+  status            DealStatus @default(OPEN)
+  expectedCloseDate DateTime?  @map("expected_close_date")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  customer   Customer   @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contact    Contact?   @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  activities Activity[]
+  notes      Note[]
+  reminders  Reminder[]
+
+  @@index([customerId])
+  @@index([contactId])
+  @@map("deals")
+}
+
+enum DealStatus {
+  OPEN
+  WON
+  LOST
+}
+
+model Activity {
+  id          String       @id @default(uuid()) @db.Uuid
+  customerId  String       @map("customer_id") @db.Uuid
+  contactId   String?      @map("contact_id") @db.Uuid
+  dealId      String?      @map("deal_id") @db.Uuid
+  type        ActivityType
+  title       String
+  description String?      @db.Text
+  date        DateTime
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([contactId])
+  @@index([dealId])
+  @@index([date])
+  @@map("activities")
+}
+
+enum ActivityType {
+  CALL
+  EMAIL
+  MEETING
+  OTHER
+}
+
 model Note {
   id         String   @id @default(uuid()) @db.Uuid
   customerId String   @map("customer_id") @db.Uuid
+  contactId  String?  @map("contact_id") @db.Uuid
+  dealId     String?  @map("deal_id") @db.Uuid
   title      String
   body       String   @db.Text
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
+  @@index([contactId])
+  @@index([dealId])
   @@map("notes")
 }
 
 model Reminder {
-  id          String   @id @default(uuid()) @db.Uuid
-  customerId  String   @map("customer_id") @db.Uuid
-  title       String
-  description String?  @db.Text
-  dueDate        DateTime  @map("due_date")
-  dateCompleted  DateTime? @map("date_completed")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id            String    @id @default(uuid()) @db.Uuid
+  customerId    String    @map("customer_id") @db.Uuid
+  contactId     String?   @map("contact_id") @db.Uuid
+  dealId        String?   @map("deal_id") @db.Uuid
+  title         String
+  description   String?   @db.Text
+  dueDate       DateTime  @map("due_date")
+  dateCompleted DateTime? @map("date_completed")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
   customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
+  @@index([contactId])
+  @@index([dealId])
   @@index([dueDate])
   @@map("reminders")
+}
+
+model Tag {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id")
+  name      String
+  color     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  customers CustomerTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+  @@map("tags")
+}
+
+model CustomerTag {
+  customerId String @map("customer_id") @db.Uuid
+  tagId      String @map("tag_id") @db.Uuid
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  tag      Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([customerId, tagId])
+  @@map("customer_tags")
 }
