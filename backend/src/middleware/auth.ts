@@ -1,6 +1,9 @@
 import type { Middleware } from "koa";
-import { auth } from "../lib/firebase.js";
+import { jwtVerify } from "jose";
+import { config } from "../config.js";
 import { AppError } from "./errorHandler.js";
+
+const encodedKey = new TextEncoder().encode(config.S2S_JWT_SECRET);
 
 export const authMiddleware: Middleware = async (ctx, next) => {
   const header = ctx.headers.authorization;
@@ -10,10 +13,12 @@ export const authMiddleware: Middleware = async (ctx, next) => {
 
   const token = header.slice(7);
   try {
-    const decoded = await auth.verifyIdToken(token);
+    const { payload } = await jwtVerify(token, encodedKey, {
+      algorithms: ["HS256"],
+    });
     ctx.state.user = {
-      uid: decoded.uid,
-      email: decoded.email ?? "",
+      uid: payload.uid as string,
+      email: (payload.email as string) ?? "",
     };
   } catch {
     throw new AppError(401, "UNAUTHORIZED", "Invalid or expired token");

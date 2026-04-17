@@ -20,6 +20,7 @@
     "@prisma/client": "^7.7.0",
     "dotenv": "^17.4.2",
     "firebase-admin": "^13.4.0",
+    "jose": "^6.2.2",
     "koa": "^3.2.0",
     "koa-body": "^7.0.1",
     "koa-helmet": "^9.0.0",
