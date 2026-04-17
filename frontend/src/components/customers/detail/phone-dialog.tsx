@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api } from "@/lib/api";
+import { createPhoneNumber, updatePhoneNumber } from "@/app/actions/phone-numbers";
 import { describeError } from "@/lib/errors";
 import { PHONE_LABELS, type PhoneLabel, type PhoneNumber } from "@/lib/types";
 
@@ -97,10 +97,10 @@ export function PhoneDialog({
         isPrimary: values.isPrimary,
       };
       if (editing) {
-        await api.phoneNumbers.update(customerId, contactId, editing.id, input);
+        await updatePhoneNumber(customerId, contactId, editing.id, input);
         toast.success("Phone number updated.");
       } else {
-        await api.phoneNumbers.create(customerId, contactId, input);
+        await createPhoneNumber(customerId, contactId, input);
         toast.success("Phone number added.");
       }
       onSaved();

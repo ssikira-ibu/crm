@@ -24,7 +24,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { api } from "@/lib/api";
+import { createContact, updateContact } from "@/app/actions/contacts";
 import { describeError } from "@/lib/errors";
 import type { Contact } from "@/lib/types";
 
@@ -90,10 +90,10 @@ export function ContactDialog({
         isPrimary: values.isPrimary,
       };
       if (editing) {
-        await api.contacts.update(customerId, editing.id, input);
+        await updateContact(customerId, editing.id, input);
         toast.success("Contact updated.");
       } else {
-        await api.contacts.create(customerId, input);
+        await createContact(customerId, input);
         toast.success("Contact added.");
       }
       onSaved();

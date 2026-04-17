@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { EmptyState } from "@/components/empty-state";
-import { api } from "@/lib/api";
+import { removeAddress } from "@/app/actions/addresses";
 import { describeError } from "@/lib/errors";
 import type { Address } from "@/lib/types";
 import { AddressDialog } from "./address-dialog";
@@ -41,7 +41,7 @@ export function AddressesTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(a: Address) {
     try {
-      await api.addresses.remove(customerId, a.id);
+      await removeAddress(customerId, a.id);
       toast.success("Address deleted.");
       onChanged();
     } catch (err) {

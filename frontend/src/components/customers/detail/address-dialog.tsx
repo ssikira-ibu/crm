@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api } from "@/lib/api";
+import { createAddress, updateAddress } from "@/app/actions/addresses";
 import { describeError } from "@/lib/errors";
 import { ADDRESS_LABELS, type Address, type AddressLabel } from "@/lib/types";
 
@@ -102,10 +102,10 @@ export function AddressDialog({
         country: values.country?.trim() || undefined,
       };
       if (editing) {
-        await api.addresses.update(customerId, editing.id, input);
+        await updateAddress(customerId, editing.id, input);
         toast.success("Address updated.");
       } else {
-        await api.addresses.create(customerId, input);
+        await createAddress(customerId, input);
         toast.success("Address added.");
       }
       onSaved();

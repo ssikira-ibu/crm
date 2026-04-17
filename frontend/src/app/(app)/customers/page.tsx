@@ -18,7 +18,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CreateCustomerDialog } from "@/components/customers/create-customer-dialog";
 import { CustomerStatusBadge } from "@/components/customers/status-badge";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { api, ApiError } from "@/lib/api";
+import { listCustomers } from "@/app/actions/customers";
 import { cn } from "@/lib/utils";
 import {
   CUSTOMER_STATUSES,
@@ -39,7 +39,6 @@ const STATUS_LABEL: Record<CustomerStatus, string> = {
 };
 
 function describe(err: unknown): string {
-  if (err instanceof ApiError) return err.message;
   if (err instanceof Error) return err.message;
   return "Failed to load customers.";
 }
@@ -62,33 +61,31 @@ export default function CustomersPage() {
   }, [debouncedSearch, statusFilter]);
 
   useEffect(() => {
-    const ctrl = new AbortController();
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    api.customers
-      .list(
-        {
-          page,
-          limit: PAGE_SIZE,
-          status: statusFilter === ANY ? undefined : statusFilter,
-          search: debouncedSearch.trim() || undefined,
-        },
-        ctrl.signal,
-      )
+    listCustomers({
+      page,
+      limit: PAGE_SIZE,
+      status: statusFilter === ANY ? undefined : statusFilter,
+      search: debouncedSearch.trim() || undefined,
+    })
       .then((res) => {
-        setCustomers(res.data);
-        setMeta(res.meta);
+        if (!cancelled) {
+          setCustomers(res.data);
+          setMeta(res.meta);
+        }
       })
       .catch((err) => {
-        if (ctrl.signal.aborted) return;
+        if (cancelled) return;
         const msg = describe(err);
         setError(msg);
         toast.error(msg);
       })
       .finally(() => {
-        if (!ctrl.signal.aborted) setLoading(false);
+        if (!cancelled) setLoading(false);
       });
-    return () => ctrl.abort();
+    return () => { cancelled = true; };
   }, [page, debouncedSearch, statusFilter, reloadKey]);
 
   const totalPages = meta?.totalPages ?? 1;

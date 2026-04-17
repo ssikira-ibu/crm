@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { EmptyState } from "@/components/empty-state";
-import { api } from "@/lib/api";
+import { removeNote } from "@/app/actions/notes";
 import { describeError } from "@/lib/errors";
 import type { Note } from "@/lib/types";
 import { NoteDialog } from "./note-dialog";
@@ -33,7 +33,7 @@ export function NotesTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(n: Note) {
     try {
-      await api.notes.remove(customerId, n.id);
+      await removeNote(customerId, n.id);
       toast.success("Note deleted.");
       onChanged();
     } catch (err) {

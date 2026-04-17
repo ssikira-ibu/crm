@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { CustomerStatusBadge } from "@/components/customers/status-badge";
-import { api } from "@/lib/api";
+import { updateCustomer, removeCustomer } from "@/app/actions/customers";
 import { describeError } from "@/lib/errors";
 import {
   CUSTOMER_STATUSES,
@@ -89,7 +89,7 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
 
   async function onSave(values: FormValues) {
     try {
-      const res = await api.customers.update(customer.id, {
+      const res = await updateCustomer(customer.id, {
         companyName: values.companyName.trim(),
         industry: values.industry?.trim() || undefined,
         website: values.website?.trim() || undefined,
@@ -104,7 +104,7 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
   }
 
   async function onDelete() {
-    await api.customers.remove(customer.id);
+    await removeCustomer(customer.id);
     toast.success("Customer deleted.");
     router.push("/customers");
   }

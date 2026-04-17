@@ -15,7 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { EmptyState } from "@/components/empty-state";
-import { api } from "@/lib/api";
+import { updateReminder, removeReminder } from "@/app/actions/reminders";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import type { Reminder } from "@/lib/types";
@@ -68,7 +68,7 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
   async function onToggle(r: Reminder, next: boolean) {
     setToggling((prev) => new Set(prev).add(r.id));
     try {
-      await api.reminders.update(customerId, r.id, {
+      await updateReminder(customerId, r.id, {
         dateCompleted: next ? new Date().toISOString() : null,
       });
       onChanged();
@@ -85,7 +85,7 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(r: Reminder) {
     try {
-      await api.reminders.remove(customerId, r.id);
+      await removeReminder(customerId, r.id);
       toast.success("Reminder deleted.");
       onChanged();
     } catch (err) {

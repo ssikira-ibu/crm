@@ -17,7 +17,8 @@ import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { api, ApiError } from "@/lib/api";
+import { getDashboard } from "@/app/actions/dashboard";
+import { updateReminder } from "@/app/actions/reminders";
 import { cn } from "@/lib/utils";
 import type {
   DashboardData,
@@ -31,20 +32,21 @@ function useDashboard() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    const ctrl = new AbortController();
+    let cancelled = false;
     setLoading(true);
-    api.dashboard
-      .get(ctrl.signal)
-      .then((res) => setData(res.data))
+    getDashboard()
+      .then((res) => {
+        if (!cancelled) setData(res.data);
+      })
       .catch((err) => {
-        if (ctrl.signal.aborted) return;
-        const msg = err instanceof ApiError ? err.message : "Failed to load dashboard.";
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : "Failed to load dashboard.";
         toast.error(msg);
       })
       .finally(() => {
-        if (!ctrl.signal.aborted) setLoading(false);
+        if (!cancelled) setLoading(false);
       });
-    return () => ctrl.abort();
+    return () => { cancelled = true; };
   }, [reloadKey]);
 
   return { data, loading, refresh: () => setReloadKey((k) => k + 1) };
@@ -142,7 +144,7 @@ export default function HomePage() {
 
   async function handleToggle(r: ReminderWithCustomer) {
     try {
-      await api.reminders.update(r.customer.id, r.id, {
+      await updateReminder(r.customer.id, r.id, {
         dateCompleted: r.dateCompleted ? null : new Date().toISOString(),
       });
       refresh();

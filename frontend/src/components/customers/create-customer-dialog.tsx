@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { api, ApiError } from "@/lib/api";
+import { createCustomer } from "@/app/actions/customers";
 import { CUSTOMER_STATUSES, type Customer, type CustomerStatus } from "@/lib/types";
 
 type Props = {
@@ -78,7 +78,7 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
 
   async function onSubmit(values: FormValues) {
     try {
-      const res = await api.customers.create({
+      const res = await createCustomer({
         companyName: values.companyName.trim(),
         industry: values.industry?.trim() || undefined,
         website: values.website?.trim() || undefined,
@@ -89,7 +89,7 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
       form.reset(defaults);
       onOpenChange(false);
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : "Failed to create customer.";
+      const msg = err instanceof Error ? err.message : "Failed to create customer.";
       toast.error(msg);
     }
   }

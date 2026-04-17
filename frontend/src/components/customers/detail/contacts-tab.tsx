@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { EmptyState } from "@/components/empty-state";
-import { api } from "@/lib/api";
+import { removeContact } from "@/app/actions/contacts";
 import { describeError } from "@/lib/errors";
 import type { Contact, PhoneNumber } from "@/lib/types";
 import { ContactDialog } from "./contact-dialog";
@@ -35,7 +35,7 @@ export function ContactsTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(c: ContactWithPhones) {
     try {
-      await api.contacts.remove(customerId, c.id);
+      await removeContact(customerId, c.id);
       toast.success("Contact deleted.");
       onChanged();
     } catch (err) {

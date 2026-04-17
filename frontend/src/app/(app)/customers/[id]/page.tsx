@@ -12,7 +12,7 @@ import { ContactsTab } from "@/components/customers/detail/contacts-tab";
 import { AddressesTab } from "@/components/customers/detail/addresses-tab";
 import { NotesTab } from "@/components/customers/detail/notes-tab";
 import { RemindersTab } from "@/components/customers/detail/reminders-tab";
-import { api, ApiError } from "@/lib/api";
+import { getCustomer } from "@/app/actions/customers";
 import { describeError } from "@/lib/errors";
 import type { Customer, CustomerWithRelations } from "@/lib/types";
 
@@ -41,27 +41,23 @@ export default function CustomerDetailPage() {
 
   useEffect(() => {
     if (!id) return;
-    const ctrl = new AbortController();
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    api.customers
-      .get(id, ctrl.signal)
-      .then((res) => setData(res.data))
+    getCustomer(id)
+      .then((res) => {
+        if (!cancelled) setData(res.data);
+      })
       .catch((err) => {
-        if (ctrl.signal.aborted) return;
-        if (err instanceof ApiError && err.status === 404) {
-          toast.error("Customer not found.");
-          router.replace("/customers");
-          return;
-        }
+        if (cancelled) return;
         const msg = describeError(err);
         setError(msg);
         toast.error(msg);
       })
       .finally(() => {
-        if (!ctrl.signal.aborted) setLoading(false);
+        if (!cancelled) setLoading(false);
       });
-    return () => ctrl.abort();
+    return () => { cancelled = true; };
   }, [id, reloadKey, router]);
 
   function handleHeaderUpdated(next: Customer) {

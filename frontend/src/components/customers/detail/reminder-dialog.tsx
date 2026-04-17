@@ -31,7 +31,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api";
+import { createReminder, updateReminder } from "@/app/actions/reminders";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import type { Reminder } from "@/lib/types";
@@ -103,10 +103,10 @@ export function ReminderDialog({
         dueDate: due.toISOString(),
       };
       if (editing) {
-        await api.reminders.update(customerId, editing.id, input);
+        await updateReminder(customerId, editing.id, input);
         toast.success("Reminder updated.");
       } else {
-        await api.reminders.create(customerId, input);
+        await createReminder(customerId, input);
         toast.success("Reminder added.");
       }
       onSaved();

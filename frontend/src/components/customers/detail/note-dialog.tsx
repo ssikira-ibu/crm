@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { api } from "@/lib/api";
+import { createNote, updateNote } from "@/app/actions/notes";
 import { describeError } from "@/lib/errors";
 import type { Note } from "@/lib/types";
 
@@ -68,10 +68,10 @@ export function NoteDialog({
     try {
       const input = { title: values.title.trim(), body: values.body.trim() };
       if (editing) {
-        await api.notes.update(customerId, editing.id, input);
+        await updateNote(customerId, editing.id, input);
         toast.success("Note updated.");
       } else {
-        await api.notes.create(customerId, input);
+        await createNote(customerId, input);
         toast.success("Note added.");
       }
       onSaved();
