@@ -21,18 +21,17 @@ services:
       context: .
       dockerfile: backend/Dockerfile
       target: development
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     environment:
       DATABASE_URL: postgresql://crm_user:crm_password@db:5432/crm_dev?schema=public
       PORT: "3000"
       NODE_ENV: development
-      GOOGLE_APPLICATION_CREDENTIALS: /app/backend/firebase-service-account.json
+      S2S_JWT_SECRET: ${S2S_JWT_SECRET}
     volumes:
       - ./backend/src:/app/backend/src
       - ./backend/prisma:/app/backend/prisma
       - ./packages/shared/src:/app/packages/shared/src
-      - ./firebase-service-account.json:/app/backend/firebase-service-account.json:ro
     depends_on:
       db:
         condition: service_healthy
@@ -49,11 +48,15 @@ services:
     env_file:
       - ./frontend/.env.local
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3000
+      API_URL: http://backend:3000
+      SESSION_SECRET: ${SESSION_SECRET}
+      S2S_JWT_SECRET: ${S2S_JWT_SECRET}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/frontend/firebase-service-account.json
     volumes:
       - ./frontend/src:/app/frontend/src
       - ./frontend/public:/app/frontend/public
       - ./packages/shared/src:/app/packages/shared/src
+      - ./firebase-service-account.json:/app/frontend/firebase-service-account.json:ro
     depends_on:
       - backend
 
