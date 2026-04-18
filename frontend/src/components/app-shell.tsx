@@ -1,8 +1,8 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Home, Loader2, TrendingUp, Users, Zap } from "lucide-react";
 import {
   Sidebar,
@@ -20,6 +20,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useRequireAuth } from "@/lib/auth";
+import { CommandPalette } from "./command-palette";
+import { CreateCustomerDialog } from "./customers/create-customer-dialog";
 import { UserMenu } from "./user-menu";
 
 const NAV = [
@@ -32,6 +34,8 @@ const NAV = [
 export function AppShell({ children }: { children: ReactNode }) {
   const { user, loading } = useRequireAuth("/");
   const pathname = usePathname();
+  const router = useRouter();
+  const [createCustomerOpen, setCreateCustomerOpen] = useState(false);
 
   if (loading || !user) {
     return (
@@ -88,6 +92,15 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
         <main className="flex flex-1 flex-col">{children}</main>
       </SidebarInset>
+      <CommandPalette onCreateCustomer={() => setCreateCustomerOpen(true)} />
+      <CreateCustomerDialog
+        open={createCustomerOpen}
+        onOpenChange={setCreateCustomerOpen}
+        onCreated={(c) => {
+          setCreateCustomerOpen(false);
+          router.push(`/customers/${c.id}`);
+        }}
+      />
     </SidebarProvider>
   );
 }
