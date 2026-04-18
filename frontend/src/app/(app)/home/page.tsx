@@ -6,11 +6,18 @@ import {
   AlertTriangle,
   ArrowRight,
   Bell,
+  Calendar,
   CheckCircle2,
   Clock,
+  DollarSign,
   FileText,
   Loader2,
+  Mail,
+  MoreHorizontal,
+  Phone,
+  TrendingUp,
   Users,
+  Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
 import { toast } from "sonner";
@@ -21,7 +28,10 @@ import { getDashboard } from "@/app/actions/dashboard";
 import { updateReminder } from "@/app/actions/reminders";
 import { cn } from "@/lib/utils";
 import type {
+  ActivityType,
+  ActivityWithCustomer,
   DashboardData,
+  DealWithCustomer,
   NoteWithCustomer,
   ReminderWithCustomer,
 } from "@/lib/types";
@@ -118,6 +128,77 @@ function ReminderRow({
   );
 }
 
+const ACTIVITY_TYPE_ICON: Record<ActivityType, React.ComponentType<{ className?: string }>> = {
+  CALL: Phone,
+  EMAIL: Mail,
+  MEETING: Calendar,
+  OTHER: MoreHorizontal,
+};
+
+const ACTIVITY_TYPE_STYLE: Record<ActivityType, string> = {
+  CALL: "bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400",
+  EMAIL: "bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-400",
+  MEETING: "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
+  OTHER: "bg-muted text-muted-foreground",
+};
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(value);
+}
+
+function ActivityRow({ activity }: { activity: ActivityWithCustomer }) {
+  const Icon = ACTIVITY_TYPE_ICON[activity.type];
+  return (
+    <Link
+      href={`/customers/${activity.customerId}`}
+      className="group flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50"
+    >
+      <div
+        className={cn(
+          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
+          ACTIVITY_TYPE_STYLE[activity.type],
+        )}
+      >
+        <Icon className="size-3" />
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{activity.title}</p>
+        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+          <span>{activity.customer.companyName ?? "Untitled"}</span>
+          <span className="text-border">|</span>
+          <span>
+            {formatDistanceToNow(new Date(activity.date), { addSuffix: true })}
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function DealRow({ deal }: { deal: DealWithCustomer }) {
+  return (
+    <Link
+      href={`/customers/${deal.customerId}`}
+      className="group flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50"
+    >
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{deal.title}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {deal.customer.companyName ?? "Untitled"}
+        </p>
+      </div>
+      <span className="shrink-0 text-sm font-medium tabular-nums text-blue-600 dark:text-blue-400">
+        {formatCurrency(deal.value)}
+      </span>
+    </Link>
+  );
+}
+
 function NoteRow({ note }: { note: NoteWithCustomer }) {
   return (
     <Link
@@ -171,6 +252,10 @@ export default function HomePage() {
   const activeCount = data?.stats.byStatus?.ACTIVE ?? 0;
   const leadCount = data?.stats.byStatus?.LEAD ?? 0;
   const prospectCount = data?.stats.byStatus?.PROSPECT ?? 0;
+  const openDealsValue = data?.stats.openDealsValue ?? 0;
+  const openDealsCount = data?.stats.openDealsCount ?? 0;
+  const openDeals = data?.deals?.filter((d) => d.status === "OPEN") ?? [];
+  const recentActivities = data?.recentActivities ?? [];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -193,8 +278,87 @@ export default function HomePage() {
             />
             <StatCard label="Active" value={activeCount} icon={CheckCircle2} />
             <StatCard label="Leads" value={leadCount} icon={Clock} />
-            <StatCard label="Prospects" value={prospectCount} icon={ArrowRight} />
+            <StatCard
+              label="Pipeline"
+              value={openDealsCount}
+              icon={TrendingUp}
+              href="/deals"
+            />
           </div>
+
+          {/* Pipeline + Activity side by side */}
+          {(openDeals.length > 0 || recentActivities.length > 0) && (
+            <div className="grid gap-6 md:grid-cols-2">
+              {/* Pipeline Snapshot */}
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <DollarSign className="size-4 text-blue-500" />
+                    <h2 className="text-sm font-medium">Open pipeline</h2>
+                  </div>
+                  {openDealsValue > 0 && (
+                    <span className="text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+                      {formatCurrency(openDealsValue)}
+                    </span>
+                  )}
+                </div>
+                {openDeals.length === 0 ? (
+                  <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No open deals.{" "}
+                      <Link href="/deals" className="underline hover:text-foreground">
+                        View all deals
+                      </Link>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border">
+                    {openDeals.slice(0, 5).map((d) => (
+                      <DealRow key={d.id} deal={d} />
+                    ))}
+                    {openDeals.length > 5 && (
+                      <Link
+                        href="/deals"
+                        className="flex items-center justify-center border-t px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        View all {openDeals.length} deals
+                        <ArrowRight className="ml-1 size-3" />
+                      </Link>
+                    )}
+                  </div>
+                )}
+              </section>
+
+              {/* Recent Activity */}
+              <section>
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Zap className="size-4 text-amber-500" />
+                    <h2 className="text-sm font-medium">Recent activity</h2>
+                  </div>
+                  <Link
+                    href="/activity"
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    View all
+                  </Link>
+                </div>
+                {recentActivities.length === 0 ? (
+                  <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      No activity yet. Log interactions from customer pages.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border">
+                    {recentActivities.slice(0, 5).map((a) => (
+                      <ActivityRow key={a.id} activity={a} />
+                    ))}
+                  </div>
+                )}
+              </section>
+            </div>
+          )}
 
           {/* Overdue */}
           {overdueReminders.length > 0 && (

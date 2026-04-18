@@ -3,7 +3,7 @@
 import { type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Loader2, Users } from "lucide-react";
+import { Home, Loader2, TrendingUp, Users, Zap } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -25,6 +25,8 @@ import { UserMenu } from "./user-menu";
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/customers", label: "Customers", icon: Users },
+  { href: "/deals", label: "Deals", icon: TrendingUp },
+  { href: "/activity", label: "Activity", icon: Zap },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {

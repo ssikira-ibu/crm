@@ -207,6 +207,9 @@ export default function CustomersPage() {
                       {c._count.notes > 0 && (
                         <span>{c._count.notes} note{c._count.notes !== 1 ? "s" : ""}</span>
                       )}
+                      {c._count.deals > 0 && (
+                        <span>{c._count.deals} deal{c._count.deals !== 1 ? "s" : ""}</span>
+                      )}
                       {c._count.reminders > 0 && (
                         <span>{c._count.reminders} reminder{c._count.reminders !== 1 ? "s" : ""}</span>
                       )}

@@ -33,12 +33,14 @@ import {
 } from "@/components/ui/select";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { CustomerStatusBadge } from "@/components/customers/status-badge";
+import { TagPicker } from "@/components/customers/detail/tag-picker";
 import { updateCustomer, removeCustomer } from "@/app/actions/customers";
 import { describeError } from "@/lib/errors";
 import {
   CUSTOMER_STATUSES,
   type Customer,
   type CustomerStatus,
+  type CustomerWithRelations,
 } from "@/lib/types";
 
 const STATUS_LABEL: Record<CustomerStatus, string> = {
@@ -49,8 +51,9 @@ const STATUS_LABEL: Record<CustomerStatus, string> = {
 };
 
 type Props = {
-  customer: Customer;
+  customer: CustomerWithRelations;
   onUpdated: (customer: Customer) => void;
+  onChanged: () => void;
 };
 
 const schema = z.object({
@@ -78,7 +81,7 @@ function toValues(customer: Customer): FormValues {
   };
 }
 
-export function CustomerHeader({ customer, onUpdated }: Props) {
+export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
   const router = useRouter();
   const [editing, setEditing] = useState(false);
   const form = useForm<FormValues>({
@@ -272,6 +275,13 @@ export function CustomerHeader({ customer, onUpdated }: Props) {
               <ExternalLink className="size-3" />
             </a>
           )}
+        </div>
+        <div className="mt-2">
+          <TagPicker
+            customerId={customer.id}
+            assigned={customer.tags}
+            onChanged={onChanged}
+          />
         </div>
       </div>
     </div>

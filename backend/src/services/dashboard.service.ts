@@ -7,7 +7,7 @@ export async function getDashboard(userId: string) {
   });
   const ids = customerIds.map((c) => c.id);
 
-  const [reminders, recentNotes, recentActivities, statusCounts, dealAgg] =
+  const [reminders, recentNotes, recentActivities, deals, statusCounts, dealAgg] =
     await Promise.all([
       prisma.reminder.findMany({
         where: { customerId: { in: ids }, dateCompleted: null },
@@ -35,6 +35,16 @@ export async function getDashboard(userId: string) {
         orderBy: { date: "desc" },
         take: 10,
       }),
+      prisma.deal.findMany({
+        where: { customerId: { in: ids } },
+        include: {
+          customer: {
+            select: { id: true, companyName: true, status: true },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 100,
+      }),
       prisma.customer.groupBy({
         by: ["status"],
         where: { userId },
@@ -56,5 +66,5 @@ export async function getDashboard(userId: string) {
     openDealsCount: dealAgg._count,
   };
 
-  return { reminders, recentNotes, recentActivities, stats };
+  return { reminders, recentNotes, recentActivities, deals, stats };
 }

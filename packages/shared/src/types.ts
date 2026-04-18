@@ -153,6 +153,7 @@ export type DashboardData = {
   reminders: ReminderWithCustomer[];
   recentNotes: NoteWithCustomer[];
   recentActivities: ActivityWithCustomer[];
+  deals: DealWithCustomer[];
   stats: {
     total: number;
     byStatus: Partial<Record<CustomerStatus, number>>;

@@ -12,6 +12,8 @@ import { ContactsTab } from "@/components/customers/detail/contacts-tab";
 import { AddressesTab } from "@/components/customers/detail/addresses-tab";
 import { NotesTab } from "@/components/customers/detail/notes-tab";
 import { RemindersTab } from "@/components/customers/detail/reminders-tab";
+import { DealsTab } from "@/components/customers/detail/deals-tab";
+import { ActivitiesTab } from "@/components/customers/detail/activities-tab";
 import { getCustomer } from "@/app/actions/customers";
 import { describeError } from "@/lib/errors";
 import type { Customer, CustomerWithRelations } from "@/lib/types";
@@ -86,13 +88,19 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <CustomerHeader customer={data} onUpdated={handleHeaderUpdated} />
+      <CustomerHeader customer={data} onUpdated={handleHeaderUpdated} onChanged={refresh} />
 
       <Tabs defaultValue="contacts" className="flex-1">
         <div className="border-b px-6">
           <TabsList variant="line" className="-mb-px">
             <TabsTrigger value="contacts">
               Contacts <TabCount count={data.contacts.length} />
+            </TabsTrigger>
+            <TabsTrigger value="deals">
+              Deals <TabCount count={data.deals.length} />
+            </TabsTrigger>
+            <TabsTrigger value="activities">
+              Activities <TabCount count={data.activities.length} />
             </TabsTrigger>
             <TabsTrigger value="notes">
               Notes <TabCount count={data.notes.length} />
@@ -110,6 +118,20 @@ export default function CustomerDetailPage() {
             <ContactsTab
               customerId={data.id}
               items={data.contacts}
+              onChanged={refresh}
+            />
+          </TabsContent>
+          <TabsContent value="deals">
+            <DealsTab
+              customerId={data.id}
+              items={data.deals}
+              onChanged={refresh}
+            />
+          </TabsContent>
+          <TabsContent value="activities">
+            <ActivitiesTab
+              customerId={data.id}
+              items={data.activities}
               onChanged={refresh}
             />
           </TabsContent>
