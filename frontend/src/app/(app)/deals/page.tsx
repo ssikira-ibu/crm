@@ -4,11 +4,13 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   DollarSign,
+  Kanban,
+  List,
   Loader2,
   TrendingUp,
   Trophy,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/empty-state";
+import { BoardView } from "@/components/deals/board-view";
 import { getDashboard } from "@/app/actions/dashboard";
 import { cn } from "@/lib/utils";
 import type {
@@ -53,10 +56,18 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+type ViewMode = "board" | "list";
+
+function getInitialView(): ViewMode {
+  if (typeof window === "undefined") return "board";
+  return (localStorage.getItem("crm:deals-view") as ViewMode) || "board";
+}
+
 export default function DealsPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ANY);
+  const [view, setView] = useState<ViewMode>(getInitialView);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +89,11 @@ export default function DealsPage() {
       cancelled = true;
     };
   }, []);
+
+  function switchView(v: ViewMode) {
+    setView(v);
+    localStorage.setItem("crm:deals-view", v);
+  }
 
   if (loading && !data) {
     return (
@@ -107,67 +123,37 @@ export default function DealsPage() {
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="border-b px-6 py-5">
+      {/* Header with stats */}
+      <div className="border-b px-6 py-4">
         <h1 className="text-lg font-semibold tracking-tight">Deals</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Track your pipeline and revenue
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <TrendingUp className="size-3.5 text-blue-500" />
+            <span className="font-medium tabular-nums text-foreground">{formatCurrency(openValue)}</span>
+            pipeline
+          </span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <Trophy className="size-3.5 text-emerald-500" />
+            <span className="font-medium tabular-nums text-foreground">{formatCurrency(wonValue)}</span>
+            won
+          </span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <DollarSign className="size-3.5" />
+            <span className="font-medium tabular-nums text-foreground">{allDeals.length}</span>
+            total
+          </span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <span className="font-medium tabular-nums text-foreground">{winRate}%</span>
+            win rate
+          </span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-4xl space-y-6 px-6 py-6">
-          {/* Pipeline Summary */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
-              <div className="flex size-9 items-center justify-center rounded-md bg-blue-100 dark:bg-blue-950">
-                <TrendingUp className="size-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold tabular-nums">
-                  {formatCurrency(openValue)}
-                </p>
-                <p className="text-xs text-muted-foreground">Pipeline</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
-              <div className="flex size-9 items-center justify-center rounded-md bg-emerald-100 dark:bg-emerald-950">
-                <Trophy className="size-4 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold tabular-nums">
-                  {formatCurrency(wonValue)}
-                </p>
-                <p className="text-xs text-muted-foreground">Won</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
-              <div className="flex size-9 items-center justify-center rounded-md bg-muted">
-                <DollarSign className="size-4 text-muted-foreground" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold tabular-nums">
-                  {allDeals.length}
-                </p>
-                <p className="text-xs text-muted-foreground">Total deals</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border bg-card p-4">
-              <div className="flex size-9 items-center justify-center rounded-md bg-amber-100 dark:bg-amber-950">
-                <TrendingUp className="size-4 text-amber-600 dark:text-amber-400" />
-              </div>
-              <div>
-                <p className="text-2xl font-semibold tabular-nums">{winRate}%</p>
-                <p className="text-xs text-muted-foreground">Win rate</p>
-              </div>
-            </div>
-          </div>
-
+        <div className="mx-auto max-w-6xl space-y-4 px-6 py-6">
           {/* Pipeline Bar */}
           {allDeals.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-medium text-muted-foreground">
-                Pipeline breakdown
-              </p>
               <div className="flex h-2 overflow-hidden rounded-full bg-muted">
                 {openDeals.length > 0 && (
                   <div
@@ -211,10 +197,35 @@ export default function DealsPage() {
             </div>
           )}
 
-          {/* Filter + List */}
-          <section>
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-sm font-medium">All deals</h2>
+          {/* View Toggle + Filter */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1 rounded-lg border p-0.5">
+              <button
+                onClick={() => switchView("board")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  view === "board"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Kanban className="size-3.5" />
+                Board
+              </button>
+              <button
+                onClick={() => switchView("list")}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                  view === "list"
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <List className="size-3.5" />
+                List
+              </button>
+            </div>
+            {view === "list" && (
               <Select
                 value={statusFilter}
                 onValueChange={(v) => setStatusFilter(v as StatusFilter)}
@@ -234,65 +245,74 @@ export default function DealsPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {filtered.length === 0 ? (
-              <EmptyState
-                icon={TrendingUp}
-                title="No deals found"
-                description={
-                  statusFilter !== ANY
-                    ? "Try a different filter."
-                    : "Create deals from the customer detail page."
-                }
-              />
-            ) : (
-              <div className="divide-y rounded-lg border">
-                {filtered.map((d) => (
-                  <Link
-                    key={d.id}
-                    href={`/customers/${d.customerId}`}
-                    className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/50"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="truncate text-sm font-medium">
-                          {d.title}
-                        </span>
-                        <Badge
-                          variant="secondary"
-                          className={cn(
-                            "text-[10px] shrink-0",
-                            STATUS_STYLE[d.status],
-                          )}
-                        >
-                          {STATUS_LABEL[d.status]}
-                        </Badge>
-                      </div>
-                      <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{d.customer.companyName ?? "Untitled"}</span>
-                        {d.expectedCloseDate && (
-                          <>
-                            <span className="text-border">|</span>
-                            <span>
-                              Close{" "}
-                              {format(
-                                new Date(d.expectedCloseDate),
-                                "MMM d, yyyy",
-                              )}
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <span className="shrink-0 text-sm font-medium tabular-nums">
-                      {formatCurrency(d.value)}
-                    </span>
-                  </Link>
-                ))}
-              </div>
             )}
-          </section>
+          </div>
+
+          {/* Content */}
+          {allDeals.length === 0 ? (
+            <EmptyState
+              icon={TrendingUp}
+              title="No deals yet"
+              description="Create deals from the customer detail page."
+            />
+          ) : view === "board" ? (
+            <BoardView deals={allDeals} />
+          ) : (
+            <>
+              {filtered.length === 0 ? (
+                <EmptyState
+                  icon={TrendingUp}
+                  title="No deals found"
+                  description="Try a different filter."
+                />
+              ) : (
+                <div className="divide-y rounded-lg border">
+                  {filtered.map((d) => (
+                    <Link
+                      key={d.id}
+                      href={`/customers/${d.customerId}`}
+                      className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/50"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-sm font-medium">
+                            {d.title}
+                          </span>
+                          <Badge
+                            variant="secondary"
+                            className={cn(
+                              "text-[10px] shrink-0",
+                              STATUS_STYLE[d.status],
+                            )}
+                          >
+                            {STATUS_LABEL[d.status]}
+                          </Badge>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>{d.customer.companyName ?? "Untitled"}</span>
+                          {d.expectedCloseDate && (
+                            <>
+                              <span className="text-border">|</span>
+                              <span>
+                                Close{" "}
+                                {format(
+                                  new Date(d.expectedCloseDate),
+                                  "MMM d, yyyy",
+                                )}
+                              </span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <span className="shrink-0 text-sm font-medium tabular-nums">
+                        {formatCurrency(d.value)}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
