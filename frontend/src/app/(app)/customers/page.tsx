@@ -2,7 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronRight, Plus, Search, Users } from "lucide-react";
+import {
+  Bell,
+  ChevronLeft,
+  ChevronRight,
+  FileText,
+  Plus,
+  Search,
+  TrendingUp,
+  UserRound,
+  Users,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/empty-state";
@@ -200,18 +210,30 @@ export default function CustomersPage() {
                         </p>
                       )}
                     </div>
-                    <div className="hidden shrink-0 items-center gap-4 text-xs text-muted-foreground sm:flex">
+                    <div className="hidden shrink-0 items-center gap-3 text-xs text-muted-foreground sm:flex">
                       {c._count.contacts > 0 && (
-                        <span>{c._count.contacts} contact{c._count.contacts !== 1 ? "s" : ""}</span>
-                      )}
-                      {c._count.notes > 0 && (
-                        <span>{c._count.notes} note{c._count.notes !== 1 ? "s" : ""}</span>
+                        <span className="flex items-center gap-1" title={`${c._count.contacts} contact${c._count.contacts !== 1 ? "s" : ""}`}>
+                          <UserRound className="size-3" />
+                          {c._count.contacts}
+                        </span>
                       )}
                       {c._count.deals > 0 && (
-                        <span>{c._count.deals} deal{c._count.deals !== 1 ? "s" : ""}</span>
+                        <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400" title={`${c._count.deals} deal${c._count.deals !== 1 ? "s" : ""}`}>
+                          <TrendingUp className="size-3" />
+                          {c._count.deals}
+                        </span>
+                      )}
+                      {c._count.notes > 0 && (
+                        <span className="flex items-center gap-1" title={`${c._count.notes} note${c._count.notes !== 1 ? "s" : ""}`}>
+                          <FileText className="size-3" />
+                          {c._count.notes}
+                        </span>
                       )}
                       {c._count.reminders > 0 && (
-                        <span>{c._count.reminders} reminder{c._count.reminders !== 1 ? "s" : ""}</span>
+                        <span className="flex items-center gap-1" title={`${c._count.reminders} reminder${c._count.reminders !== 1 ? "s" : ""}`}>
+                          <Bell className="size-3" />
+                          {c._count.reminders}
+                        </span>
                       )}
                     </div>
                     <ChevronRight className="size-4 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground" />
