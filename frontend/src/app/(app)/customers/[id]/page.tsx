@@ -9,13 +9,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/empty-state";
 import { CustomerHeader } from "@/components/customers/detail/header";
 import { ContactsTab } from "@/components/customers/detail/contacts-tab";
-import { AddressesTab } from "@/components/customers/detail/addresses-tab";
-import { NotesTab } from "@/components/customers/detail/notes-tab";
 import { RemindersTab } from "@/components/customers/detail/reminders-tab";
 import { DealsTab } from "@/components/customers/detail/deals-tab";
-import { ActivitiesTab } from "@/components/customers/detail/activities-tab";
 import { TimelineTab } from "@/components/customers/detail/timeline-tab";
+import { UnifiedActivityTab } from "@/components/customers/detail/unified-activity-tab";
 import { getCustomer } from "@/app/actions/customers";
+import { useRecentCustomers } from "@/hooks/use-recent-customers";
 import { describeError } from "@/lib/errors";
 import type { Customer, CustomerWithRelations } from "@/lib/types";
 
@@ -32,6 +31,7 @@ export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const router = useRouter();
+  const { trackCustomer } = useRecentCustomers();
 
   const [data, setData] = useState<CustomerWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,10 @@ export default function CustomerDetailPage() {
     setError(null);
     getCustomer(id)
       .then((res) => {
-        if (!cancelled) setData(res.data);
+        if (!cancelled) {
+          setData(res.data);
+          trackCustomer(res.data.id, res.data.companyName ?? "Untitled");
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -61,7 +64,7 @@ export default function CustomerDetailPage() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [id, reloadKey, router]);
+  }, [id, reloadKey, router, trackCustomer]);
 
   function handleHeaderUpdated(next: Customer) {
     setData((prev) => (prev ? { ...prev, ...next } : prev));
@@ -101,17 +104,11 @@ export default function CustomerDetailPage() {
             <TabsTrigger value="deals">
               Deals <TabCount count={data.deals.length} />
             </TabsTrigger>
-            <TabsTrigger value="activities">
-              Interactions <TabCount count={data.activities.length} />
-            </TabsTrigger>
-            <TabsTrigger value="notes">
-              Notes <TabCount count={data.notes.length} />
+            <TabsTrigger value="activity">
+              Activity <TabCount count={data.activities.length + data.notes.length} />
             </TabsTrigger>
             <TabsTrigger value="reminders">
               Reminders <TabCount count={data.reminders.length} />
-            </TabsTrigger>
-            <TabsTrigger value="addresses">
-              Addresses <TabCount count={data.addresses.length} />
             </TabsTrigger>
           </TabsList>
         </div>
@@ -133,17 +130,11 @@ export default function CustomerDetailPage() {
               onChanged={refresh}
             />
           </TabsContent>
-          <TabsContent value="activities">
-            <ActivitiesTab
+          <TabsContent value="activity">
+            <UnifiedActivityTab
               customerId={data.id}
-              items={data.activities}
-              onChanged={refresh}
-            />
-          </TabsContent>
-          <TabsContent value="notes">
-            <NotesTab
-              customerId={data.id}
-              items={data.notes}
+              activities={data.activities}
+              notes={data.notes}
               onChanged={refresh}
             />
           </TabsContent>
@@ -151,13 +142,6 @@ export default function CustomerDetailPage() {
             <RemindersTab
               customerId={data.id}
               items={data.reminders}
-              onChanged={refresh}
-            />
-          </TabsContent>
-          <TabsContent value="addresses">
-            <AddressesTab
-              customerId={data.id}
-              items={data.addresses}
               onChanged={refresh}
             />
           </TabsContent>
