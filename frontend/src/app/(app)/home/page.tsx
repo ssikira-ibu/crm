@@ -27,26 +27,33 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { getDashboard } from "@/app/actions/dashboard";
 import { updateReminder } from "@/app/actions/reminders";
 import { cn } from "@/lib/utils";
+import { Timeline } from "@/components/timeline";
+import { getGlobalEvents } from "@/app/actions/events";
 import type {
   ActivityType,
   ActivityWithCustomer,
   DashboardData,
   DealWithCustomer,
+  EventWithCustomer,
   NoteWithCustomer,
   ReminderWithCustomer,
 } from "@/lib/types";
 
 function useDashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [events, setEvents] = useState<EventWithCustomer[]>([]);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    getDashboard()
-      .then((res) => {
-        if (!cancelled) setData(res.data);
+    Promise.all([getDashboard(), getGlobalEvents({ limit: 10 })])
+      .then(([dashRes, evtRes]) => {
+        if (!cancelled) {
+          setData(dashRes.data);
+          setEvents(evtRes.data);
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -59,7 +66,7 @@ function useDashboard() {
     return () => { cancelled = true; };
   }, [reloadKey]);
 
-  return { data, loading, refresh: () => setReloadKey((k) => k + 1) };
+  return { data, events, loading, refresh: () => setReloadKey((k) => k + 1) };
 }
 
 function StatCard({
@@ -221,7 +228,7 @@ function NoteRow({ note }: { note: NoteWithCustomer }) {
 }
 
 export default function HomePage() {
-  const { data, loading, refresh } = useDashboard();
+  const { data, events, loading, refresh } = useDashboard();
 
   async function handleToggle(r: ReminderWithCustomer) {
     try {
@@ -255,7 +262,6 @@ export default function HomePage() {
   const openDealsValue = data?.stats.openDealsValue ?? 0;
   const openDealsCount = data?.stats.openDealsCount ?? 0;
   const openDeals = data?.deals?.filter((d) => d.status === "OPEN") ?? [];
-  const recentActivities = data?.recentActivities ?? [];
 
   return (
     <div className="flex flex-1 flex-col">
@@ -286,79 +292,75 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Pipeline + Activity side by side */}
-          {(openDeals.length > 0 || recentActivities.length > 0) && (
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Pipeline Snapshot */}
-              <section>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <DollarSign className="size-4 text-blue-500" />
-                    <h2 className="text-sm font-medium">Open pipeline</h2>
-                  </div>
-                  {openDealsValue > 0 && (
-                    <span className="text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">
-                      {formatCurrency(openDealsValue)}
-                    </span>
+          {/* Pipeline + Timeline side by side */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Pipeline Snapshot */}
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <DollarSign className="size-4 text-blue-500" />
+                  <h2 className="text-sm font-medium">Open pipeline</h2>
+                </div>
+                {openDealsValue > 0 && (
+                  <span className="text-sm font-semibold tabular-nums text-blue-600 dark:text-blue-400">
+                    {formatCurrency(openDealsValue)}
+                  </span>
+                )}
+              </div>
+              {openDeals.length === 0 ? (
+                <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No open deals.{" "}
+                    <Link href="/deals" className="underline hover:text-foreground">
+                      View all deals
+                    </Link>
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border">
+                  {openDeals.slice(0, 5).map((d) => (
+                    <DealRow key={d.id} deal={d} />
+                  ))}
+                  {openDeals.length > 5 && (
+                    <Link
+                      href="/deals"
+                      className="flex items-center justify-center border-t px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      View all {openDeals.length} deals
+                      <ArrowRight className="ml-1 size-3" />
+                    </Link>
                   )}
                 </div>
-                {openDeals.length === 0 ? (
-                  <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      No open deals.{" "}
-                      <Link href="/deals" className="underline hover:text-foreground">
-                        View all deals
-                      </Link>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border">
-                    {openDeals.slice(0, 5).map((d) => (
-                      <DealRow key={d.id} deal={d} />
-                    ))}
-                    {openDeals.length > 5 && (
-                      <Link
-                        href="/deals"
-                        className="flex items-center justify-center border-t px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        View all {openDeals.length} deals
-                        <ArrowRight className="ml-1 size-3" />
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </section>
+              )}
+            </section>
 
-              {/* Recent Activity */}
-              <section>
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Zap className="size-4 text-amber-500" />
-                    <h2 className="text-sm font-medium">Recent activity</h2>
-                  </div>
-                  <Link
-                    href="/activity"
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    View all
-                  </Link>
+            {/* Recent Timeline */}
+            <section>
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Zap className="size-4 text-amber-500" />
+                  <h2 className="text-sm font-medium">Recent activity</h2>
                 </div>
-                {recentActivities.length === 0 ? (
-                  <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center">
-                    <p className="text-sm text-muted-foreground">
-                      No activity yet. Log interactions from customer pages.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="rounded-lg border">
-                    {recentActivities.slice(0, 5).map((a) => (
-                      <ActivityRow key={a.id} activity={a} />
-                    ))}
-                  </div>
-                )}
-              </section>
-            </div>
-          )}
+                <Link
+                  href="/activity"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  View all
+                </Link>
+              </div>
+              {events.length === 0 ? (
+                <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No activity yet. Events appear as you work with customers.
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-lg border p-2">
+                  <Timeline events={events.slice(0, 5)} showCustomer />
+                </div>
+              )}
+            </section>
+          </div>
 
           {/* Overdue */}
           {overdueReminders.length > 0 && (

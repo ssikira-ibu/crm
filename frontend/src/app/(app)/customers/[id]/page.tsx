@@ -14,6 +14,7 @@ import { NotesTab } from "@/components/customers/detail/notes-tab";
 import { RemindersTab } from "@/components/customers/detail/reminders-tab";
 import { DealsTab } from "@/components/customers/detail/deals-tab";
 import { ActivitiesTab } from "@/components/customers/detail/activities-tab";
+import { TimelineTab } from "@/components/customers/detail/timeline-tab";
 import { getCustomer } from "@/app/actions/customers";
 import { describeError } from "@/lib/errors";
 import type { Customer, CustomerWithRelations } from "@/lib/types";
@@ -90,9 +91,10 @@ export default function CustomerDetailPage() {
     <div className="flex flex-1 flex-col">
       <CustomerHeader customer={data} onUpdated={handleHeaderUpdated} onChanged={refresh} />
 
-      <Tabs defaultValue="contacts" className="flex-1">
+      <Tabs defaultValue="timeline" className="flex-1">
         <div className="border-b px-6">
           <TabsList variant="line" className="-mb-px">
+            <TabsTrigger value="timeline">Timeline</TabsTrigger>
             <TabsTrigger value="contacts">
               Contacts <TabCount count={data.contacts.length} />
             </TabsTrigger>
@@ -100,7 +102,7 @@ export default function CustomerDetailPage() {
               Deals <TabCount count={data.deals.length} />
             </TabsTrigger>
             <TabsTrigger value="activities">
-              Activities <TabCount count={data.activities.length} />
+              Interactions <TabCount count={data.activities.length} />
             </TabsTrigger>
             <TabsTrigger value="notes">
               Notes <TabCount count={data.notes.length} />
@@ -114,6 +116,9 @@ export default function CustomerDetailPage() {
           </TabsList>
         </div>
         <div className="flex-1 overflow-auto px-6 py-4">
+          <TabsContent value="timeline">
+            <TimelineTab customerId={data.id} reloadKey={reloadKey} />
+          </TabsContent>
           <TabsContent value="contacts">
             <ContactsTab
               customerId={data.id}

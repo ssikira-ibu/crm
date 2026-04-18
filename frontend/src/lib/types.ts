@@ -25,6 +25,8 @@ export type {
   CustomerWithRelations,
   ReminderWithCustomer,
   NoteWithCustomer,
+  Event,
+  EventWithCustomer,
   DealWithCustomer,
   ActivityWithCustomer,
   DashboardData,

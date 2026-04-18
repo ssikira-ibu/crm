@@ -1,6 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { recordEvent } from "./event.service.js";
 import type { CustomerQueryParams, CreateCustomerInput, UpdateCustomerInput } from "@crm/shared";
 
 export async function listCustomers(userId: string, params: CustomerQueryParams) {
@@ -78,11 +79,22 @@ export async function updateCustomer(
   customerId: string,
   data: UpdateCustomerInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
-  return prisma.customer.update({
+  const old = await prisma.customer.findFirst({ where: { id: customerId, userId } });
+  if (!old) {
+    throw new AppError(404, "CUSTOMER_NOT_FOUND", "Customer not found");
+  }
+  const customer = await prisma.customer.update({
     where: { id: customerId },
     data,
   });
+  if (data.status && data.status !== old.status) {
+    await recordEvent({
+      userId, customerId, entityType: "CUSTOMER", entityId: customerId,
+      action: "STATUS_CHANGED",
+      metadata: { old: old.status, new: customer.status, companyName: customer.companyName },
+    });
+  }
+  return customer;
 }
 
 export async function deleteCustomer(userId: string, customerId: string) {

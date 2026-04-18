@@ -38,6 +38,7 @@ import type {
   Tag,
   TagCreate,
   TagUpdate,
+  EventWithCustomer,
 } from "./types";
 
 const API_URL =
@@ -253,6 +254,13 @@ const tags = {
     serverRequest<void>(`/customers/${customerId}/tags/${tagId}`, { method: "DELETE" }),
 };
 
+const events = {
+  global: (params?: { limit?: number; cursor?: string }) =>
+    serverRequest<Single<EventWithCustomer[]>>("/events", { query: params }),
+  forCustomer: (customerId: string, params?: { limit?: number; cursor?: string }) =>
+    serverRequest<Single<EventWithCustomer[]>>(`/customers/${customerId}/events`, { query: params }),
+};
+
 export const serverApi = {
   dashboard,
   customers,
@@ -264,4 +272,5 @@ export const serverApi = {
   deals,
   activities,
   tags,
+  events,
 };

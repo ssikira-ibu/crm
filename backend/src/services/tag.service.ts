@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import { recordEvent } from "./event.service.js";
 import type { CreateTagInput, UpdateTagInput } from "@crm/shared";
 
 export async function listTags(userId: string) {
@@ -57,6 +58,11 @@ export async function addTagToCustomer(
     create: { customerId, tagId },
     update: {},
   });
+  await recordEvent({
+    userId, customerId, entityType: "TAG", entityId: tagId,
+    action: "TAGGED",
+    metadata: { name: tag.name, color: tag.color },
+  });
 }
 
 export async function removeTagFromCustomer(
@@ -65,7 +71,15 @@ export async function removeTagFromCustomer(
   tagId: string,
 ) {
   await ensureCustomerOwnership(userId, customerId);
+  const tag = await prisma.tag.findFirst({ where: { id: tagId, userId } });
   await prisma.customerTag.deleteMany({
     where: { customerId, tagId },
   });
+  if (tag) {
+    await recordEvent({
+      userId, customerId, entityType: "TAG", entityId: tagId,
+      action: "UNTAGGED",
+      metadata: { name: tag.name },
+    });
+  }
 }

@@ -2,6 +2,7 @@ import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import { recordEvent } from "./event.service.js";
 import type { ReminderQueryParams, CreateReminderInput, UpdateReminderInput } from "@crm/shared";
 
 export async function listReminders(
@@ -57,9 +58,15 @@ export async function createReminder(
   data: CreateReminderInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
-  return prisma.reminder.create({
+  const reminder = await prisma.reminder.create({
     data: { ...data, customerId },
   });
+  await recordEvent({
+    userId, customerId, entityType: "REMINDER", entityId: reminder.id,
+    action: "CREATED",
+    metadata: { title: reminder.title },
+  });
+  return reminder;
 }
 
 export async function updateReminder(
@@ -75,7 +82,15 @@ export async function updateReminder(
   if (!reminder) {
     throw new AppError(404, "REMINDER_NOT_FOUND", "Reminder not found");
   }
-  return prisma.reminder.update({ where: { id: reminderId }, data });
+  const updated = await prisma.reminder.update({ where: { id: reminderId }, data });
+  if (data.dateCompleted && !reminder.dateCompleted) {
+    await recordEvent({
+      userId, customerId, entityType: "REMINDER", entityId: reminderId,
+      action: "COMPLETED",
+      metadata: { title: reminder.title },
+    });
+  }
+  return updated;
 }
 
 export async function deleteReminder(

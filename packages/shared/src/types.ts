@@ -113,6 +113,21 @@ export type Tag = {
   updatedAt: string;
 };
 
+export type Event = {
+  id: string;
+  userId: string;
+  customerId: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};
+
+export type EventWithCustomer = Event & {
+  customer: { id: string; companyName: string | null; status: CustomerStatus };
+};
+
 export type CustomerWithCounts = Customer & {
   _count: {
     contacts: number;

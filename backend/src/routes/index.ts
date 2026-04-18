@@ -10,6 +10,7 @@ import reminderRoutes from "./reminders.js";
 import dealRoutes from "./deals.js";
 import activityRoutes from "./activities.js";
 import tagRoutes from "./tags.js";
+import eventRoutes from "./events.js";
 
 const apiRouter = new Router({ prefix: "/api" });
 
@@ -52,6 +53,10 @@ apiRouter.use(
 apiRouter.use(
   tagRoutes.routes(),
   tagRoutes.allowedMethods(),
+);
+apiRouter.use(
+  eventRoutes.routes(),
+  eventRoutes.allowedMethods(),
 );
 
 export { healthRouter, apiRouter };

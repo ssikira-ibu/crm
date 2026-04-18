@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import { recordEvent } from "./event.service.js";
 import type { CreateNoteInput, UpdateNoteInput } from "@crm/shared";
 
 export async function listNotes(userId: string, customerId: string) {
@@ -32,9 +33,15 @@ export async function createNote(
   data: CreateNoteInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
-  return prisma.note.create({
+  const note = await prisma.note.create({
     data: { ...data, customerId },
   });
+  await recordEvent({
+    userId, customerId, entityType: "NOTE", entityId: note.id,
+    action: "CREATED",
+    metadata: { title: note.title },
+  });
+  return note;
 }
 
 export async function updateNote(

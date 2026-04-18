@@ -2,6 +2,7 @@ import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import { recordEvent } from "./event.service.js";
 import type { DealQueryParams, CreateDealInput, UpdateDealInput } from "@crm/shared";
 
 export async function listDeals(
@@ -54,9 +55,15 @@ export async function createDeal(
   data: CreateDealInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
-  return prisma.deal.create({
+  const deal = await prisma.deal.create({
     data: { ...data, customerId },
   });
+  await recordEvent({
+    userId, customerId, entityType: "DEAL", entityId: deal.id,
+    action: "CREATED",
+    metadata: { title: deal.title, value: Number(deal.value), status: deal.status },
+  });
+  return deal;
 }
 
 export async function updateDeal(
@@ -66,13 +73,21 @@ export async function updateDeal(
   data: UpdateDealInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
-  const deal = await prisma.deal.findFirst({
+  const old = await prisma.deal.findFirst({
     where: { id: dealId, customerId },
   });
-  if (!deal) {
+  if (!old) {
     throw new AppError(404, "DEAL_NOT_FOUND", "Deal not found");
   }
-  return prisma.deal.update({ where: { id: dealId }, data });
+  const deal = await prisma.deal.update({ where: { id: dealId }, data });
+  if (data.status && data.status !== old.status) {
+    await recordEvent({
+      userId, customerId, entityType: "DEAL", entityId: dealId,
+      action: "STATUS_CHANGED",
+      metadata: { title: deal.title, value: Number(deal.value), old: old.status, new: deal.status },
+    });
+  }
+  return deal;
 }
 
 export async function deleteDeal(
@@ -88,4 +103,9 @@ export async function deleteDeal(
     throw new AppError(404, "DEAL_NOT_FOUND", "Deal not found");
   }
   await prisma.deal.delete({ where: { id: dealId } });
+  await recordEvent({
+    userId, customerId, entityType: "DEAL", entityId: dealId,
+    action: "DELETED",
+    metadata: { title: deal.title, value: Number(deal.value) },
+  });
 }

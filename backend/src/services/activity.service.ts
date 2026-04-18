@@ -2,6 +2,7 @@ import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { ensureCustomerOwnership } from "./customer.service.js";
+import { recordEvent } from "./event.service.js";
 import type { ActivityQueryParams, CreateActivityInput, UpdateActivityInput } from "@crm/shared";
 
 export async function listActivities(
@@ -54,9 +55,15 @@ export async function createActivity(
   data: CreateActivityInput,
 ) {
   await ensureCustomerOwnership(userId, customerId);
-  return prisma.activity.create({
+  const activity = await prisma.activity.create({
     data: { ...data, customerId },
   });
+  await recordEvent({
+    userId, customerId, entityType: "ACTIVITY", entityId: activity.id,
+    action: "CREATED",
+    metadata: { title: activity.title, type: activity.type },
+  });
+  return activity;
 }
 
 export async function updateActivity(
