@@ -5,23 +5,17 @@ import Link from "next/link";
 import {
   AlertTriangle,
   ArrowRight,
-  Bell,
   Calendar,
   CheckCircle2,
   Clock,
   DollarSign,
-  FileText,
   Loader2,
-  Mail,
-  MoreHorizontal,
-  Phone,
   TrendingUp,
   Users,
   Zap,
 } from "lucide-react";
-import { format, formatDistanceToNow, isPast, isToday } from "date-fns";
+import { format, formatDistanceToNow, isPast, isToday, addDays } from "date-fns";
 import { toast } from "sonner";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getDashboard } from "@/app/actions/dashboard";
@@ -30,12 +24,9 @@ import { cn } from "@/lib/utils";
 import { Timeline } from "@/components/timeline";
 import { getGlobalEvents } from "@/app/actions/events";
 import type {
-  ActivityType,
-  ActivityWithCustomer,
   DashboardData,
   DealWithCustomer,
   EventWithCustomer,
-  NoteWithCustomer,
   ReminderWithCustomer,
 } from "@/lib/types";
 
@@ -69,86 +60,6 @@ function useDashboard() {
   return { data, events, loading, refresh: () => setReloadKey((k) => k + 1) };
 }
 
-function StatCard({
-  label,
-  value,
-  icon: Icon,
-  href,
-}: {
-  label: string;
-  value: number;
-  icon: React.ComponentType<{ className?: string }>;
-  href?: string;
-}) {
-  const content = (
-    <div className="group flex items-center gap-3 rounded-lg border bg-card p-4 transition-colors hover:bg-accent/50">
-      <div className="flex size-9 items-center justify-center rounded-md bg-muted">
-        <Icon className="size-4 text-muted-foreground" />
-      </div>
-      <div>
-        <p className="text-2xl font-semibold tabular-nums">{value}</p>
-        <p className="text-xs text-muted-foreground">{label}</p>
-      </div>
-    </div>
-  );
-  return href ? <Link href={href}>{content}</Link> : content;
-}
-
-function ReminderRow({
-  reminder,
-  onToggle,
-}: {
-  reminder: ReminderWithCustomer;
-  onToggle: (r: ReminderWithCustomer) => void;
-}) {
-  const due = new Date(reminder.dueDate);
-  const overdue = isPast(due) && !reminder.dateCompleted;
-  const today = isToday(due);
-
-  return (
-    <div className="group flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50">
-      <Checkbox
-        className="mt-0.5"
-        checked={!!reminder.dateCompleted}
-        onCheckedChange={() => onToggle(reminder)}
-      />
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          {overdue && <AlertTriangle className="size-3.5 text-destructive shrink-0" />}
-          {!overdue && today && <Clock className="size-3.5 text-amber-500 shrink-0" />}
-          <span className="truncate text-sm font-medium">{reminder.title}</span>
-        </div>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-          <Link
-            href={`/customers/${reminder.customer.id}`}
-            className="hover:text-foreground transition-colors"
-          >
-            {reminder.customer.companyName || "Untitled"}
-          </Link>
-          <span className="text-border">|</span>
-          <span className={cn(overdue && "text-destructive")}>
-            {format(due, "MMM d")} · {formatDistanceToNow(due, { addSuffix: true })}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-const ACTIVITY_TYPE_ICON: Record<ActivityType, React.ComponentType<{ className?: string }>> = {
-  CALL: Phone,
-  EMAIL: Mail,
-  MEETING: Calendar,
-  OTHER: MoreHorizontal,
-};
-
-const ACTIVITY_TYPE_STYLE: Record<ActivityType, string> = {
-  CALL: "bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-400",
-  EMAIL: "bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-400",
-  MEETING: "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
-  OTHER: "bg-muted text-muted-foreground",
-};
-
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -158,74 +69,81 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function ActivityRow({ activity }: { activity: ActivityWithCustomer }) {
-  const Icon = ACTIVITY_TYPE_ICON[activity.type];
-  return (
-    <Link
-      href={`/customers/${activity.customerId}`}
-      className="group flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50"
-    >
-      <div
-        className={cn(
-          "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full",
-          ACTIVITY_TYPE_STYLE[activity.type],
-        )}
-      >
-        <Icon className="size-3" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{activity.title}</p>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{activity.customer.companyName ?? "Untitled"}</span>
-          <span className="text-border">|</span>
-          <span>
-            {formatDistanceToNow(new Date(activity.date), { addSuffix: true })}
-          </span>
-        </div>
-      </div>
-    </Link>
-  );
+type AttentionItem = {
+  id: string;
+  type: "overdue-reminder" | "upcoming-reminder" | "closing-deal";
+  title: string;
+  customerId: string;
+  customerName: string;
+  detail: string;
+  urgency: number;
+  reminder?: ReminderWithCustomer;
+};
+
+function buildAttentionItems(data: DashboardData): AttentionItem[] {
+  const items: AttentionItem[] = [];
+  const now = new Date();
+  const weekFromNow = addDays(now, 7);
+
+  for (const r of data.reminders) {
+    if (r.dateCompleted) continue;
+    const due = new Date(r.dueDate);
+    if (isPast(due)) {
+      items.push({
+        id: `reminder-${r.id}`,
+        type: "overdue-reminder",
+        title: r.title,
+        customerId: r.customer.id,
+        customerName: r.customer.companyName || "Untitled",
+        detail: `Overdue ${formatDistanceToNow(due, { addSuffix: false })}`,
+        urgency: now.getTime() - due.getTime(),
+        reminder: r,
+      });
+    } else if (isToday(due)) {
+      items.push({
+        id: `reminder-${r.id}`,
+        type: "upcoming-reminder",
+        title: r.title,
+        customerId: r.customer.id,
+        customerName: r.customer.companyName || "Untitled",
+        detail: "Due today",
+        urgency: 0,
+        reminder: r,
+      });
+    }
+  }
+
+  for (const d of data.deals ?? []) {
+    if (d.status !== "OPEN" || !d.expectedCloseDate) continue;
+    const closeDate = new Date(d.expectedCloseDate);
+    if (closeDate <= weekFromNow && !isPast(closeDate)) {
+      items.push({
+        id: `deal-${d.id}`,
+        type: "closing-deal",
+        title: d.title,
+        customerId: d.customerId,
+        customerName: d.customer.companyName || "Untitled",
+        detail: `Closes ${format(closeDate, "MMM d")}  ·  ${formatCurrency(d.value)}`,
+        urgency: -(closeDate.getTime() - now.getTime()),
+      });
+    }
+  }
+
+  items.sort((a, b) => b.urgency - a.urgency);
+  return items;
 }
 
-function DealRow({ deal }: { deal: DealWithCustomer }) {
-  return (
-    <Link
-      href={`/customers/${deal.customerId}`}
-      className="group flex items-center gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50"
-    >
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{deal.title}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          {deal.customer.companyName ?? "Untitled"}
-        </p>
-      </div>
-      <span className="shrink-0 text-sm font-medium tabular-nums text-blue-600 dark:text-blue-400">
-        {formatCurrency(deal.value)}
-      </span>
-    </Link>
-  );
-}
+const ATTENTION_ICON = {
+  "overdue-reminder": AlertTriangle,
+  "upcoming-reminder": Clock,
+  "closing-deal": DollarSign,
+};
 
-function NoteRow({ note }: { note: NoteWithCustomer }) {
-  return (
-    <Link
-      href={`/customers/${note.customer.id}`}
-      className="group flex items-start gap-3 rounded-md px-3 py-2.5 transition-colors hover:bg-muted/50"
-    >
-      <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
-        <FileText className="size-3.5 text-muted-foreground" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{note.title}</p>
-        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-          <span>{note.customer.companyName || "Untitled"}</span>
-          <span className="text-border">|</span>
-          <span>{formatDistanceToNow(new Date(note.updatedAt), { addSuffix: true })}</span>
-        </div>
-      </div>
-    </Link>
-  );
-}
+const ATTENTION_STYLE = {
+  "overdue-reminder": "bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400",
+  "upcoming-reminder": "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
+  "closing-deal": "bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
+};
 
 export default function HomePage() {
   const { data, events, loading, refresh } = useDashboard();
@@ -249,54 +167,106 @@ export default function HomePage() {
     );
   }
 
-  const overdueReminders = data?.reminders.filter(
-    (r) => isPast(new Date(r.dueDate)) && !r.dateCompleted,
-  ) ?? [];
-  const upcomingReminders = data?.reminders.filter(
-    (r) => !isPast(new Date(r.dueDate)) && !r.dateCompleted,
-  ) ?? [];
   const totalCustomers = data?.stats.total ?? 0;
   const activeCount = data?.stats.byStatus?.ACTIVE ?? 0;
   const leadCount = data?.stats.byStatus?.LEAD ?? 0;
-  const prospectCount = data?.stats.byStatus?.PROSPECT ?? 0;
   const openDealsValue = data?.stats.openDealsValue ?? 0;
   const openDealsCount = data?.stats.openDealsCount ?? 0;
   const openDeals = data?.deals?.filter((d) => d.status === "OPEN") ?? [];
+  const attentionItems = data ? buildAttentionItems(data) : [];
 
   return (
     <div className="flex flex-1 flex-col">
-      <div className="border-b px-6 py-5">
+      {/* Compact stats bar */}
+      <div className="border-b px-6 py-4">
         <h1 className="text-lg font-semibold tracking-tight">Home</h1>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Your workspace overview
-        </p>
+        <div className="mt-2 flex flex-wrap items-center gap-x-6 gap-y-1 text-sm">
+          <Link href="/customers" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+            <Users className="size-3.5" />
+            <span className="font-medium tabular-nums text-foreground">{totalCustomers}</span>
+            customers
+          </Link>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <CheckCircle2 className="size-3.5 text-emerald-500" />
+            <span className="font-medium tabular-nums text-foreground">{activeCount}</span>
+            active
+          </span>
+          <span className="flex items-center gap-1.5 text-muted-foreground">
+            <Clock className="size-3.5 text-blue-500" />
+            <span className="font-medium tabular-nums text-foreground">{leadCount}</span>
+            leads
+          </span>
+          <Link href="/deals" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors">
+            <TrendingUp className="size-3.5 text-violet-500" />
+            <span className="font-medium tabular-nums text-foreground">{openDealsCount}</span>
+            pipeline
+            {openDealsValue > 0 && (
+              <span className="text-xs text-muted-foreground">({formatCurrency(openDealsValue)})</span>
+            )}
+          </Link>
+        </div>
       </div>
 
       <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-4xl space-y-6 px-6 py-6">
-          {/* Stats */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <StatCard
-              label="Total customers"
-              value={totalCustomers}
-              icon={Users}
-              href="/customers"
-            />
-            <StatCard label="Active" value={activeCount} icon={CheckCircle2} />
-            <StatCard label="Leads" value={leadCount} icon={Clock} />
-            <StatCard
-              label="Pipeline"
-              value={openDealsCount}
-              icon={TrendingUp}
-              href="/deals"
-            />
-          </div>
-
-          {/* Pipeline + Timeline side by side */}
-          <div className="grid gap-6 md:grid-cols-2">
-            {/* Pipeline Snapshot */}
+        <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
+          {/* Needs attention */}
+          {attentionItems.length > 0 && (
             <section>
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-3 flex items-center gap-2">
+                <AlertTriangle className="size-4 text-amber-500" />
+                <h2 className="text-sm font-medium">Needs attention</h2>
+                <span className="text-xs text-muted-foreground">({attentionItems.length})</span>
+              </div>
+              <div className="rounded-lg border divide-y">
+                {attentionItems.map((item) => {
+                  const Icon = ATTENTION_ICON[item.type];
+                  return (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/50"
+                    >
+                      {item.reminder && (
+                        <Checkbox
+                          className="shrink-0"
+                          checked={false}
+                          onCheckedChange={() => handleToggle(item.reminder!)}
+                        />
+                      )}
+                      <div
+                        className={cn(
+                          "flex size-6 shrink-0 items-center justify-center rounded-full",
+                          ATTENTION_STYLE[item.type],
+                        )}
+                      >
+                        <Icon className="size-3" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{item.title}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Link
+                            href={`/customers/${item.customerId}`}
+                            className="hover:text-foreground transition-colors"
+                          >
+                            {item.customerName}
+                          </Link>
+                          <span className="text-border">|</span>
+                          <span className={cn(item.type === "overdue-reminder" && "text-destructive")}>
+                            {item.detail}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* Two column: Pipeline + Activity */}
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Pipeline */}
+            <section>
+              <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <DollarSign className="size-4 text-blue-500" />
                   <h2 className="text-sm font-medium">Open pipeline</h2>
@@ -317,14 +287,28 @@ export default function HomePage() {
                   </p>
                 </div>
               ) : (
-                <div className="rounded-lg border">
+                <div className="rounded-lg border divide-y">
                   {openDeals.slice(0, 5).map((d) => (
-                    <DealRow key={d.id} deal={d} />
+                    <Link
+                      key={d.id}
+                      href={`/customers/${d.customerId}`}
+                      className="group flex items-center gap-3 px-3 py-2.5 transition-colors hover:bg-muted/50"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">{d.title}</p>
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          {d.customer.companyName ?? "Untitled"}
+                        </p>
+                      </div>
+                      <span className="shrink-0 text-sm font-medium tabular-nums text-blue-600 dark:text-blue-400">
+                        {formatCurrency(d.value)}
+                      </span>
+                    </Link>
                   ))}
                   {openDeals.length > 5 && (
                     <Link
                       href="/deals"
-                      className="flex items-center justify-center border-t px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      className="flex items-center justify-center px-3 py-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       View all {openDeals.length} deals
                       <ArrowRight className="ml-1 size-3" />
@@ -334,9 +318,9 @@ export default function HomePage() {
               )}
             </section>
 
-            {/* Recent Timeline */}
+            {/* Recent activity */}
             <section>
-              <div className="mb-2 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Zap className="size-4 text-amber-500" />
                   <h2 className="text-sm font-medium">Recent activity</h2>
@@ -356,84 +340,11 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="rounded-lg border p-2">
-                  <Timeline events={events.slice(0, 5)} showCustomer />
+                  <Timeline events={events.slice(0, 8)} showCustomer />
                 </div>
               )}
             </section>
           </div>
-
-          {/* Overdue */}
-          {overdueReminders.length > 0 && (
-            <section>
-              <div className="mb-2 flex items-center gap-2">
-                <AlertTriangle className="size-4 text-destructive" />
-                <h2 className="text-sm font-medium">
-                  Overdue ({overdueReminders.length})
-                </h2>
-              </div>
-              <div className="rounded-lg border border-destructive/20 bg-destructive/5 dark:bg-destructive/10">
-                {overdueReminders.map((r) => (
-                  <ReminderRow key={r.id} reminder={r} onToggle={handleToggle} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* Upcoming */}
-          <section>
-            <div className="mb-2 flex items-center gap-2">
-              <Bell className="size-4 text-muted-foreground" />
-              <h2 className="text-sm font-medium">
-                Upcoming reminders
-                {upcomingReminders.length > 0 && (
-                  <Badge variant="secondary" className="ml-2">
-                    {upcomingReminders.length}
-                  </Badge>
-                )}
-              </h2>
-            </div>
-            {upcomingReminders.length === 0 ? (
-              <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No upcoming reminders. You're all caught up.
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-lg border">
-                {upcomingReminders.slice(0, 10).map((r) => (
-                  <ReminderRow key={r.id} reminder={r} onToggle={handleToggle} />
-                ))}
-                {upcomingReminders.length > 10 && (
-                  <div className="border-t px-3 py-2 text-center">
-                    <span className="text-xs text-muted-foreground">
-                      +{upcomingReminders.length - 10} more
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-          </section>
-
-          {/* Recent activity */}
-          <section>
-            <div className="mb-2 flex items-center gap-2">
-              <FileText className="size-4 text-muted-foreground" />
-              <h2 className="text-sm font-medium">Recent notes</h2>
-            </div>
-            {(!data?.recentNotes || data.recentNotes.length === 0) ? (
-              <div className="rounded-lg border border-dashed bg-muted/30 px-4 py-8 text-center">
-                <p className="text-sm text-muted-foreground">
-                  No notes yet. Add notes to customers to see activity here.
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-lg border">
-                {data.recentNotes.map((n) => (
-                  <NoteRow key={n.id} note={n} />
-                ))}
-              </div>
-            )}
-          </section>
         </div>
       </div>
     </div>
