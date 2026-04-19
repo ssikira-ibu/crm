@@ -7,26 +7,92 @@ datasource db {
   provider = "postgresql"
 }
 
-model Customer {
-  id          String         @id @default(uuid()) @db.Uuid
-  userId      String         @map("user_id")
-  companyName String?        @map("company_name")
-  industry    String?
-  website     String?
-  status      CustomerStatus @default(ACTIVE)
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
+enum OrgRole {
+  ADMIN
+  MANAGER
+  SALESPERSON
+}
 
-  contacts   Contact[]
-  addresses  Address[]
-  deals      Deal[]
-  activities Activity[]
-  notes      Note[]
-  reminders  Reminder[]
-  tags       CustomerTag[]
-  events     Event[]
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  REVOKED
+}
 
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  members   OrganizationMember[]
+  invites   Invite[]
+  customers Customer[]
+  tags      Tag[]
+  events    Event[]
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id")
+  email          String
+  displayName    String?  @map("display_name")
+  role           OrgRole  @default(SALESPERSON)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
   @@index([userId])
+  @@map("organization_members")
+}
+
+model Invite {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  email          String
+  role           OrgRole
+  status         InviteStatus @default(PENDING)
+  invitedBy      String       @map("invited_by")
+  token          String       @unique @default(uuid())
+  expiresAt      DateTime     @map("expires_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([email, status])
+  @@index([token])
+  @@map("invites")
+}
+
+model Customer {
+  id             String         @id @default(uuid()) @db.Uuid
+  organizationId String         @map("organization_id") @db.Uuid
+  ownerId        String         @map("owner_id")
+  companyName    String?        @map("company_name")
+  industry       String?
+  website        String?
+  status         CustomerStatus @default(ACTIVE)
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  contacts     Contact[]
+  addresses    Address[]
+  deals        Deal[]
+  activities   Activity[]
+  notes        Note[]
+  reminders    Reminder[]
+  tags         CustomerTag[]
+  events       Event[]
+
+  @@index([organizationId])
+  @@index([ownerId])
   @@map("customers")
 }
 
@@ -212,33 +278,36 @@ model Reminder {
 }
 
 model Tag {
-  id        String   @id @default(uuid()) @db.Uuid
-  userId    String   @map("user_id")
-  name      String
-  color     String?
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  name           String
+  color          String?
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
-  customers CustomerTag[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customers    CustomerTag[]
 
-  @@unique([userId, name])
-  @@index([userId])
+  @@unique([organizationId, name])
+  @@index([organizationId])
   @@map("tags")
 }
 
 model Event {
-  id         String   @id @default(uuid()) @db.Uuid
-  userId     String   @map("user_id")
-  customerId String   @map("customer_id") @db.Uuid
-  entityType String   @map("entity_type")
-  entityId   String   @map("entity_id") @db.Uuid
-  action     String
-  metadata   Json?    @db.JsonB
-  createdAt  DateTime @default(now()) @map("created_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  actorId        String   @map("actor_id")
+  customerId     String   @map("customer_id") @db.Uuid
+  entityType     String   @map("entity_type")
+  entityId       String   @map("entity_id") @db.Uuid
+  action         String
+  metadata       Json?    @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
 
-  @@index([userId, createdAt(sort: Desc)])
+  @@index([organizationId, createdAt(sort: Desc)])
   @@index([customerId, createdAt(sort: Desc)])
   @@map("events")
 }
