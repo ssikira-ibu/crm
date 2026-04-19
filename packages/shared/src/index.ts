@@ -11,3 +11,4 @@ export * from "./schemas/reminder.js";
 export * from "./schemas/deal.js";
 export * from "./schemas/activity.js";
 export * from "./schemas/tag.js";
+export * from "./schemas/search.js";

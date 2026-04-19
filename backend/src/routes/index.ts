@@ -11,6 +11,7 @@ import dealRoutes from "./deals.js";
 import activityRoutes from "./activities.js";
 import tagRoutes from "./tags.js";
 import eventRoutes from "./events.js";
+import searchRoutes from "./search.js";
 
 const apiRouter = new Router({ prefix: "/api" });
 
@@ -57,6 +58,10 @@ apiRouter.use(
 apiRouter.use(
   eventRoutes.routes(),
   eventRoutes.allowedMethods(),
+);
+apiRouter.use(
+  searchRoutes.routes(),
+  searchRoutes.allowedMethods(),
 );
 
 export { healthRouter, apiRouter };

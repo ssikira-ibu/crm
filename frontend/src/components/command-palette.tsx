@@ -3,9 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  BookOpen,
+  CalendarCheck,
+  Clock,
   Home,
   Plus,
   Search,
+  StickyNote,
   TrendingUp,
   Users,
   Zap,
@@ -23,8 +27,39 @@ import {
 } from "@/components/ui/command";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useRecentCustomers } from "@/hooks/use-recent-customers";
-import { listCustomers } from "@/app/actions/customers";
-import type { CustomerWithCounts } from "@/lib/types";
+import { searchAll } from "@/app/actions/search";
+import type { SearchResultItem } from "@/lib/types";
+
+const ICON_MAP = {
+  customer: Users,
+  contact: Users,
+  deal: TrendingUp,
+  note: StickyNote,
+  activity: BookOpen,
+  reminder: CalendarCheck,
+} as const;
+
+const LABEL_MAP = {
+  customer: "Customer",
+  contact: "Contact",
+  deal: "Deal",
+  note: "Note",
+  activity: "Activity",
+  reminder: "Reminder",
+} as const;
+
+function resultUrl(item: SearchResultItem): string {
+  switch (item.type) {
+    case "customer":
+      return `/customers/${item.id}`;
+    case "contact":
+    case "deal":
+    case "note":
+    case "activity":
+    case "reminder":
+      return `/customers/${item.customerId}`;
+  }
+}
 
 type Props = {
   onCreateCustomer?: () => void;
@@ -35,7 +70,7 @@ export function CommandPalette({ onCreateCustomer }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const debouncedQuery = useDebouncedValue(query, 200);
-  const [results, setResults] = useState<CustomerWithCounts[]>([]);
+  const [results, setResults] = useState<SearchResultItem[]>([]);
   const [searching, setSearching] = useState(false);
   const { recentCustomers } = useRecentCustomers();
 
@@ -57,9 +92,9 @@ export function CommandPalette({ onCreateCustomer }: Props) {
     }
     let cancelled = false;
     setSearching(true);
-    listCustomers({ search: debouncedQuery.trim(), limit: 5 })
+    searchAll(debouncedQuery.trim(), 10)
       .then((res) => {
-        if (!cancelled) setResults(res.data);
+        if (!cancelled) setResults(res.data.results);
       })
       .catch(() => {
         if (!cancelled) setResults([]);
@@ -67,19 +102,26 @@ export function CommandPalette({ onCreateCustomer }: Props) {
       .finally(() => {
         if (!cancelled) setSearching(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [debouncedQuery]);
 
-  const runCommand = useCallback(
-    (fn: () => void) => {
-      setOpen(false);
-      setQuery("");
-      fn();
-    },
-    [],
-  );
+  const runCommand = useCallback((fn: () => void) => {
+    setOpen(false);
+    setQuery("");
+    fn();
+  }, []);
 
   const hasQuery = query.trim().length > 0;
+
+  const grouped = new Map<string, SearchResultItem[]>();
+  for (const item of results) {
+    const key = item.type;
+    const list = grouped.get(key);
+    if (list) list.push(item);
+    else grouped.set(key, [item]);
+  }
 
   return (
     <CommandDialog
@@ -89,11 +131,11 @@ export function CommandPalette({ onCreateCustomer }: Props) {
         if (!next) setQuery("");
       }}
       title="Command palette"
-      description="Search customers, navigate, or run actions."
+      description="Search across customers, contacts, deals, notes, and more."
     >
       <Command shouldFilter={!hasQuery}>
         <CommandInput
-          placeholder="Search customers, pages, actions..."
+          placeholder="Search everything..."
           value={query}
           onValueChange={setQuery}
         />
@@ -102,27 +144,39 @@ export function CommandPalette({ onCreateCustomer }: Props) {
             {searching ? "Searching..." : "No results found."}
           </CommandEmpty>
 
-          {hasQuery && results.length > 0 && (
-            <CommandGroup heading="Customers">
-              {results.map((c) => (
-                <CommandItem
-                  key={c.id}
-                  value={`customer-${c.id}`}
-                  onSelect={() =>
-                    runCommand(() => router.push(`/customers/${c.id}`))
-                  }
-                >
-                  <Users className="size-4 text-muted-foreground" />
-                  <span>{c.companyName || "Untitled"}</span>
-                  {c.industry && (
-                    <span className="text-xs text-muted-foreground">
-                      {c.industry}
-                    </span>
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          )}
+          {hasQuery &&
+            Array.from(grouped.entries()).map(([type, items]) => {
+              const label = LABEL_MAP[type as keyof typeof LABEL_MAP] ?? type;
+              return (
+                <CommandGroup key={type} heading={`${label}s`}>
+                  {items.map((item) => {
+                    const Icon = ICON_MAP[item.type] ?? Search;
+                    return (
+                      <CommandItem
+                        key={`${item.type}-${item.id}`}
+                        value={`${item.type}-${item.id}`}
+                        onSelect={() =>
+                          runCommand(() => router.push(resultUrl(item)))
+                        }
+                      >
+                        <Icon className="size-4 text-muted-foreground" />
+                        <span>{item.title}</span>
+                        {item.subtitle && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            {item.subtitle}
+                          </span>
+                        )}
+                        {item.type !== "customer" && item.customerName && (
+                          <span className="ml-auto text-xs text-muted-foreground">
+                            {item.customerName}
+                          </span>
+                        )}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandGroup>
+              );
+            })}
 
           {!hasQuery && recentCustomers.length > 0 && (
             <CommandGroup heading="Recent">
@@ -134,7 +188,7 @@ export function CommandPalette({ onCreateCustomer }: Props) {
                     runCommand(() => router.push(`/customers/${c.id}`))
                   }
                 >
-                  <Users className="size-4 text-muted-foreground" />
+                  <Clock className="size-4 text-muted-foreground" />
                   <span>{c.companyName}</span>
                 </CommandItem>
               ))}

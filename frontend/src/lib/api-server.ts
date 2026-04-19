@@ -39,6 +39,7 @@ import type {
   TagCreate,
   TagUpdate,
   EventWithCustomer,
+  SearchResults,
 } from "./types";
 
 const API_URL =
@@ -261,6 +262,11 @@ const events = {
     serverRequest<Single<EventWithCustomer[]>>(`/customers/${customerId}/events`, { query: params }),
 };
 
+const search = {
+  query: (params: { q: string; limit?: number }) =>
+    serverRequest<Single<SearchResults>>("/search", { query: params }),
+};
+
 export const serverApi = {
   dashboard,
   customers,
@@ -273,4 +279,5 @@ export const serverApi = {
   activities,
   tags,
   events,
+  search,
 };

@@ -190,3 +190,18 @@ export type Paginated<T> = { data: T[]; meta: PageMeta };
 export type ApiErrorBody = {
   error: { code: string; message: string; details?: unknown };
 };
+
+export type SearchResultItem = {
+  id: string;
+  type: "customer" | "contact" | "deal" | "note" | "activity" | "reminder";
+  title: string;
+  subtitle: string | null;
+  customerId: string;
+  customerName: string | null;
+  similarity: number;
+};
+
+export type SearchResults = {
+  query: string;
+  results: SearchResultItem[];
+};
