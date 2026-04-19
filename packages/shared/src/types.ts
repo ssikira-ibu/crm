@@ -4,11 +4,56 @@ import type {
   PhoneLabel,
   ActivityType,
   DealStatus,
+  OrgRole,
+  InviteStatus,
 } from "./enums.js";
+
+export type Organization = {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type OrganizationMember = {
+  id: string;
+  organizationId: string;
+  userId: string;
+  email: string;
+  displayName: string | null;
+  role: OrgRole;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Invite = {
+  id: string;
+  organizationId: string;
+  email: string;
+  role: OrgRole;
+  status: InviteStatus;
+  invitedBy: string;
+  token: string;
+  expiresAt: string;
+  createdAt: string;
+};
+
+export type OrgContext = {
+  organizationId: string;
+  userId: string;
+  role: OrgRole;
+};
+
+export type MeResponse = {
+  uid: string;
+  email: string;
+  organization: (Organization & { role: OrgRole; memberCount: number }) | null;
+};
 
 export type Customer = {
   id: string;
-  userId: string;
+  organizationId: string;
+  ownerId: string;
   companyName: string | null;
   industry: string | null;
   website: string | null;
@@ -106,7 +151,7 @@ export type Activity = {
 
 export type Tag = {
   id: string;
-  userId: string;
+  organizationId: string;
   name: string;
   color: string | null;
   createdAt: string;
@@ -115,7 +160,8 @@ export type Tag = {
 
 export type Event = {
   id: string;
-  userId: string;
+  organizationId: string;
+  actorId: string;
   customerId: string;
   entityType: string;
   entityId: string;

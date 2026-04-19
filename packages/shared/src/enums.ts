@@ -34,3 +34,15 @@ export type AddressLabel = (typeof ADDRESS_LABELS)[number];
 export type PhoneLabel = (typeof PHONE_LABELS)[number];
 export type ActivityType = (typeof ACTIVITY_TYPES)[number];
 export type DealStatus = (typeof DEAL_STATUSES)[number];
+
+export const ORG_ROLES = ["ADMIN", "MANAGER", "SALESPERSON"] as const;
+
+export const INVITE_STATUSES = [
+  "PENDING",
+  "ACCEPTED",
+  "EXPIRED",
+  "REVOKED",
+] as const;
+
+export type OrgRole = (typeof ORG_ROLES)[number];
+export type InviteStatus = (typeof INVITE_STATUSES)[number];
