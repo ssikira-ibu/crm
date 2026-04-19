@@ -170,7 +170,7 @@ export function CommandPalette({ onCreateCustomer }: Props) {
                 </CommandItem>
                 <CommandItem
                   value="go-timeline"
-                  onSelect={() => runCommand(() => router.push("/activity"))}
+                  onSelect={() => runCommand(() => router.push("/timeline"))}
                 >
                   <Zap className="size-4 text-muted-foreground" />
                   <span>Timeline</span>

@@ -1,15 +1,18 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
+import { type ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Loader2, TrendingUp, Users, Zap } from "lucide-react";
+import { Building2, Home, Loader2, TrendingUp, Users, Zap } from "lucide-react";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { KeyboardShortcutHelp } from "./keyboard-shortcut-help";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -20,6 +23,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useRequireAuth } from "@/lib/auth";
+import { useRecentCustomers } from "@/hooks/use-recent-customers";
 import { CommandPalette } from "./command-palette";
 import { CreateCustomerDialog } from "./customers/create-customer-dialog";
 import { UserMenu } from "./user-menu";
@@ -28,7 +32,7 @@ const NAV = [
   { href: "/home", label: "Home", icon: Home },
   { href: "/customers", label: "Customers", icon: Users },
   { href: "/deals", label: "Deals", icon: TrendingUp },
-  { href: "/activity", label: "Timeline", icon: Zap },
+  { href: "/timeline", label: "Timeline", icon: Zap },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -36,6 +40,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [createCustomerOpen, setCreateCustomerOpen] = useState(false);
+  const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
+  const { recentCustomers } = useRecentCustomers();
+
+  const shortcuts = useMemo(
+    () => [
+      { key: "g h", handler: () => router.push("/home") },
+      { key: "g c", handler: () => router.push("/customers") },
+      { key: "g d", handler: () => router.push("/deals") },
+      { key: "g t", handler: () => router.push("/timeline") },
+      { key: "?", handler: () => setShortcutHelpOpen(true) },
+      {
+        key: "n",
+        handler: () => setCreateCustomerOpen(true),
+        when: pathname === "/customers",
+      },
+    ],
+    [router, pathname],
+  );
+
+  useKeyboardShortcuts(shortcuts);
 
   if (loading || !user) {
     return (
@@ -80,6 +104,28 @@ export function AppShell({ children }: { children: ReactNode }) {
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+          {recentCustomers.length > 0 && (
+            <SidebarGroup>
+              <SidebarGroupLabel>Recent</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {recentCustomers.map((c) => {
+                    const active = pathname === `/customers/${c.id}`;
+                    return (
+                      <SidebarMenuItem key={c.id}>
+                        <SidebarMenuButton asChild isActive={active} tooltip={c.companyName}>
+                          <Link href={`/customers/${c.id}`}>
+                            <Building2 />
+                            <span>{c.companyName}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )}
         </SidebarContent>
         <SidebarFooter>
           <UserMenu />
@@ -101,6 +147,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           router.push(`/customers/${c.id}`);
         }}
       />
+      <KeyboardShortcutHelp open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
     </SidebarProvider>
   );
 }

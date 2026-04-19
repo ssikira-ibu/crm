@@ -326,7 +326,7 @@ export default function HomePage() {
                   <h2 className="text-sm font-medium">Recent activity</h2>
                 </div>
                 <Link
-                  href="/activity"
+                  href="/timeline"
                   className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                 >
                   View all
