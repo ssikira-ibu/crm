@@ -1,15 +1,23 @@
+import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
-import type { SearchQueryParams, SearchResultItem } from "@crm/shared";
+import type { OrgContext, SearchQueryParams, SearchResultItem } from "@crm/shared";
 
 export async function search(
-  userId: string,
+  ctx: OrgContext,
   params: SearchQueryParams,
 ): Promise<{ query: string; results: SearchResultItem[] }> {
   const { q, limit } = params;
 
+  const ownerFilter = ctx.role === "SALESPERSON"
+    ? Prisma.sql`AND c.owner_id = ${ctx.userId}`
+    : Prisma.empty;
+
+  const custOwnerFilter = ctx.role === "SALESPERSON"
+    ? Prisma.sql`AND cust.owner_id = ${ctx.userId}`
+    : Prisma.empty;
+
   const results = await prisma.$queryRaw<SearchResultItem[]>`
     SELECT * FROM (
-      -- Customers
       SELECT
         c.id,
         'customer' AS type,
@@ -22,15 +30,12 @@ export async function search(
           COALESCE(similarity(c.industry, ${q}), 0)
         ) AS similarity
       FROM customers c
-      WHERE c.user_id = ${userId}
-        AND (
-          c.company_name % ${q}
-          OR c.industry % ${q}
-        )
+      WHERE c.organization_id = ${ctx.organizationId}::uuid
+        ${ownerFilter}
+        AND (c.company_name % ${q} OR c.industry % ${q})
 
       UNION ALL
 
-      -- Contacts
       SELECT
         ct.id,
         'contact' AS type,
@@ -46,7 +51,8 @@ export async function search(
         ) AS similarity
       FROM contacts ct
       JOIN customers cust ON cust.id = ct.customer_id
-      WHERE cust.user_id = ${userId}
+      WHERE cust.organization_id = ${ctx.organizationId}::uuid
+        ${custOwnerFilter}
         AND (
           ct.first_name % ${q}
           OR ct.last_name % ${q}
@@ -56,7 +62,6 @@ export async function search(
 
       UNION ALL
 
-      -- Deals
       SELECT
         d.id,
         'deal' AS type,
@@ -67,12 +72,12 @@ export async function search(
         similarity(d.title, ${q}) AS similarity
       FROM deals d
       JOIN customers cust ON cust.id = d.customer_id
-      WHERE cust.user_id = ${userId}
+      WHERE cust.organization_id = ${ctx.organizationId}::uuid
+        ${custOwnerFilter}
         AND d.title % ${q}
 
       UNION ALL
 
-      -- Notes
       SELECT
         n.id,
         'note' AS type,
@@ -86,12 +91,12 @@ export async function search(
         ) AS similarity
       FROM notes n
       JOIN customers cust ON cust.id = n.customer_id
-      WHERE cust.user_id = ${userId}
+      WHERE cust.organization_id = ${ctx.organizationId}::uuid
+        ${custOwnerFilter}
         AND (n.title % ${q} OR n.body % ${q})
 
       UNION ALL
 
-      -- Activities
       SELECT
         a.id,
         'activity' AS type,
@@ -102,12 +107,12 @@ export async function search(
         similarity(a.title, ${q}) AS similarity
       FROM activities a
       JOIN customers cust ON cust.id = a.customer_id
-      WHERE cust.user_id = ${userId}
+      WHERE cust.organization_id = ${ctx.organizationId}::uuid
+        ${custOwnerFilter}
         AND a.title % ${q}
 
       UNION ALL
 
-      -- Reminders
       SELECT
         r.id,
         'reminder' AS type,
@@ -118,7 +123,8 @@ export async function search(
         similarity(r.title, ${q}) AS similarity
       FROM reminders r
       JOIN customers cust ON cust.id = r.customer_id
-      WHERE cust.user_id = ${userId}
+      WHERE cust.organization_id = ${ctx.organizationId}::uuid
+        ${custOwnerFilter}
         AND r.title % ${q}
     ) AS combined
     ORDER BY similarity DESC

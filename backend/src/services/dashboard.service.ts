@@ -1,8 +1,17 @@
+import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
+import type { OrgContext } from "@crm/shared";
 
-export async function getDashboard(userId: string) {
+export async function getDashboard(ctx: OrgContext) {
+  const customerWhere: Prisma.CustomerWhereInput = {
+    organizationId: ctx.organizationId,
+  };
+  if (ctx.role === "SALESPERSON") {
+    customerWhere.ownerId = ctx.userId;
+  }
+
   const customerIds = await prisma.customer.findMany({
-    where: { userId },
+    where: customerWhere,
     select: { id: true },
   });
   const ids = customerIds.map((c) => c.id);
@@ -47,8 +56,8 @@ export async function getDashboard(userId: string) {
       }),
       prisma.customer.groupBy({
         by: ["status"],
-        where: { userId },
-        _count: true,
+        where: customerWhere,
+        _count: { _all: true },
       }),
       prisma.deal.aggregate({
         where: { customerId: { in: ids }, status: "OPEN" },
@@ -58,9 +67,9 @@ export async function getDashboard(userId: string) {
     ]);
 
   const stats = {
-    total: statusCounts.reduce((sum, s) => sum + s._count, 0),
+    total: statusCounts.reduce((sum, s) => sum + s._count._all, 0),
     byStatus: Object.fromEntries(
-      statusCounts.map((s) => [s.status, s._count]),
+      statusCounts.map((s) => [s.status, s._count._all]),
     ),
     openDealsValue: Number(dealAgg._sum.value ?? 0),
     openDealsCount: dealAgg._count,

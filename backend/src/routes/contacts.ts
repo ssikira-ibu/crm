@@ -6,6 +6,7 @@ import {
 } from "@crm/shared";
 import type { CreateContactInput, UpdateContactInput } from "@crm/shared";
 import * as contactService from "../services/contact.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -13,7 +14,7 @@ const router = new Router<AppState>();
 // GET /customers/:customerId/contacts
 router.get("/customers/:customerId/contacts", async (ctx) => {
   const contacts = await contactService.listContacts(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
   );
   ctx.body = { data: contacts };
@@ -25,7 +26,7 @@ router.post(
   validate(createContactSchema, "body"),
   async (ctx) => {
     const contact = await contactService.createContact(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.body as CreateContactInput,
     );
@@ -37,7 +38,7 @@ router.post(
 // GET /customers/:customerId/contacts/:contactId
 router.get("/customers/:customerId/contacts/:contactId", async (ctx) => {
   const contact = await contactService.getContact(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
     ctx.params.contactId,
   );
@@ -50,7 +51,7 @@ router.patch(
   validate(updateContactSchema, "body"),
   async (ctx) => {
     const contact = await contactService.updateContact(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.contactId,
       ctx.state.body as UpdateContactInput,
@@ -64,7 +65,7 @@ router.delete(
   "/customers/:customerId/contacts/:contactId",
   async (ctx) => {
     await contactService.deleteContact(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.contactId,
     );

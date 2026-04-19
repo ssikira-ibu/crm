@@ -2,11 +2,19 @@ import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
 import { recordEvent } from "./event.service.js";
-import type { CustomerQueryParams, CreateCustomerInput, UpdateCustomerInput } from "@crm/shared";
+import type { OrgContext, CustomerQueryParams, CreateCustomerInput, UpdateCustomerInput } from "@crm/shared";
 
-export async function listCustomers(userId: string, params: CustomerQueryParams) {
+function customerWhere(ctx: OrgContext): Prisma.CustomerWhereInput {
+  const where: Prisma.CustomerWhereInput = { organizationId: ctx.organizationId };
+  if (ctx.role === "SALESPERSON") {
+    where.ownerId = ctx.userId;
+  }
+  return where;
+}
+
+export async function listCustomers(ctx: OrgContext, params: CustomerQueryParams) {
   const { page, limit, status, search } = params;
-  const where: Prisma.CustomerWhereInput = { userId };
+  const where: Prisma.CustomerWhereInput = customerWhere(ctx);
 
   if (status) {
     where.status = status;
@@ -45,9 +53,9 @@ export async function listCustomers(userId: string, params: CustomerQueryParams)
   };
 }
 
-export async function getCustomer(userId: string, customerId: string) {
+export async function getCustomer(ctx: OrgContext, customerId: string) {
   const customer = await prisma.customer.findFirst({
-    where: { id: customerId, userId },
+    where: { id: customerId, ...customerWhere(ctx) },
     include: {
       contacts: { include: { phoneNumbers: true } },
       addresses: true,
@@ -66,20 +74,20 @@ export async function getCustomer(userId: string, customerId: string) {
 }
 
 export async function createCustomer(
-  userId: string,
+  ctx: OrgContext,
   data: CreateCustomerInput,
 ) {
   return prisma.customer.create({
-    data: { ...data, userId },
+    data: { ...data, organizationId: ctx.organizationId, ownerId: ctx.userId },
   });
 }
 
 export async function updateCustomer(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   data: UpdateCustomerInput,
 ) {
-  const old = await prisma.customer.findFirst({ where: { id: customerId, userId } });
+  const old = await prisma.customer.findFirst({ where: { id: customerId, ...customerWhere(ctx) } });
   if (!old) {
     throw new AppError(404, "CUSTOMER_NOT_FOUND", "Customer not found");
   }
@@ -89,7 +97,7 @@ export async function updateCustomer(
   });
   if (data.status && data.status !== old.status) {
     await recordEvent({
-      userId, customerId, entityType: "CUSTOMER", entityId: customerId,
+      ctx, customerId, entityType: "CUSTOMER", entityId: customerId,
       action: "STATUS_CHANGED",
       metadata: { old: old.status, new: customer.status, companyName: customer.companyName },
     });
@@ -97,17 +105,17 @@ export async function updateCustomer(
   return customer;
 }
 
-export async function deleteCustomer(userId: string, customerId: string) {
-  await ensureCustomerOwnership(userId, customerId);
+export async function deleteCustomer(ctx: OrgContext, customerId: string) {
+  await ensureCustomerAccess(ctx, customerId);
   await prisma.customer.delete({ where: { id: customerId } });
 }
 
-export async function ensureCustomerOwnership(
-  userId: string,
+export async function ensureCustomerAccess(
+  ctx: OrgContext,
   customerId: string,
 ) {
   const customer = await prisma.customer.findFirst({
-    where: { id: customerId, userId },
+    where: { id: customerId, ...customerWhere(ctx) },
     select: { id: true },
   });
   if (!customer) {

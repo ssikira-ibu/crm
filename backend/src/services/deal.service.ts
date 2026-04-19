@@ -1,16 +1,16 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerOwnership } from "./customer.service.js";
+import { ensureCustomerAccess } from "./customer.service.js";
 import { recordEvent } from "./event.service.js";
-import type { DealQueryParams, CreateDealInput, UpdateDealInput } from "@crm/shared";
+import type { OrgContext, DealQueryParams, CreateDealInput, UpdateDealInput } from "@crm/shared";
 
 export async function listDeals(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   params: DealQueryParams,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const { page, limit, status } = params;
   const where: Prisma.DealWhereInput = { customerId };
 
@@ -35,11 +35,11 @@ export async function listDeals(
 }
 
 export async function getDeal(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   dealId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const deal = await prisma.deal.findFirst({
     where: { id: dealId, customerId },
   });
@@ -50,16 +50,16 @@ export async function getDeal(
 }
 
 export async function createDeal(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   data: CreateDealInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const deal = await prisma.deal.create({
     data: { ...data, customerId },
   });
   await recordEvent({
-    userId, customerId, entityType: "DEAL", entityId: deal.id,
+    ctx, customerId, entityType: "DEAL", entityId: deal.id,
     action: "CREATED",
     metadata: { title: deal.title, value: Number(deal.value), status: deal.status },
   });
@@ -67,12 +67,12 @@ export async function createDeal(
 }
 
 export async function updateDeal(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   dealId: string,
   data: UpdateDealInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const old = await prisma.deal.findFirst({
     where: { id: dealId, customerId },
   });
@@ -82,7 +82,7 @@ export async function updateDeal(
   const deal = await prisma.deal.update({ where: { id: dealId }, data });
   if (data.status && data.status !== old.status) {
     await recordEvent({
-      userId, customerId, entityType: "DEAL", entityId: dealId,
+      ctx, customerId, entityType: "DEAL", entityId: dealId,
       action: "STATUS_CHANGED",
       metadata: { title: deal.title, value: Number(deal.value), old: old.status, new: deal.status },
     });
@@ -91,11 +91,11 @@ export async function updateDeal(
 }
 
 export async function deleteDeal(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   dealId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const deal = await prisma.deal.findFirst({
     where: { id: dealId, customerId },
   });
@@ -104,7 +104,7 @@ export async function deleteDeal(
   }
   await prisma.deal.delete({ where: { id: dealId } });
   await recordEvent({
-    userId, customerId, entityType: "DEAL", entityId: dealId,
+    ctx, customerId, entityType: "DEAL", entityId: dealId,
     action: "DELETED",
     metadata: { title: deal.title, value: Number(deal.value) },
   });

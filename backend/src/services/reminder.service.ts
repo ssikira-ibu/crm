@@ -1,16 +1,16 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerOwnership } from "./customer.service.js";
+import { ensureCustomerAccess } from "./customer.service.js";
 import { recordEvent } from "./event.service.js";
-import type { ReminderQueryParams, CreateReminderInput, UpdateReminderInput } from "@crm/shared";
+import type { OrgContext, ReminderQueryParams, CreateReminderInput, UpdateReminderInput } from "@crm/shared";
 
 export async function listReminders(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   params: ReminderQueryParams,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const { page, limit, completed, dueBefore } = params;
   const where: Prisma.ReminderWhereInput = { customerId };
 
@@ -38,11 +38,11 @@ export async function listReminders(
 }
 
 export async function getReminder(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   reminderId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const reminder = await prisma.reminder.findFirst({
     where: { id: reminderId, customerId },
   });
@@ -53,16 +53,16 @@ export async function getReminder(
 }
 
 export async function createReminder(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   data: CreateReminderInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const reminder = await prisma.reminder.create({
     data: { ...data, customerId },
   });
   await recordEvent({
-    userId, customerId, entityType: "REMINDER", entityId: reminder.id,
+    ctx, customerId, entityType: "REMINDER", entityId: reminder.id,
     action: "CREATED",
     metadata: { title: reminder.title },
   });
@@ -70,12 +70,12 @@ export async function createReminder(
 }
 
 export async function updateReminder(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   reminderId: string,
   data: UpdateReminderInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const reminder = await prisma.reminder.findFirst({
     where: { id: reminderId, customerId },
   });
@@ -85,7 +85,7 @@ export async function updateReminder(
   const updated = await prisma.reminder.update({ where: { id: reminderId }, data });
   if (data.dateCompleted && !reminder.dateCompleted) {
     await recordEvent({
-      userId, customerId, entityType: "REMINDER", entityId: reminderId,
+      ctx, customerId, entityType: "REMINDER", entityId: reminderId,
       action: "COMPLETED",
       metadata: { title: reminder.title },
     });
@@ -94,11 +94,11 @@ export async function updateReminder(
 }
 
 export async function deleteReminder(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   reminderId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const reminder = await prisma.reminder.findFirst({
     where: { id: reminderId, customerId },
   });

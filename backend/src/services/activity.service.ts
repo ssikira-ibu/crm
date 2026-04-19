@@ -1,16 +1,16 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerOwnership } from "./customer.service.js";
+import { ensureCustomerAccess } from "./customer.service.js";
 import { recordEvent } from "./event.service.js";
-import type { ActivityQueryParams, CreateActivityInput, UpdateActivityInput } from "@crm/shared";
+import type { OrgContext, ActivityQueryParams, CreateActivityInput, UpdateActivityInput } from "@crm/shared";
 
 export async function listActivities(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   params: ActivityQueryParams,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const { page, limit, type } = params;
   const where: Prisma.ActivityWhereInput = { customerId };
 
@@ -35,11 +35,11 @@ export async function listActivities(
 }
 
 export async function getActivity(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   activityId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const activity = await prisma.activity.findFirst({
     where: { id: activityId, customerId },
   });
@@ -50,16 +50,16 @@ export async function getActivity(
 }
 
 export async function createActivity(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   data: CreateActivityInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const activity = await prisma.activity.create({
     data: { ...data, customerId },
   });
   await recordEvent({
-    userId, customerId, entityType: "ACTIVITY", entityId: activity.id,
+    ctx, customerId, entityType: "ACTIVITY", entityId: activity.id,
     action: "CREATED",
     metadata: { title: activity.title, type: activity.type },
   });
@@ -67,12 +67,12 @@ export async function createActivity(
 }
 
 export async function updateActivity(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   activityId: string,
   data: UpdateActivityInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const activity = await prisma.activity.findFirst({
     where: { id: activityId, customerId },
   });
@@ -83,11 +83,11 @@ export async function updateActivity(
 }
 
 export async function deleteActivity(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   activityId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const activity = await prisma.activity.findFirst({
     where: { id: activityId, customerId },
   });

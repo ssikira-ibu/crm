@@ -7,6 +7,7 @@ import {
 } from "@crm/shared";
 import type { CreateDealInput, UpdateDealInput, DealQueryParams } from "@crm/shared";
 import * as dealService from "../services/deal.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -16,7 +17,7 @@ router.get(
   validate(dealQuerySchema, "query"),
   async (ctx) => {
     const result = await dealService.listDeals(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.query as DealQueryParams,
     );
@@ -29,7 +30,7 @@ router.post(
   validate(createDealSchema, "body"),
   async (ctx) => {
     const deal = await dealService.createDeal(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.body as CreateDealInput,
     );
@@ -40,7 +41,7 @@ router.post(
 
 router.get("/customers/:customerId/deals/:dealId", async (ctx) => {
   const deal = await dealService.getDeal(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
     ctx.params.dealId,
   );
@@ -52,7 +53,7 @@ router.patch(
   validate(updateDealSchema, "body"),
   async (ctx) => {
     const deal = await dealService.updateDeal(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.dealId,
       ctx.state.body as UpdateDealInput,
@@ -63,7 +64,7 @@ router.patch(
 
 router.delete("/customers/:customerId/deals/:dealId", async (ctx) => {
   await dealService.deleteDeal(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
     ctx.params.dealId,
   );

@@ -1,5 +1,6 @@
 import type { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
+import type { OrgContext } from "@crm/shared";
 
 export type EntityType =
   | "CUSTOMER"
@@ -20,7 +21,7 @@ export type EventAction =
   | "UNTAGGED";
 
 export async function recordEvent(params: {
-  userId: string;
+  ctx: OrgContext;
   customerId: string;
   entityType: EntityType;
   entityId: string;
@@ -29,26 +30,28 @@ export async function recordEvent(params: {
 }) {
   await prisma.event.create({
     data: {
-      ...params,
+      organizationId: params.ctx.organizationId,
+      actorId: params.ctx.userId,
+      customerId: params.customerId,
+      entityType: params.entityType,
+      entityId: params.entityId,
+      action: params.action,
       metadata: params.metadata as Prisma.InputJsonValue | undefined,
     },
   });
 }
 
 export async function listGlobalEvents(
-  userId: string,
+  ctx: OrgContext,
   limit = 50,
   cursor?: string,
 ) {
-  const customerIds = await prisma.customer.findMany({
-    where: { userId },
-    select: { id: true },
-  });
-  const ids = customerIds.map((c) => c.id);
-
   return prisma.event.findMany({
     where: {
-      customerId: { in: ids },
+      organizationId: ctx.organizationId,
+      ...(ctx.role === "SALESPERSON"
+        ? { customer: { ownerId: ctx.userId } }
+        : {}),
       ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
     },
     include: {
@@ -60,7 +63,7 @@ export async function listGlobalEvents(
 }
 
 export async function listCustomerEvents(
-  userId: string,
+  _ctx: OrgContext,
   customerId: string,
   limit = 50,
   cursor?: string,

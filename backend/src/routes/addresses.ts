@@ -6,6 +6,7 @@ import {
 } from "@crm/shared";
 import type { CreateAddressInput, UpdateAddressInput } from "@crm/shared";
 import * as addressService from "../services/address.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -13,7 +14,7 @@ const router = new Router<AppState>();
 // GET /customers/:customerId/addresses
 router.get("/customers/:customerId/addresses", async (ctx) => {
   const addresses = await addressService.listAddresses(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
   );
   ctx.body = { data: addresses };
@@ -25,7 +26,7 @@ router.post(
   validate(createAddressSchema, "body"),
   async (ctx) => {
     const address = await addressService.createAddress(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.body as CreateAddressInput,
     );
@@ -37,7 +38,7 @@ router.post(
 // GET /customers/:customerId/addresses/:addressId
 router.get("/customers/:customerId/addresses/:addressId", async (ctx) => {
   const address = await addressService.getAddress(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
     ctx.params.addressId,
   );
@@ -50,7 +51,7 @@ router.patch(
   validate(updateAddressSchema, "body"),
   async (ctx) => {
     const address = await addressService.updateAddress(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.addressId,
       ctx.state.body as UpdateAddressInput,
@@ -64,7 +65,7 @@ router.delete(
   "/customers/:customerId/addresses/:addressId",
   async (ctx) => {
     await addressService.deleteAddress(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.addressId,
     );

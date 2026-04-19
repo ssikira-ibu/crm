@@ -7,6 +7,7 @@ import {
 } from "@crm/shared";
 import type { CreateReminderInput, UpdateReminderInput, ReminderQueryParams } from "@crm/shared";
 import * as reminderService from "../services/reminder.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -17,7 +18,7 @@ router.get(
   validate(reminderQuerySchema, "query"),
   async (ctx) => {
     const result = await reminderService.listReminders(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.query as ReminderQueryParams,
     );
@@ -31,7 +32,7 @@ router.post(
   validate(createReminderSchema, "body"),
   async (ctx) => {
     const reminder = await reminderService.createReminder(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.body as CreateReminderInput,
     );
@@ -45,7 +46,7 @@ router.get(
   "/customers/:customerId/reminders/:reminderId",
   async (ctx) => {
     const reminder = await reminderService.getReminder(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.reminderId,
     );
@@ -59,7 +60,7 @@ router.patch(
   validate(updateReminderSchema, "body"),
   async (ctx) => {
     const reminder = await reminderService.updateReminder(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.reminderId,
       ctx.state.body as UpdateReminderInput,
@@ -73,7 +74,7 @@ router.delete(
   "/customers/:customerId/reminders/:reminderId",
   async (ctx) => {
     await reminderService.deleteReminder(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.reminderId,
     );

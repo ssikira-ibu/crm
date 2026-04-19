@@ -1,10 +1,10 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerOwnership } from "./customer.service.js";
-import type { CreateAddressInput, UpdateAddressInput } from "@crm/shared";
+import { ensureCustomerAccess } from "./customer.service.js";
+import type { OrgContext, CreateAddressInput, UpdateAddressInput } from "@crm/shared";
 
-export async function listAddresses(userId: string, customerId: string) {
-  await ensureCustomerOwnership(userId, customerId);
+export async function listAddresses(ctx: OrgContext, customerId: string) {
+  await ensureCustomerAccess(ctx, customerId);
   return prisma.address.findMany({
     where: { customerId },
     orderBy: { createdAt: "desc" },
@@ -12,11 +12,11 @@ export async function listAddresses(userId: string, customerId: string) {
 }
 
 export async function getAddress(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   addressId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const address = await prisma.address.findFirst({
     where: { id: addressId, customerId },
   });
@@ -27,23 +27,23 @@ export async function getAddress(
 }
 
 export async function createAddress(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   data: CreateAddressInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   return prisma.address.create({
     data: { ...data, customerId },
   });
 }
 
 export async function updateAddress(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   addressId: string,
   data: UpdateAddressInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const address = await prisma.address.findFirst({
     where: { id: addressId, customerId },
   });
@@ -54,11 +54,11 @@ export async function updateAddress(
 }
 
 export async function deleteAddress(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   addressId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const address = await prisma.address.findFirst({
     where: { id: addressId, customerId },
   });

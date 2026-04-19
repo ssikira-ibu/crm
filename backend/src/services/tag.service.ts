@@ -1,29 +1,29 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerOwnership } from "./customer.service.js";
+import { ensureCustomerAccess } from "./customer.service.js";
 import { recordEvent } from "./event.service.js";
-import type { CreateTagInput, UpdateTagInput } from "@crm/shared";
+import type { OrgContext, CreateTagInput, UpdateTagInput } from "@crm/shared";
 
-export async function listTags(userId: string) {
+export async function listTags(ctx: OrgContext) {
   return prisma.tag.findMany({
-    where: { userId },
+    where: { organizationId: ctx.organizationId },
     orderBy: { name: "asc" },
   });
 }
 
-export async function createTag(userId: string, data: CreateTagInput) {
+export async function createTag(ctx: OrgContext, data: CreateTagInput) {
   return prisma.tag.create({
-    data: { ...data, userId },
+    data: { ...data, organizationId: ctx.organizationId },
   });
 }
 
 export async function updateTag(
-  userId: string,
+  ctx: OrgContext,
   tagId: string,
   data: UpdateTagInput,
 ) {
   const tag = await prisma.tag.findFirst({
-    where: { id: tagId, userId },
+    where: { id: tagId, organizationId: ctx.organizationId },
   });
   if (!tag) {
     throw new AppError(404, "TAG_NOT_FOUND", "Tag not found");
@@ -31,9 +31,9 @@ export async function updateTag(
   return prisma.tag.update({ where: { id: tagId }, data });
 }
 
-export async function deleteTag(userId: string, tagId: string) {
+export async function deleteTag(ctx: OrgContext, tagId: string) {
   const tag = await prisma.tag.findFirst({
-    where: { id: tagId, userId },
+    where: { id: tagId, organizationId: ctx.organizationId },
   });
   if (!tag) {
     throw new AppError(404, "TAG_NOT_FOUND", "Tag not found");
@@ -42,13 +42,13 @@ export async function deleteTag(userId: string, tagId: string) {
 }
 
 export async function addTagToCustomer(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   tagId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const tag = await prisma.tag.findFirst({
-    where: { id: tagId, userId },
+    where: { id: tagId, organizationId: ctx.organizationId },
   });
   if (!tag) {
     throw new AppError(404, "TAG_NOT_FOUND", "Tag not found");
@@ -59,25 +59,25 @@ export async function addTagToCustomer(
     update: {},
   });
   await recordEvent({
-    userId, customerId, entityType: "TAG", entityId: tagId,
+    ctx, customerId, entityType: "TAG", entityId: tagId,
     action: "TAGGED",
     metadata: { name: tag.name, color: tag.color },
   });
 }
 
 export async function removeTagFromCustomer(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   tagId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
-  const tag = await prisma.tag.findFirst({ where: { id: tagId, userId } });
+  await ensureCustomerAccess(ctx, customerId);
+  const tag = await prisma.tag.findFirst({ where: { id: tagId, organizationId: ctx.organizationId } });
   await prisma.customerTag.deleteMany({
     where: { customerId, tagId },
   });
   if (tag) {
     await recordEvent({
-      userId, customerId, entityType: "TAG", entityId: tagId,
+      ctx, customerId, entityType: "TAG", entityId: tagId,
       action: "UNTAGGED",
       metadata: { name: tag.name },
     });

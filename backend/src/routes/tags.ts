@@ -3,18 +3,19 @@ import { validate } from "../middleware/validate.js";
 import { createTagSchema, updateTagSchema } from "@crm/shared";
 import type { CreateTagInput, UpdateTagInput } from "@crm/shared";
 import * as tagService from "../services/tag.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
 
 router.get("/tags", async (ctx) => {
-  const tags = await tagService.listTags(ctx.state.user.uid);
+  const tags = await tagService.listTags(getOrgContext(ctx.state.user));
   ctx.body = { data: tags };
 });
 
 router.post("/tags", validate(createTagSchema, "body"), async (ctx) => {
   const tag = await tagService.createTag(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.state.body as CreateTagInput,
   );
   ctx.status = 201;
@@ -26,7 +27,7 @@ router.patch(
   validate(updateTagSchema, "body"),
   async (ctx) => {
     const tag = await tagService.updateTag(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.tagId,
       ctx.state.body as UpdateTagInput,
     );
@@ -35,7 +36,7 @@ router.patch(
 );
 
 router.delete("/tags/:tagId", async (ctx) => {
-  await tagService.deleteTag(ctx.state.user.uid, ctx.params.tagId);
+  await tagService.deleteTag(getOrgContext(ctx.state.user), ctx.params.tagId);
   ctx.status = 204;
 });
 
@@ -43,7 +44,7 @@ router.put(
   "/customers/:customerId/tags/:tagId",
   async (ctx) => {
     await tagService.addTagToCustomer(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.tagId,
     );
@@ -55,7 +56,7 @@ router.delete(
   "/customers/:customerId/tags/:tagId",
   async (ctx) => {
     await tagService.removeTagFromCustomer(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.tagId,
     );

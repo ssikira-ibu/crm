@@ -7,6 +7,7 @@ import {
 } from "@crm/shared";
 import type { CreateActivityInput, UpdateActivityInput, ActivityQueryParams } from "@crm/shared";
 import * as activityService from "../services/activity.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -16,7 +17,7 @@ router.get(
   validate(activityQuerySchema, "query"),
   async (ctx) => {
     const result = await activityService.listActivities(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.query as ActivityQueryParams,
     );
@@ -29,7 +30,7 @@ router.post(
   validate(createActivitySchema, "body"),
   async (ctx) => {
     const activity = await activityService.createActivity(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.body as CreateActivityInput,
     );
@@ -42,7 +43,7 @@ router.get(
   "/customers/:customerId/activities/:activityId",
   async (ctx) => {
     const activity = await activityService.getActivity(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.activityId,
     );
@@ -55,7 +56,7 @@ router.patch(
   validate(updateActivitySchema, "body"),
   async (ctx) => {
     const activity = await activityService.updateActivity(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.activityId,
       ctx.state.body as UpdateActivityInput,
@@ -68,7 +69,7 @@ router.delete(
   "/customers/:customerId/activities/:activityId",
   async (ctx) => {
     await activityService.deleteActivity(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.activityId,
     );

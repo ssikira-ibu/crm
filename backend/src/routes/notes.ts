@@ -6,6 +6,7 @@ import {
 } from "@crm/shared";
 import type { CreateNoteInput, UpdateNoteInput } from "@crm/shared";
 import * as noteService from "../services/note.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -13,7 +14,7 @@ const router = new Router<AppState>();
 // GET /customers/:customerId/notes
 router.get("/customers/:customerId/notes", async (ctx) => {
   const notes = await noteService.listNotes(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
   );
   ctx.body = { data: notes };
@@ -25,7 +26,7 @@ router.post(
   validate(createNoteSchema, "body"),
   async (ctx) => {
     const note = await noteService.createNote(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.body as CreateNoteInput,
     );
@@ -37,7 +38,7 @@ router.post(
 // GET /customers/:customerId/notes/:noteId
 router.get("/customers/:customerId/notes/:noteId", async (ctx) => {
   const note = await noteService.getNote(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
     ctx.params.noteId,
   );
@@ -50,7 +51,7 @@ router.patch(
   validate(updateNoteSchema, "body"),
   async (ctx) => {
     const note = await noteService.updateNote(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.noteId,
       ctx.state.body as UpdateNoteInput,
@@ -64,7 +65,7 @@ router.delete(
   "/customers/:customerId/notes/:noteId",
   async (ctx) => {
     await noteService.deleteNote(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.noteId,
     );

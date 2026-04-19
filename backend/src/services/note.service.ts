@@ -1,11 +1,11 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerOwnership } from "./customer.service.js";
+import { ensureCustomerAccess } from "./customer.service.js";
 import { recordEvent } from "./event.service.js";
-import type { CreateNoteInput, UpdateNoteInput } from "@crm/shared";
+import type { OrgContext, CreateNoteInput, UpdateNoteInput } from "@crm/shared";
 
-export async function listNotes(userId: string, customerId: string) {
-  await ensureCustomerOwnership(userId, customerId);
+export async function listNotes(ctx: OrgContext, customerId: string) {
+  await ensureCustomerAccess(ctx, customerId);
   return prisma.note.findMany({
     where: { customerId },
     orderBy: { createdAt: "desc" },
@@ -13,11 +13,11 @@ export async function listNotes(userId: string, customerId: string) {
 }
 
 export async function getNote(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   noteId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const note = await prisma.note.findFirst({
     where: { id: noteId, customerId },
   });
@@ -28,16 +28,16 @@ export async function getNote(
 }
 
 export async function createNote(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   data: CreateNoteInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const note = await prisma.note.create({
     data: { ...data, customerId },
   });
   await recordEvent({
-    userId, customerId, entityType: "NOTE", entityId: note.id,
+    ctx, customerId, entityType: "NOTE", entityId: note.id,
     action: "CREATED",
     metadata: { title: note.title },
   });
@@ -45,12 +45,12 @@ export async function createNote(
 }
 
 export async function updateNote(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   noteId: string,
   data: UpdateNoteInput,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const note = await prisma.note.findFirst({
     where: { id: noteId, customerId },
   });
@@ -61,11 +61,11 @@ export async function updateNote(
 }
 
 export async function deleteNote(
-  userId: string,
+  ctx: OrgContext,
   customerId: string,
   noteId: string,
 ) {
-  await ensureCustomerOwnership(userId, customerId);
+  await ensureCustomerAccess(ctx, customerId);
   const note = await prisma.note.findFirst({
     where: { id: noteId, customerId },
   });

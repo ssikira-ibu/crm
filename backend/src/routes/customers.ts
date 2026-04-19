@@ -7,6 +7,7 @@ import {
 } from "@crm/shared";
 import type { CreateCustomerInput, UpdateCustomerInput, CustomerQueryParams } from "@crm/shared";
 import * as customerService from "../services/customer.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -14,7 +15,7 @@ const router = new Router<AppState>();
 // GET /customers
 router.get("/customers", validate(customerQuerySchema, "query"), async (ctx) => {
   const result = await customerService.listCustomers(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.state.query as CustomerQueryParams,
   );
   ctx.body = result;
@@ -23,7 +24,7 @@ router.get("/customers", validate(customerQuerySchema, "query"), async (ctx) => 
 // POST /customers
 router.post("/customers", validate(createCustomerSchema, "body"), async (ctx) => {
   const customer = await customerService.createCustomer(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.state.body as CreateCustomerInput,
   );
   ctx.status = 201;
@@ -33,7 +34,7 @@ router.post("/customers", validate(createCustomerSchema, "body"), async (ctx) =>
 // GET /customers/:customerId
 router.get("/customers/:customerId", async (ctx) => {
   const customer = await customerService.getCustomer(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
   );
   ctx.body = { data: customer };
@@ -45,7 +46,7 @@ router.patch(
   validate(updateCustomerSchema, "body"),
   async (ctx) => {
     const customer = await customerService.updateCustomer(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.state.body as UpdateCustomerInput,
     );
@@ -56,7 +57,7 @@ router.patch(
 // DELETE /customers/:customerId
 router.delete("/customers/:customerId", async (ctx) => {
   await customerService.deleteCustomer(
-    ctx.state.user.uid,
+    getOrgContext(ctx.state.user),
     ctx.params.customerId,
   );
   ctx.status = 204;

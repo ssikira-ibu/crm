@@ -6,6 +6,7 @@ import {
 } from "@crm/shared";
 import type { CreatePhoneNumberInput, UpdatePhoneNumberInput } from "@crm/shared";
 import * as phoneNumberService from "../services/phoneNumber.service.js";
+import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -14,7 +15,7 @@ router.get(
   "/customers/:customerId/contacts/:contactId/phone-numbers",
   async (ctx) => {
     const phoneNumbers = await phoneNumberService.listPhoneNumbers(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.contactId,
     );
@@ -27,7 +28,7 @@ router.post(
   validate(createPhoneNumberSchema, "body"),
   async (ctx) => {
     const phoneNumber = await phoneNumberService.createPhoneNumber(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.contactId,
       ctx.state.body as CreatePhoneNumberInput,
@@ -41,7 +42,7 @@ router.get(
   "/customers/:customerId/contacts/:contactId/phone-numbers/:phoneNumberId",
   async (ctx) => {
     const phoneNumber = await phoneNumberService.getPhoneNumber(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.contactId,
       ctx.params.phoneNumberId,
@@ -55,7 +56,7 @@ router.patch(
   validate(updatePhoneNumberSchema, "body"),
   async (ctx) => {
     const phoneNumber = await phoneNumberService.updatePhoneNumber(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.contactId,
       ctx.params.phoneNumberId,
@@ -69,7 +70,7 @@ router.delete(
   "/customers/:customerId/contacts/:contactId/phone-numbers/:phoneNumberId",
   async (ctx) => {
     await phoneNumberService.deletePhoneNumber(
-      ctx.state.user.uid,
+      getOrgContext(ctx.state.user),
       ctx.params.customerId,
       ctx.params.contactId,
       ctx.params.phoneNumberId,
