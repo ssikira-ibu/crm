@@ -12,7 +12,17 @@ import activityRoutes from "./activities.js";
 import tagRoutes from "./tags.js";
 import eventRoutes from "./events.js";
 import searchRoutes from "./search.js";
+import meRoutes from "./me.js";
+import organizationRoutes from "./organizations.js";
+import inviteRoutes from "./invites.js";
 
+// Auth-only routes (user authenticated but no org membership required)
+const authOnlyRouter = new Router({ prefix: "/api" });
+authOnlyRouter.use(meRoutes.routes(), meRoutes.allowedMethods());
+authOnlyRouter.use(organizationRoutes.routes(), organizationRoutes.allowedMethods());
+authOnlyRouter.use(inviteRoutes.routes(), inviteRoutes.allowedMethods());
+
+// Org-scoped routes (require org membership)
 const apiRouter = new Router({ prefix: "/api" });
 
 apiRouter.use(
@@ -64,4 +74,4 @@ apiRouter.use(
   searchRoutes.allowedMethods(),
 );
 
-export { healthRouter, apiRouter };
+export { healthRouter, apiRouter, authOnlyRouter };
