@@ -6,6 +6,7 @@ import { requireRole } from "../middleware/authorize.js";
 import { createInviteSchema, updateMemberRoleSchema } from "@crm/shared";
 import type { AppState } from "../types/index.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { auditLog } from "../lib/audit.js";
 
 const router = new Router<AppState>();
 
@@ -46,6 +47,13 @@ router.patch(
       where: { id: memberId },
       data: { role: role as "ADMIN" | "MANAGER" | "SALESPERSON" },
     });
+    auditLog({
+      action: "MEMBER_ROLE_CHANGED",
+      actorId: ctx.state.user.uid,
+      organizationId,
+      targetId: memberId,
+      metadata: { oldRole: member.role, newRole: role, email: member.email },
+    });
     ctx.body = { data: updated };
   },
 );
@@ -68,6 +76,13 @@ router.delete(
     }
 
     await prisma.organizationMember.delete({ where: { id: memberId } });
+    auditLog({
+      action: "MEMBER_REMOVED",
+      actorId: userId,
+      organizationId,
+      targetId: memberId,
+      metadata: { email: member.email, role: member.role },
+    });
     ctx.status = 204;
   },
 );
@@ -116,6 +131,13 @@ router.post(
         token,
       },
     });
+    auditLog({
+      action: "INVITE_CREATED",
+      actorId: userId,
+      organizationId,
+      targetId: invite.id,
+      metadata: { email, role },
+    });
     ctx.status = 201;
     ctx.body = { data: invite };
   },
@@ -138,6 +160,13 @@ router.delete(
     await prisma.invite.update({
       where: { id: inviteId },
       data: { status: "REVOKED" },
+    });
+    auditLog({
+      action: "INVITE_REVOKED",
+      actorId: ctx.state.user.uid,
+      organizationId,
+      targetId: inviteId,
+      metadata: { email: invite.email },
     });
     ctx.status = 204;
   },
