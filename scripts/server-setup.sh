@@ -4,7 +4,7 @@ set -euo pipefail
 # ============================================================
 # Hetzner VPS initial setup for CRM deployment
 # Run as root on a fresh Ubuntu 24.04 server
-# Usage: curl ... | bash  OR  ssh root@server < server-setup.sh
+# (Or use cloud-init.yml for automated provisioning)
 # ============================================================
 
 DEPLOY_USER="deploy"
@@ -54,45 +54,11 @@ sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd
 sed -i 's/^#\?PubkeyAuthentication.*/PubkeyAuthentication yes/' /etc/ssh/sshd_config
 systemctl restart sshd
 
-# --- Firewall (ufw) ---
-# Only allow SSH + HTTP/HTTPS from Cloudflare IPs
+# --- Firewall — SSH only, web traffic goes through Cloudflare Tunnel ---
 echo "==> Configuring firewall"
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow 22/tcp comment "SSH"
-
-# Cloudflare IPv4 ranges
-for ip in \
-  173.245.48.0/20 \
-  103.21.244.0/22 \
-  103.22.200.0/22 \
-  103.31.4.0/22 \
-  141.101.64.0/18 \
-  108.162.192.0/18 \
-  190.93.240.0/20 \
-  188.114.96.0/20 \
-  197.234.240.0/22 \
-  198.41.128.0/17 \
-  162.158.0.0/15 \
-  104.16.0.0/13 \
-  104.24.0.0/14 \
-  172.64.0.0/13 \
-  131.0.72.0/22; do
-  ufw allow from "$ip" to any port 80,443 proto tcp comment "Cloudflare"
-done
-
-# Cloudflare IPv6 ranges
-for ip in \
-  2400:cb00::/32 \
-  2606:4700::/32 \
-  2803:f800::/32 \
-  2405:b500::/32 \
-  2405:8100::/32 \
-  2a06:98c0::/29 \
-  2c0f:f248::/32; do
-  ufw allow from "$ip" to any port 80,443 proto tcp comment "Cloudflare IPv6"
-done
-
 ufw --force enable
 
 # --- Fail2ban ---
@@ -118,7 +84,6 @@ AUTO
 
 # --- App directory ---
 echo "==> Setting up application directory"
-mkdir -p /home/$DEPLOY_USER/crm/certs
 mkdir -p /home/$DEPLOY_USER/crm/backups
 chown -R $DEPLOY_USER:$DEPLOY_USER /home/$DEPLOY_USER/crm
 
@@ -128,9 +93,7 @@ echo "  Server setup complete!"
 echo "============================================"
 echo ""
 echo "Next steps:"
-echo "  1. Add your SSH public key to /home/$DEPLOY_USER/.ssh/authorized_keys"
-echo "  2. Generate Cloudflare Origin CA cert for crm.ssikira.com"
-echo "     and place origin.pem + origin-key.pem in ~/crm/certs/"
-echo "  3. Copy .env and firebase-service-account.json to ~/crm/"
-echo "  4. Log in as '$DEPLOY_USER' (root login is now disabled)"
+echo "  1. Create a Cloudflare Tunnel in Zero Trust dashboard"
+echo "  2. Copy .env and firebase-service-account.json to ~/crm/"
+echo "  3. Log in as '$DEPLOY_USER' (root login is now disabled)"
 echo ""

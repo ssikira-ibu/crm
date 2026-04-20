@@ -51,17 +51,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: |
-            docker-compose.prod.yml
-            Caddyfile
+          sparse-checkout: docker-compose.prod.yml
 
-      - name: Copy compose and Caddyfile to server
+      - name: Copy compose file to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: deploy
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.prod.yml,Caddyfile"
+          source: docker-compose.prod.yml
           target: ~/crm
 
       - name: Deploy

@@ -1,18 +1,10 @@
 services:
-  caddy:
-    image: caddy:2-alpine
+  tunnel:
+    image: cloudflare/cloudflared:latest
     restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "443:443/udp"
+    command: tunnel --no-autoupdate run
     environment:
-      DOMAIN: ${DOMAIN}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - ./certs:/etc/caddy/certs:ro
-      - caddy_data:/data
-      - caddy_config:/config
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     depends_on:
       - frontend
 
@@ -74,5 +66,3 @@ services:
 
 volumes:
   pgdata:
-  caddy_data:
-  caddy_config:
