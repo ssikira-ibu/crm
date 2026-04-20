@@ -4,6 +4,8 @@ export {
   PHONE_LABELS,
   ACTIVITY_TYPES,
   DEAL_STATUSES,
+  ORG_ROLES,
+  INVITE_STATUSES,
 } from "@crm/shared";
 
 export type {
@@ -37,6 +39,16 @@ export type {
   SearchResults,
   SearchResultItem,
   SearchQueryParams,
+  Organization,
+  OrganizationMember,
+  Invite,
+  OrgRole,
+  InviteStatus,
+  OrgContext,
+  MeResponse,
+  CreateOrganizationInput as OrganizationCreate,
+  CreateInviteInput as InviteCreate,
+  UpdateMemberRoleInput as MemberRoleUpdate,
   CreateCustomerInput as CustomerCreate,
   UpdateCustomerInput as CustomerUpdate,
   CustomerQueryParams as CustomerListParams,

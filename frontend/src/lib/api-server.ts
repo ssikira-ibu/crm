@@ -40,6 +40,13 @@ import type {
   TagUpdate,
   EventWithCustomer,
   SearchResults,
+  MeResponse,
+  Organization,
+  OrganizationMember,
+  OrgRole,
+  OrganizationCreate,
+  InviteCreate,
+  Invite,
 } from "./types";
 
 const API_URL =
@@ -267,7 +274,38 @@ const search = {
     serverRequest<Single<SearchResults>>("/search", { query: params }),
 };
 
+const me = {
+  get: () => serverRequest<Single<MeResponse>>("/me"),
+};
+
+const organizations = {
+  create: (input: OrganizationCreate) =>
+    serverRequest<Single<Organization & { role: OrgRole; memberCount: number }>>("/organizations", { method: "POST", body: input }),
+  members: () =>
+    serverRequest<Single<OrganizationMember[]>>("/organizations/current/members"),
+  updateMemberRole: (memberId: string, role: OrgRole) =>
+    serverRequest<Single<OrganizationMember>>(`/organizations/current/members/${memberId}`, { method: "PATCH", body: { role } }),
+  removeMember: (memberId: string) =>
+    serverRequest<void>(`/organizations/current/members/${memberId}`, { method: "DELETE" }),
+};
+
+const invites = {
+  create: (input: InviteCreate) =>
+    serverRequest<Single<Invite>>("/invites", { method: "POST", body: input }),
+  list: () =>
+    serverRequest<Single<Invite[]>>("/invites"),
+  revoke: (inviteId: string) =>
+    serverRequest<void>(`/invites/${inviteId}`, { method: "DELETE" }),
+  getByToken: (token: string) =>
+    serverRequest<Single<{ id: string; email: string; role: OrgRole; organization: { id: string; name: string }; expiresAt: string }>>(`/invites/token/${token}`),
+  accept: (token: string) =>
+    serverRequest<Single<{ organizationId: string }>>(`/invites/token/${token}/accept`, { method: "POST" }),
+};
+
 export const serverApi = {
+  me,
+  organizations,
+  invites,
   dashboard,
   customers,
   contacts,
