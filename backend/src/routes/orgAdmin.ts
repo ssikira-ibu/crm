@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import Router from "@koa/router";
 import { prisma } from "../lib/prisma.js";
 import { validate } from "../middleware/validate.js";
@@ -104,6 +105,7 @@ router.post(
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7);
 
+    const token = randomBytes(32).toString("hex");
     const invite = await prisma.invite.create({
       data: {
         organizationId,
@@ -111,6 +113,7 @@ router.post(
         role: role as "ADMIN" | "MANAGER" | "SALESPERSON",
         invitedBy: userId,
         expiresAt,
+        token,
       },
     });
     ctx.status = 201;

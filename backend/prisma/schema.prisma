@@ -59,7 +59,7 @@ model Invite {
   role           OrgRole
   status         InviteStatus @default(PENDING)
   invitedBy      String       @map("invited_by")
-  token          String       @unique @default(uuid())
+  token          String       @unique
   expiresAt      DateTime     @map("expires_at")
   createdAt      DateTime     @default(now()) @map("created_at")
 
