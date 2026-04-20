@@ -24,6 +24,7 @@
     "koa-body": "^7.0.1",
     "koa-helmet": "^9.0.0",
     "koa-ratelimit": "^6.0.0",
+    "pino": "^9.14.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {

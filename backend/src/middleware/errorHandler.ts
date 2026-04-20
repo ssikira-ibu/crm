@@ -1,4 +1,5 @@
 import type { Middleware } from "koa";
+import { logger } from "../lib/logger.js";
 
 export class AppError extends Error {
   constructor(
@@ -25,8 +26,7 @@ export const errorHandler: Middleware = async (ctx, next) => {
         },
       };
     } else {
-      const message = err instanceof Error ? err.stack ?? err.message : String(err);
-      console.error("Unhandled error:", message);
+      logger.error({ err, method: ctx.method, path: ctx.path }, "Unhandled error");
       ctx.status = 500;
       ctx.body = {
         error: {
