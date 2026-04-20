@@ -5,6 +5,8 @@ import { cookies } from "next/headers";
 const SESSION_SECRET = process.env.SESSION_SECRET!;
 const encodedKey = new TextEncoder().encode(SESSION_SECRET);
 const COOKIE_NAME = "session";
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
+const REFRESH_THRESHOLD_MS = SESSION_TTL_MS / 2; // refresh when < 12 hours remain
 
 export type SessionPayload = {
   uid: string;
@@ -12,15 +14,15 @@ export type SessionPayload = {
   expiresAt: string;
 };
 
-export async function encrypt(payload: SessionPayload): Promise<string> {
+async function encrypt(payload: SessionPayload): Promise<string> {
   return new SignJWT(payload as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
-    .setExpirationTime("7d")
+    .setExpirationTime("1d")
     .sign(encodedKey);
 }
 
-export async function decrypt(
+async function decrypt(
   token: string,
 ): Promise<SessionPayload | null> {
   try {
@@ -33,14 +35,7 @@ export async function decrypt(
   }
 }
 
-export async function createSession(uid: string, email: string) {
-  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  const token = await encrypt({
-    uid,
-    email,
-    expiresAt: expiresAt.toISOString(),
-  });
-
+async function setCookie(token: string, expiresAt: Date) {
   const cookieStore = await cookies();
   cookieStore.set(COOKIE_NAME, token, {
     httpOnly: true,
@@ -49,6 +44,16 @@ export async function createSession(uid: string, email: string) {
     sameSite: "strict",
     path: "/",
   });
+}
+
+export async function createSession(uid: string, email: string) {
+  const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
+  const token = await encrypt({
+    uid,
+    email,
+    expiresAt: expiresAt.toISOString(),
+  });
+  await setCookie(token, expiresAt);
 }
 
 export async function getSession(): Promise<{
@@ -62,7 +67,19 @@ export async function getSession(): Promise<{
   const payload = await decrypt(token);
   if (!payload) return null;
 
-  if (new Date(payload.expiresAt) < new Date()) return null;
+  const expiresAt = new Date(payload.expiresAt);
+  if (expiresAt < new Date()) return null;
+
+  const remaining = expiresAt.getTime() - Date.now();
+  if (remaining < REFRESH_THRESHOLD_MS) {
+    const newExpiresAt = new Date(Date.now() + SESSION_TTL_MS);
+    const newToken = await encrypt({
+      uid: payload.uid,
+      email: payload.email,
+      expiresAt: newExpiresAt.toISOString(),
+    });
+    await setCookie(newToken, newExpiresAt);
+  }
 
   return { uid: payload.uid, email: payload.email };
 }
