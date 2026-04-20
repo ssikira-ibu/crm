@@ -1,0 +1,83 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    expose:
+      - "5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+      target: production
+    restart: unless-stopped
+    expose:
+      - "3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?schema=public
+      PORT: "3000"
+      NODE_ENV: production
+      S2S_JWT_SECRET: ${S2S_JWT_SECRET}
+      ALLOWED_ORIGINS: https://${DOMAIN}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "npx prisma migrate deploy && node dist/index.js"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: production
+    restart: unless-stopped
+    expose:
+      - "3001"
+    environment:
+      API_URL: http://backend:3000
+      NODE_ENV: production
+      SESSION_SECRET: ${SESSION_SECRET}
+      S2S_JWT_SECRET: ${S2S_JWT_SECRET}
+      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
+      NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+      NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+      NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+      NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+      NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+      NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+    volumes:
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

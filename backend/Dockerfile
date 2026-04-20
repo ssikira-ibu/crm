@@ -35,6 +35,8 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/backend/node_modules ./backend-modules
 COPY --from=build /app/packages/shared/dist ./packages/shared/dist
 COPY --from=build /app/backend/package.json ./
+COPY --from=build /app/backend/prisma ./prisma
+COPY --from=build /app/backend/prisma.config.ts ./prisma.config.ts
 USER app
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
