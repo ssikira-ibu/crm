@@ -8,6 +8,7 @@ const envSchema = z.object({
     .default("development"),
   GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1).optional(),
   S2S_JWT_SECRET: z.string().min(32),
+  ALLOWED_ORIGINS: z.string().default("http://localhost:3001"),
 });
 
 export const config = envSchema.parse(process.env);

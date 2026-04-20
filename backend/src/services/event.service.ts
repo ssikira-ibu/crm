@@ -63,7 +63,7 @@ export async function listGlobalEvents(
 }
 
 export async function listCustomerEvents(
-  _ctx: OrgContext,
+  ctx: OrgContext,
   customerId: string,
   limit = 50,
   cursor?: string,
@@ -71,6 +71,7 @@ export async function listCustomerEvents(
   return prisma.event.findMany({
     where: {
       customerId,
+      organizationId: ctx.organizationId,
       ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
     },
     include: {

@@ -26,9 +26,13 @@ RUN npm run build
 
 # Production
 FROM node:24-alpine AS production
+RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 COPY --from=build /app/frontend/.next/standalone ./
 COPY --from=build /app/frontend/.next/static ./.next/static
 COPY --from=build /app/frontend/public ./public
+USER app
 EXPOSE 3001
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/ || exit 1
 CMD ["node", "server.js"]

@@ -46,7 +46,7 @@ export async function createSession(uid: string, email: string) {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     expires: expiresAt,
-    sameSite: "lax",
+    sameSite: "strict",
     path: "/",
   });
 }

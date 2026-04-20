@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env
+.env.local
+.env.*.local
 firebase-service-account.json
 *.log
 .DS_Store
@@ -8,6 +10,7 @@ firebase-service-account.json
 # Prisma
 prisma/migrations/**/migration_lock.toml
 **/generated/prisma/
+backend/prisma/.env
 
 # Docker
 pgdata/

@@ -40,6 +40,12 @@ router.post("/invites/token/:token/accept", async (ctx) => {
     return;
   }
 
+  if (invite.email.toLowerCase() !== email.toLowerCase()) {
+    ctx.status = 403;
+    ctx.body = { error: { code: "EMAIL_MISMATCH", message: "Invite was sent to a different email address" } };
+    return;
+  }
+
   const existing = await prisma.organizationMember.findFirst({
     where: { userId: uid },
   });
