@@ -3,7 +3,9 @@
 import { type ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, Home, Loader2, TrendingUp, Users, Zap } from "lucide-react";
+import { Building2, Home, Loader2, Settings, TrendingUp, Users, Zap } from "lucide-react";
+import { OrgContext, type OrgInfo } from "@/hooks/use-org";
+import type { OrgRole } from "@/lib/types";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { KeyboardShortcutHelp } from "./keyboard-shortcut-help";
 import {
@@ -35,7 +37,7 @@ const NAV = [
   { href: "/timeline", label: "Timeline", icon: Zap },
 ] as const;
 
-export function AppShell({ children }: { children: ReactNode }) {
+export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: OrgInfo }) {
   const { user, loading } = useRequireAuth("/");
   const pathname = usePathname();
   const router = useRouter();
@@ -70,6 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
+    <OrgContext.Provider value={orgInfo}>
     <SidebarProvider>
       <Sidebar collapsible="icon">
         <SidebarHeader>
@@ -80,14 +83,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             <div className="flex size-6 items-center justify-center rounded-md bg-primary text-primary-foreground text-xs font-bold">
               C
             </div>
-            <span className="group-data-[collapsible=icon]:hidden">CRM</span>
+            <span className="group-data-[collapsible=icon]:hidden">{orgInfo.organizationName}</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu>
-                {NAV.map(({ href, label, icon: Icon }) => {
+                {[...NAV, ...(orgInfo.role === "ADMIN" ? [{ href: "/settings", label: "Settings", icon: Settings } as const] : [])].map(({ href, label, icon: Icon }) => {
                   const active =
                     pathname === href || pathname.startsWith(`${href}/`);
                   return (
@@ -149,5 +152,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       />
       <KeyboardShortcutHelp open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
     </SidebarProvider>
+    </OrgContext.Provider>
   );
 }

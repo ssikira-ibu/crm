@@ -12,6 +12,7 @@ import activityRoutes from "./activities.js";
 import tagRoutes from "./tags.js";
 import eventRoutes from "./events.js";
 import searchRoutes from "./search.js";
+import orgAdminRoutes from "./orgAdmin.js";
 import meRoutes from "./me.js";
 import organizationRoutes from "./organizations.js";
 import inviteRoutes from "./invites.js";
@@ -72,6 +73,10 @@ apiRouter.use(
 apiRouter.use(
   searchRoutes.routes(),
   searchRoutes.allowedMethods(),
+);
+apiRouter.use(
+  orgAdminRoutes.routes(),
+  orgAdminRoutes.allowedMethods(),
 );
 
 export { healthRouter, apiRouter, authOnlyRouter };

@@ -282,20 +282,20 @@ const organizations = {
   create: (input: OrganizationCreate) =>
     serverRequest<Single<Organization & { role: OrgRole; memberCount: number }>>("/organizations", { method: "POST", body: input }),
   members: () =>
-    serverRequest<Single<OrganizationMember[]>>("/organizations/current/members"),
+    serverRequest<Single<OrganizationMember[]>>("/organization/members"),
   updateMemberRole: (memberId: string, role: OrgRole) =>
-    serverRequest<Single<OrganizationMember>>(`/organizations/current/members/${memberId}`, { method: "PATCH", body: { role } }),
+    serverRequest<Single<OrganizationMember>>(`/organization/members/${memberId}`, { method: "PATCH", body: { role } }),
   removeMember: (memberId: string) =>
-    serverRequest<void>(`/organizations/current/members/${memberId}`, { method: "DELETE" }),
+    serverRequest<void>(`/organization/members/${memberId}`, { method: "DELETE" }),
 };
 
 const invites = {
   create: (input: InviteCreate) =>
-    serverRequest<Single<Invite>>("/invites", { method: "POST", body: input }),
+    serverRequest<Single<Invite>>("/organization/invites", { method: "POST", body: input }),
   list: () =>
-    serverRequest<Single<Invite[]>>("/invites"),
+    serverRequest<Single<Invite[]>>("/organization/invites"),
   revoke: (inviteId: string) =>
-    serverRequest<void>(`/invites/${inviteId}`, { method: "DELETE" }),
+    serverRequest<void>(`/organization/invites/${inviteId}`, { method: "DELETE" }),
   getByToken: (token: string) =>
     serverRequest<Single<{ id: string; email: string; role: OrgRole; organization: { id: string; name: string }; expiresAt: string }>>(`/invites/token/${token}`),
   accept: (token: string) =>
