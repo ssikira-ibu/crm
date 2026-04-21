@@ -6,9 +6,9 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
-  GOOGLE_APPLICATION_CREDENTIALS: z.string().min(1).optional(),
   S2S_JWT_SECRET: z.string().min(32),
   ALLOWED_ORIGINS: z.string().default("http://localhost:3001"),
+  REDIS_URL: z.string().optional(),
 });
 
 export const config = envSchema.parse(process.env);

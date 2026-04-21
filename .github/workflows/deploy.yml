@@ -75,12 +75,16 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           envs: IMAGE_TAG,IMAGE_PREFIX,GHCR_TOKEN,GHCR_USER
           script: |
+            set -euo pipefail
             cd ~/crm
 
             # Source production env
             set -a && source .env && set +a
-            export IMAGE_TAG="${IMAGE_TAG}"
             export IMAGE_PREFIX="${IMAGE_PREFIX}"
+
+            # Capture previous tag for rollback (falls back to 'latest' on first deploy)
+            PREVIOUS_TAG="$(cat .last_deployed_tag 2>/dev/null || echo latest)"
+            export IMAGE_TAG="${IMAGE_TAG}"
 
             # Login to GHCR
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
@@ -89,15 +93,31 @@ jobs:
             docker compose -f docker-compose.prod.yml pull backend frontend
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-            # Wait for health checks
+            # Wait for services, then verify health
             echo "Waiting for services to be healthy..."
             sleep 10
 
-            # Verify backend health
-            if ! docker compose -f docker-compose.prod.yml exec -T backend wget -qO- http://localhost:3000/health > /dev/null 2>&1; then
-              echo "Backend health check failed"
+            healthcheck() {
+              docker compose -f docker-compose.prod.yml exec -T backend \
+                wget -qO- http://localhost:3000/health > /dev/null 2>&1
+            }
+
+            if ! healthcheck; then
+              echo "Backend health check failed — rolling back to ${PREVIOUS_TAG}"
+              export IMAGE_TAG="${PREVIOUS_TAG}"
+              docker compose -f docker-compose.prod.yml pull backend frontend || true
+              docker compose -f docker-compose.prod.yml up -d --remove-orphans
+              sleep 10
+              if ! healthcheck; then
+                echo "Rollback also failed — manual intervention required"
+                exit 2
+              fi
+              echo "Rollback successful; new deploy aborted"
               exit 1
             fi
+
+            # Record successful tag for next rollback
+            echo "${IMAGE_TAG}" > .last_deployed_tag
 
             echo "Deploy successful"
             docker image prune -f

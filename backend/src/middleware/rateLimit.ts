@@ -1,21 +1,22 @@
 import ratelimit from "koa-ratelimit";
+import { Redis } from "ioredis";
+import { config } from "../config.js";
 
-const db = new Map();
+// All traffic to the Koa API flows through the BFF (single IP), so IP-based
+// limiting would penalize every user whenever one is active. Instead, key
+// limits on the authenticated user's uid. This middleware assumes authMiddleware
+// has already populated ctx.state.user; upstream (Cloudflare) handles the
+// IP-level defense for unauthenticated traffic.
+const memoryDb = new Map();
 
-export const globalRateLimit = ratelimit({
-  driver: "memory",
-  db,
+const driverOpts = config.REDIS_URL
+  ? { driver: "redis" as const, db: new Redis(config.REDIS_URL) }
+  : { driver: "memory" as const, db: memoryDb };
+
+export const userRateLimit = ratelimit({
+  ...driverOpts,
   duration: 60_000,
-  max: 100,
-  id: (ctx) => ctx.ip,
-  disableHeader: false,
-});
-
-export const authRateLimit = ratelimit({
-  driver: "memory",
-  db,
-  duration: 60_000,
-  max: 20,
-  id: (ctx) => ctx.ip,
+  max: 600,
+  id: (ctx) => ctx.state.user?.uid ?? ctx.ip,
   disableHeader: false,
 });

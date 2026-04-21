@@ -21,6 +21,7 @@
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "^7.7.0",
     "dotenv": "^17.4.2",
+    "ioredis": "^5.10.1",
     "jose": "^6.2.2",
     "koa": "^3.2.0",
     "koa-body": "^7.0.1",

@@ -48,6 +48,7 @@ services:
     env_file:
       - ./frontend/.env.local
     environment:
+      NODE_ENV: development
       API_URL: http://backend:3000
       SESSION_SECRET: ${SESSION_SECRET}
       S2S_JWT_SECRET: ${S2S_JWT_SECRET}
@@ -55,6 +56,7 @@ services:
     volumes:
       - ./frontend/src:/app/frontend/src
       - ./frontend/public:/app/frontend/public
+      - ./frontend/next.config.ts:/app/frontend/next.config.ts:ro
       - ./packages/shared/src:/app/packages/shared/src
       - ./firebase-service-account.json:/app/frontend/firebase-service-account.json:ro
     depends_on:

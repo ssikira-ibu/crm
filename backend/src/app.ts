@@ -7,7 +7,7 @@ import { requestLogger } from "./middleware/requestLogger.js";
 import { authMiddleware, orgMiddleware } from "./middleware/auth.js";
 import { healthRouter, apiRouter, authOnlyRouter } from "./routes/index.js";
 import { config } from "./config.js";
-import { globalRateLimit, authRateLimit } from "./middleware/rateLimit.js";
+import { userRateLimit } from "./middleware/rateLimit.js";
 
 const app = new Koa();
 
@@ -16,7 +16,6 @@ const allowedOrigins = config.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
 // Global middleware
 app.use(errorHandler);
 app.use(requestLogger);
-app.use(globalRateLimit);
 app.use(
   helmet({
     contentSecurityPolicy: config.NODE_ENV === "production" ? undefined : false,
@@ -44,7 +43,7 @@ app.use(healthRouter.allowedMethods());
 
 // Auth-only routes (no org membership required): org creation, invite acceptance, /me
 app.use(authMiddleware);
-app.use(authRateLimit);
+app.use(userRateLimit);
 app.use(authOnlyRouter.routes());
 app.use(authOnlyRouter.allowedMethods());
 

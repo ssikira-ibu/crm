@@ -7,6 +7,11 @@ services:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     depends_on:
       - frontend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
 
   db:
     image: postgres:17-alpine
@@ -24,6 +29,28 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 1G
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--save", "", "--appendonly", "no"]
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"
+          memory: 128M
 
   backend:
     image: ${IMAGE_PREFIX}/backend:${IMAGE_TAG:-latest}
@@ -36,11 +63,19 @@ services:
       NODE_ENV: production
       S2S_JWT_SECRET: ${S2S_JWT_SECRET}
       ALLOWED_ORIGINS: https://${DOMAIN}
+      REDIS_URL: redis://redis:6379
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     command: >
       sh -c "npx prisma migrate deploy && node dist/index.js"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 512M
 
   frontend:
     image: ${IMAGE_PREFIX}/frontend:${IMAGE_TAG:-latest}
@@ -52,17 +87,20 @@ services:
       NODE_ENV: production
       SESSION_SECRET: ${SESSION_SECRET}
       S2S_JWT_SECRET: ${S2S_JWT_SECRET}
-      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
+      FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}
       NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
       NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
       NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
       NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
       NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
-    volumes:
-      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
     depends_on:
       - backend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 512M
 
 volumes:
   pgdata:
