@@ -29,11 +29,11 @@ RUN npm run --workspace=backend build
 # Production
 FROM node:24-alpine AS production
 RUN addgroup -S app && adduser -S app -G app
-WORKDIR /app
+WORKDIR /app/backend
 COPY --from=build /app/backend/dist ./dist
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/backend/node_modules ./backend-modules
-COPY --from=build /app/packages/shared/dist ./packages/shared/dist
+COPY --from=build /app/backend/node_modules ./node_modules
+COPY --from=build /app/node_modules /app/node_modules
+COPY --from=build /app/packages/shared ../packages/shared
 COPY --from=build /app/backend/package.json ./
 COPY --from=build /app/backend/prisma ./prisma
 COPY --from=build /app/backend/prisma.config.ts ./prisma.config.ts

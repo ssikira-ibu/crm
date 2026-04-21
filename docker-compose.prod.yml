@@ -85,6 +85,8 @@ services:
     environment:
       API_URL: http://backend:3000
       NODE_ENV: production
+      PORT: "3001"
+      HOSTNAME: "0.0.0.0"
       SESSION_SECRET: ${SESSION_SECRET}
       S2S_JWT_SECRET: ${S2S_JWT_SECRET}
       FIREBASE_SERVICE_ACCOUNT_JSON: ${FIREBASE_SERVICE_ACCOUNT_JSON}

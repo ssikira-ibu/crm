@@ -4,9 +4,11 @@ const isDev = process.env.NODE_ENV !== "production";
 
 const csp = [
   "default-src 'self'",
-  // 'unsafe-inline' is required for Next.js hydration scripts. 'unsafe-eval'
-  // is only added in dev, where React Fast Refresh and Turbopack rely on it.
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://apis.google.com https://www.gstatic.com`,
+  // 'unsafe-inline' required for Next.js hydration scripts. 'unsafe-eval'
+  // is also required by the Firebase JS SDK (uses new Function() internally)
+  // and by Turbopack / React Fast Refresh in dev. Worth revisiting with a
+  // nonce-based CSP if the Firebase SDK ever drops that usage.
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
@@ -34,6 +36,7 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   poweredByHeader: false,
   compress: true,
   async headers() {
