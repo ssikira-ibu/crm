@@ -2,6 +2,7 @@
   "name": "@crm/backend",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
@@ -10,7 +11,8 @@
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "test": "NODE_ENV=test DATABASE_URL=postgresql://test:test@localhost:5432/test S2S_JWT_SECRET=test-secret-that-is-at-least-32-characters-long node --import tsx --experimental-test-module-mocks --test src/**/*.test.ts"
   },
   "dependencies": {
     "@crm/shared": "*",
