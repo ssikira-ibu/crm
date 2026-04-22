@@ -38,22 +38,26 @@ function useDashboard() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    Promise.all([getDashboard(), getGlobalEvents({ limit: 10 })])
-      .then(([dashRes, evtRes]) => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const [dashRes, evtRes] = await Promise.all([
+          getDashboard(),
+          getGlobalEvents({ limit: 10 }),
+        ]);
         if (!cancelled) {
           setData(dashRes.data);
           setEvents(evtRes.data);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         const msg = err instanceof Error ? err.message : "Failed to load dashboard.";
         toast.error(msg);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    load();
     return () => { cancelled = true; };
   }, [reloadKey]);
 
