@@ -71,20 +71,21 @@ export default function DealsPage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    getDashboard()
-      .then((res) => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await getDashboard();
         if (!cancelled) setData(res.data);
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         toast.error(
           err instanceof Error ? err.message : "Failed to load deals.",
         );
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    load();
     return () => {
       cancelled = true;
     };

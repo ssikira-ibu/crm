@@ -86,22 +86,24 @@ export function CommandPalette({ onCreateCustomer }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!debouncedQuery.trim()) {
-      setResults([]);
-      return;
-    }
+    const trimmed = debouncedQuery.trim();
     let cancelled = false;
-    setSearching(true);
-    searchAll(debouncedQuery.trim(), 10)
-      .then((res) => {
+    const run = async () => {
+      if (!trimmed) {
+        setResults([]);
+        return;
+      }
+      setSearching(true);
+      try {
+        const res = await searchAll(trimmed, 10);
         if (!cancelled) setResults(res.data.results);
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setResults([]);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setSearching(false);
-      });
+      }
+    };
+    run();
     return () => {
       cancelled = true;
     };
