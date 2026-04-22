@@ -45,24 +45,25 @@ export default function CustomerDetailPage() {
   useEffect(() => {
     if (!id) return;
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    getCustomer(id)
-      .then((res) => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await getCustomer(id);
         if (!cancelled) {
           setData(res.data);
           trackCustomer(res.data.id, res.data.companyName ?? "Untitled");
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         const msg = describeError(err);
         setError(msg);
         toast.error(msg);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    load();
     return () => { cancelled = true; };
   }, [id, reloadKey, router, trackCustomer]);
 

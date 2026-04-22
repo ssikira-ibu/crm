@@ -67,34 +67,31 @@ export default function CustomersPage() {
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
-    setPage(1);
-  }, [debouncedSearch, statusFilter]);
-
-  useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-    listCustomers({
-      page,
-      limit: PAGE_SIZE,
-      status: statusFilter === ANY ? undefined : statusFilter,
-      search: debouncedSearch.trim() || undefined,
-    })
-      .then((res) => {
+    const load = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await listCustomers({
+          page,
+          limit: PAGE_SIZE,
+          status: statusFilter === ANY ? undefined : statusFilter,
+          search: debouncedSearch.trim() || undefined,
+        });
         if (!cancelled) {
           setCustomers(res.data);
           setMeta(res.meta);
         }
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         const msg = describe(err);
         setError(msg);
         toast.error(msg);
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    load();
     return () => { cancelled = true; };
   }, [page, debouncedSearch, statusFilter, reloadKey]);
 
@@ -126,7 +123,10 @@ export default function CustomersPage() {
           <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
             placeholder="Search..."
             className="h-7 pl-8 text-sm"
             aria-label="Search customers"
@@ -134,7 +134,10 @@ export default function CustomersPage() {
         </div>
         <Select
           value={statusFilter}
-          onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+          onValueChange={(v) => {
+            setStatusFilter(v as StatusFilter);
+            setPage(1);
+          }}
         >
           <SelectTrigger className="h-7 w-[8rem] text-sm" aria-label="Filter by status">
             <SelectValue placeholder="All statuses" />

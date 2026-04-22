@@ -14,20 +14,21 @@ export default function TimelinePage() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    getGlobalEvents({ limit: 50 })
-      .then((res) => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await getGlobalEvents({ limit: 50 });
         if (!cancelled) setEvents(res.data);
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         toast.error(
           err instanceof Error ? err.message : "Failed to load timeline.",
         );
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    };
+    load();
     return () => {
       cancelled = true;
     };
