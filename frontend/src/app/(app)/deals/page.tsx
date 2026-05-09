@@ -13,39 +13,16 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { EmptyState } from "@/components/empty-state";
 import { BoardView } from "@/components/deals/board-view";
 import { getDashboard } from "@/app/actions/dashboard";
 import { cn } from "@/lib/utils";
 import type {
   DashboardData,
-  DealStatus,
-  DealWithCustomer,
+  PipelineStage,
 } from "@/lib/types";
-import { DEAL_STATUSES } from "@/lib/types";
 
-const ANY = "ANY" as const;
-type StatusFilter = DealStatus | typeof ANY;
-
-const STATUS_LABEL: Record<DealStatus, string> = {
-  OPEN: "Open",
-  WON: "Won",
-  LOST: "Lost",
-};
-
-const STATUS_STYLE: Record<DealStatus, string> = {
-  OPEN: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  WON: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  LOST: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
-};
+type ViewMode = "board" | "list";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -56,17 +33,20 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-type ViewMode = "board" | "list";
-
 function getInitialView(): ViewMode {
   if (typeof window === "undefined") return "board";
   return (localStorage.getItem("crm:deals-view") as ViewMode) || "board";
 }
 
+function stageStyle(stage: PipelineStage): string {
+  if (stage.isWon) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300";
+  if (stage.isLost) return "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300";
+  return "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
+}
+
 export default function DealsPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(ANY);
   const [view, setView] = useState<ViewMode>(getInitialView);
 
   useEffect(() => {
@@ -105,14 +85,10 @@ export default function DealsPage() {
   }
 
   const allDeals = data?.deals ?? [];
-  const filtered =
-    statusFilter === ANY
-      ? allDeals
-      : allDeals.filter((d) => d.status === statusFilter);
 
-  const openDeals = allDeals.filter((d) => d.status === "OPEN");
-  const wonDeals = allDeals.filter((d) => d.status === "WON");
-  const lostDeals = allDeals.filter((d) => d.status === "LOST");
+  const openDeals = allDeals.filter((d) => !d.stage?.isWon && !d.stage?.isLost);
+  const wonDeals = allDeals.filter((d) => d.stage?.isWon);
+  const lostDeals = allDeals.filter((d) => d.stage?.isLost);
   const openValue = openDeals.reduce((sum, d) => sum + d.value, 0);
   const wonValue = wonDeals.reduce((sum, d) => sum + d.value, 0);
   const winRate =
@@ -198,7 +174,7 @@ export default function DealsPage() {
             </div>
           )}
 
-          {/* View Toggle + Filter */}
+          {/* View Toggle */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1 rounded-lg border p-0.5">
               <button
@@ -226,27 +202,6 @@ export default function DealsPage() {
                 List
               </button>
             </div>
-            {view === "list" && (
-              <Select
-                value={statusFilter}
-                onValueChange={(v) => setStatusFilter(v as StatusFilter)}
-              >
-                <SelectTrigger
-                  className="h-7 w-[7rem] text-sm"
-                  aria-label="Filter by status"
-                >
-                  <SelectValue placeholder="All" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ANY}>All</SelectItem>
-                  {DEAL_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {STATUS_LABEL[s]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
           </div>
 
           {/* Content */}
@@ -254,65 +209,55 @@ export default function DealsPage() {
             <EmptyState
               icon={TrendingUp}
               title="No deals yet"
-              description="Create deals from the customer detail page."
+              description="Create deals from the company detail page."
             />
           ) : view === "board" ? (
             <BoardView deals={allDeals} />
           ) : (
-            <>
-              {filtered.length === 0 ? (
-                <EmptyState
-                  icon={TrendingUp}
-                  title="No deals found"
-                  description="Try a different filter."
-                />
-              ) : (
-                <div className="divide-y rounded-lg border">
-                  {filtered.map((d) => (
-                    <Link
-                      key={d.id}
-                      href={`/customers/${d.customerId}`}
-                      className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/50"
-                    >
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-2">
-                          <span className="truncate text-sm font-medium">
-                            {d.title}
-                          </span>
-                          <Badge
-                            variant="secondary"
-                            className={cn(
-                              "text-[10px] shrink-0",
-                              STATUS_STYLE[d.status],
-                            )}
-                          >
-                            {STATUS_LABEL[d.status]}
-                          </Badge>
-                        </div>
-                        <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                          <span>{d.customer.companyName ?? "Untitled"}</span>
-                          {d.expectedCloseDate && (
-                            <>
-                              <span className="text-border">|</span>
-                              <span>
-                                Close{" "}
-                                {format(
-                                  new Date(d.expectedCloseDate),
-                                  "MMM d, yyyy",
-                                )}
-                              </span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <span className="shrink-0 text-sm font-medium tabular-nums">
-                        {formatCurrency(d.value)}
+            <div className="divide-y rounded-lg border">
+              {allDeals.map((d) => (
+                <Link
+                  key={d.id}
+                  href={`/customers/${d.companyId}`}
+                  className="group flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="truncate text-sm font-medium">
+                        {d.title}
                       </span>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </>
+                      <Badge
+                        variant="secondary"
+                        className={cn(
+                          "text-[10px] shrink-0",
+                          stageStyle(d.stage),
+                        )}
+                      >
+                        {d.stage.name}
+                      </Badge>
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
+                      <span>{d.company.name ?? "Untitled"}</span>
+                      {d.expectedCloseDate && (
+                        <>
+                          <span className="text-border">|</span>
+                          <span>
+                            Close{" "}
+                            {format(
+                              new Date(d.expectedCloseDate),
+                              "MMM d, yyyy",
+                            )}
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  <span className="shrink-0 text-sm font-medium tabular-nums">
+                    {formatCurrency(d.value)}
+                  </span>
+                </Link>
+              ))}
+            </div>
           )}
         </div>
       </div>

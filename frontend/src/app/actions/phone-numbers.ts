@@ -4,36 +4,36 @@ import { serverApi } from "@/lib/api-server";
 import type { PhoneNumberCreate, PhoneNumberUpdate } from "@/lib/types";
 
 export async function listPhoneNumbers(
-  customerId: string,
+  companyId: string,
   contactId: string,
 ) {
-  return serverApi.phoneNumbers.list(customerId, contactId);
+  return serverApi.phoneNumbers.list(companyId, contactId);
 }
 
 export async function getPhoneNumber(
-  customerId: string,
+  companyId: string,
   contactId: string,
   phoneNumberId: string,
 ) {
-  return serverApi.phoneNumbers.get(customerId, contactId, phoneNumberId);
+  return serverApi.phoneNumbers.get(companyId, contactId, phoneNumberId);
 }
 
 export async function createPhoneNumber(
-  customerId: string,
+  companyId: string,
   contactId: string,
   input: PhoneNumberCreate,
 ) {
-  return serverApi.phoneNumbers.create(customerId, contactId, input);
+  return serverApi.phoneNumbers.create(companyId, contactId, input);
 }
 
 export async function updatePhoneNumber(
-  customerId: string,
+  companyId: string,
   contactId: string,
   phoneNumberId: string,
   input: PhoneNumberUpdate,
 ) {
   return serverApi.phoneNumbers.update(
-    customerId,
+    companyId,
     contactId,
     phoneNumberId,
     input,
@@ -41,9 +41,9 @@ export async function updatePhoneNumber(
 }
 
 export async function removePhoneNumber(
-  customerId: string,
+  companyId: string,
   contactId: string,
   phoneNumberId: string,
 ) {
-  return serverApi.phoneNumbers.remove(customerId, contactId, phoneNumberId);
+  return serverApi.phoneNumbers.remove(companyId, contactId, phoneNumberId);
 }

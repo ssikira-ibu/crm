@@ -30,17 +30,31 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { createReminder, updateReminder } from "@/app/actions/reminders";
+import { createTask, updateTask } from "@/app/actions/tasks";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
-import type { Reminder } from "@/lib/types";
+import { TASK_PRIORITIES, type Task, type TaskPriority } from "@/lib/types";
+
+const PRIORITY_LABEL: Record<TaskPriority, string> = {
+  LOW: "Low",
+  NORMAL: "Normal",
+  HIGH: "High",
+  URGENT: "Urgent",
+};
 
 type Props = {
-  customerId: string;
+  companyId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  editing: Reminder | null;
+  editing: Task | null;
   onSaved: () => void;
 };
 
@@ -51,8 +65,8 @@ function withTime(date: Date, hhmm: string): Date {
   return next;
 }
 
-function initialDate(editing: Reminder | null): Date {
-  if (editing) return new Date(editing.dueDate);
+function initialDate(editing: Task | null): Date {
+  if (editing?.dueDate) return new Date(editing.dueDate);
   const d = new Date();
   d.setHours(9, 0, 0, 0);
   return d;
@@ -61,24 +75,26 @@ function initialDate(editing: Reminder | null): Date {
 const schema = z.object({
   title: z.string().trim().min(1, "Title is required."),
   description: z.string().trim().optional(),
+  priority: z.enum(TASK_PRIORITIES),
   dueDate: z.date(),
   time: z.string().regex(/^\d{2}:\d{2}$/, "Enter a valid time."),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-function toValues(editing: Reminder | null): FormValues {
+function toValues(editing: Task | null): FormValues {
   const d = initialDate(editing);
   return {
     title: editing?.title ?? "",
     description: editing?.description ?? "",
+    priority: editing?.priority ?? "NORMAL",
     dueDate: d,
     time: format(d, "HH:mm"),
   };
 }
 
-export function ReminderDialog({
-  customerId,
+export function TaskDialog({
+  companyId,
   open,
   onOpenChange,
   editing,
@@ -100,14 +116,15 @@ export function ReminderDialog({
       const input = {
         title: values.title.trim(),
         description: values.description?.trim() || undefined,
+        priority: values.priority,
         dueDate: due.toISOString(),
       };
       if (editing) {
-        await updateReminder(customerId, editing.id, input);
-        toast.success("Reminder updated.");
+        await updateTask(companyId, editing.id, input);
+        toast.success("Task updated.");
       } else {
-        await createReminder(customerId, input);
-        toast.success("Reminder added.");
+        await createTask(companyId, input);
+        toast.success("Task added.");
       }
       onSaved();
       onOpenChange(false);
@@ -121,7 +138,7 @@ export function ReminderDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {editing ? "Edit reminder" : "New reminder"}
+            {editing ? "Edit task" : "New task"}
           </DialogTitle>
         </DialogHeader>
         <Form {...form}>
@@ -157,6 +174,34 @@ export function ReminderDialog({
                       {...field}
                     />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="priority"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Priority</FormLabel>
+                  <Select
+                    value={field.value}
+                    onValueChange={(v) => field.onChange(v as TaskPriority)}
+                    disabled={pending}
+                  >
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {TASK_PRIORITIES.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {PRIORITY_LABEL[p]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}

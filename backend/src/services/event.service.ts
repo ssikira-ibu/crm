@@ -3,39 +3,43 @@ import { prisma } from "../lib/prisma.js";
 import type { OrgContext } from "@crm/shared";
 
 export type EntityType =
-  | "CUSTOMER"
+  | "COMPANY"
   | "DEAL"
   | "CONTACT"
   | "NOTE"
-  | "REMINDER"
+  | "TASK"
   | "ACTIVITY"
-  | "TAG";
+  | "TAG"
+  | "PIPELINE";
 
 export type EventAction =
   | "CREATED"
   | "UPDATED"
   | "DELETED"
   | "STATUS_CHANGED"
+  | "STAGE_CHANGED"
   | "COMPLETED"
   | "TAGGED"
   | "UNTAGGED";
 
 export async function recordEvent(params: {
   ctx: OrgContext;
-  customerId: string;
+  companyId?: string;
   entityType: EntityType;
   entityId: string;
   action: EventAction;
+  source?: string;
   metadata?: Record<string, unknown>;
 }) {
   await prisma.event.create({
     data: {
       organizationId: params.ctx.organizationId,
       actorId: params.ctx.userId,
-      customerId: params.customerId,
+      companyId: params.companyId ?? null,
       entityType: params.entityType,
       entityId: params.entityId,
       action: params.action,
+      source: params.source ?? "user",
       metadata: params.metadata as Prisma.InputJsonValue | undefined,
     },
   });
@@ -50,34 +54,34 @@ export async function listGlobalEvents(
     where: {
       organizationId: ctx.organizationId,
       ...(ctx.role === "SALESPERSON"
-        ? { customer: { ownerId: ctx.userId } }
+        ? { company: { ownerId: ctx.userId } }
         : {}),
-      ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+      ...(cursor ? { sequence: { lt: Number(cursor) } } : {}),
     },
     include: {
-      customer: { select: { id: true, companyName: true, status: true } },
+      company: { select: { id: true, name: true, status: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { sequence: "desc" },
     take: limit,
   });
 }
 
-export async function listCustomerEvents(
+export async function listCompanyEvents(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   limit = 50,
   cursor?: string,
 ) {
   return prisma.event.findMany({
     where: {
-      customerId,
+      companyId,
       organizationId: ctx.organizationId,
-      ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+      ...(cursor ? { sequence: { lt: Number(cursor) } } : {}),
     },
     include: {
-      customer: { select: { id: true, companyName: true, status: true } },
+      company: { select: { id: true, name: true, status: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { sequence: "desc" },
     take: limit,
   });
 }

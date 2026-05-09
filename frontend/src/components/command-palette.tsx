@@ -4,9 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
-  CalendarCheck,
   Clock,
   Home,
+  ListTodo,
   Plus,
   Search,
   StickyNote,
@@ -26,38 +26,38 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { useRecentCustomers } from "@/hooks/use-recent-customers";
+import { useRecentCompanies } from "@/hooks/use-recent-companies";
 import { searchAll } from "@/app/actions/search";
 import type { SearchResultItem } from "@/lib/types";
 
 const ICON_MAP = {
-  customer: Users,
+  company: Users,
   contact: Users,
   deal: TrendingUp,
   note: StickyNote,
   activity: BookOpen,
-  reminder: CalendarCheck,
+  task: ListTodo,
 } as const;
 
 const LABEL_MAP = {
-  customer: "Customer",
+  company: "Company",
   contact: "Contact",
   deal: "Deal",
   note: "Note",
   activity: "Activity",
-  reminder: "Reminder",
+  task: "Task",
 } as const;
 
 function resultUrl(item: SearchResultItem): string {
   switch (item.type) {
-    case "customer":
+    case "company":
       return `/customers/${item.id}`;
     case "contact":
     case "deal":
     case "note":
     case "activity":
-    case "reminder":
-      return `/customers/${item.customerId}`;
+    case "task":
+      return `/customers/${item.companyId}`;
   }
 }
 
@@ -72,7 +72,7 @@ export function CommandPalette({ onCreateCustomer }: Props) {
   const debouncedQuery = useDebouncedValue(query, 200);
   const [results, setResults] = useState<SearchResultItem[]>([]);
   const [searching, setSearching] = useState(false);
-  const { recentCustomers } = useRecentCustomers();
+  const { recentCompanies } = useRecentCompanies();
 
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
@@ -133,7 +133,7 @@ export function CommandPalette({ onCreateCustomer }: Props) {
         if (!next) setQuery("");
       }}
       title="Command palette"
-      description="Search across customers, contacts, deals, notes, and more."
+      description="Search across companies, contacts, deals, notes, and more."
     >
       <Command shouldFilter={!hasQuery}>
         <CommandInput
@@ -152,7 +152,7 @@ export function CommandPalette({ onCreateCustomer }: Props) {
               return (
                 <CommandGroup key={type} heading={`${label}s`}>
                   {items.map((item) => {
-                    const Icon = ICON_MAP[item.type] ?? Search;
+                    const Icon = ICON_MAP[item.type as keyof typeof ICON_MAP] ?? Search;
                     return (
                       <CommandItem
                         key={`${item.type}-${item.id}`}
@@ -168,9 +168,9 @@ export function CommandPalette({ onCreateCustomer }: Props) {
                             {item.subtitle}
                           </span>
                         )}
-                        {item.type !== "customer" && item.customerName && (
+                        {item.type !== "company" && item.companyName && (
                           <span className="ml-auto text-xs text-muted-foreground">
-                            {item.customerName}
+                            {item.companyName}
                           </span>
                         )}
                       </CommandItem>
@@ -180,18 +180,18 @@ export function CommandPalette({ onCreateCustomer }: Props) {
               );
             })}
 
-          {!hasQuery && recentCustomers.length > 0 && (
+          {!hasQuery && recentCompanies.length > 0 && (
             <CommandGroup heading="Recent">
-              {recentCustomers.map((c) => (
+              {recentCompanies.map((c) => (
                 <CommandItem
                   key={c.id}
-                  value={`recent-${c.companyName}`}
+                  value={`recent-${c.name}`}
                   onSelect={() =>
                     runCommand(() => router.push(`/customers/${c.id}`))
                   }
                 >
                   <Clock className="size-4 text-muted-foreground" />
-                  <span>{c.companyName}</span>
+                  <span>{c.name}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -213,7 +213,7 @@ export function CommandPalette({ onCreateCustomer }: Props) {
                   onSelect={() => runCommand(() => router.push("/customers"))}
                 >
                   <Users className="size-4 text-muted-foreground" />
-                  <span>Customers</span>
+                  <span>Companies</span>
                   <CommandShortcut>G C</CommandShortcut>
                 </CommandItem>
                 <CommandItem
@@ -239,11 +239,11 @@ export function CommandPalette({ onCreateCustomer }: Props) {
               <CommandGroup heading="Actions">
                 {onCreateCustomer && (
                   <CommandItem
-                    value="create-customer"
+                    value="create-company"
                     onSelect={() => runCommand(onCreateCustomer)}
                   >
                     <Plus className="size-4 text-muted-foreground" />
-                    <span>Create customer</span>
+                    <span>Create company</span>
                     <CommandShortcut>N</CommandShortcut>
                   </CommandItem>
                 )}

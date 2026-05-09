@@ -1,26 +1,26 @@
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { CustomerStatus } from "@/lib/types";
+import type { CompanyStatus } from "@/lib/types";
 
-const LABELS: Record<CustomerStatus, string> = {
+const LABELS: Record<CompanyStatus, string> = {
   ACTIVE: "Active",
   INACTIVE: "Inactive",
   LEAD: "Lead",
   PROSPECT: "Prospect",
 };
 
-const DOT: Record<CustomerStatus, string> = {
+const DOT: Record<CompanyStatus, string> = {
   ACTIVE: "bg-emerald-500",
   INACTIVE: "bg-muted-foreground/60",
   LEAD: "bg-sky-500",
   PROSPECT: "bg-amber-500",
 };
 
-export function CustomerStatusBadge({
+export function CompanyStatusBadge({
   status,
   className,
 }: {
-  status: CustomerStatus;
+  status: CompanyStatus;
   className?: string;
 }) {
   return (

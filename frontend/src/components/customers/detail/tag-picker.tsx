@@ -21,8 +21,8 @@ import {
 import {
   listTags,
   createTag,
-  addTagToCustomer,
-  removeTagFromCustomer,
+  addTagToCompany,
+  removeTagFromCompany,
 } from "@/app/actions/tags";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -40,7 +40,7 @@ const PRESET_COLORS = [
 ];
 
 type Props = {
-  customerId: string;
+  companyId: string;
   assigned: Tag[];
   onChanged: () => void;
 };
@@ -54,7 +54,7 @@ function TagDot({ color }: { color: string | null }) {
   );
 }
 
-export function TagPicker({ customerId, assigned, onChanged }: Props) {
+export function TagPicker({ companyId, assigned, onChanged }: Props) {
   const [open, setOpen] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [pending, startTransition] = useTransition();
@@ -72,9 +72,9 @@ export function TagPicker({ customerId, assigned, onChanged }: Props) {
   async function toggle(tag: Tag) {
     try {
       if (assignedIds.has(tag.id)) {
-        await removeTagFromCustomer(customerId, tag.id);
+        await removeTagFromCompany(companyId, tag.id);
       } else {
-        await addTagToCustomer(customerId, tag.id);
+        await addTagToCompany(companyId, tag.id);
       }
       onChanged();
     } catch (err) {
@@ -88,7 +88,7 @@ export function TagPicker({ customerId, assigned, onChanged }: Props) {
     try {
       const color = PRESET_COLORS[Math.floor(Math.random() * PRESET_COLORS.length)];
       const res = await createTag({ name, color });
-      await addTagToCustomer(customerId, res.data.id);
+      await addTagToCompany(companyId, res.data.id);
       setSearch("");
       onChanged();
       listTags()
@@ -101,7 +101,7 @@ export function TagPicker({ customerId, assigned, onChanged }: Props) {
 
   async function handleRemove(tag: Tag) {
     try {
-      await removeTagFromCustomer(customerId, tag.id);
+      await removeTagFromCompany(companyId, tag.id);
       onChanged();
     } catch (err) {
       toast.error(describeError(err));

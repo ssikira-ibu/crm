@@ -3,7 +3,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Check, ExternalLink, Loader2, MoreHorizontal, X } from "lucide-react";
+import { Check, ExternalLink, Loader2, MoreHorizontal } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,26 +20,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
-import { CustomerStatusBadge } from "@/components/customers/status-badge";
+import { CompanyStatusBadge } from "@/components/customers/status-badge";
 import { TagPicker } from "@/components/customers/detail/tag-picker";
-import { updateCustomer, removeCustomer } from "@/app/actions/customers";
+import { updateCompany, removeCompany } from "@/app/actions/companies";
 import { describeError } from "@/lib/errors";
 import {
-  CUSTOMER_STATUSES,
-  type Customer,
-  type CustomerStatus,
-  type CustomerWithRelations,
+  COMPANY_STATUSES,
+  type Company,
+  type CompanyStatus,
+  type CompanyWithRelations,
 } from "@/lib/types";
 
-const STATUS_LABEL: Record<CustomerStatus, string> = {
+const STATUS_LABEL: Record<CompanyStatus, string> = {
   ACTIVE: "Active",
   INACTIVE: "Inactive",
   LEAD: "Lead",
@@ -47,8 +40,8 @@ const STATUS_LABEL: Record<CustomerStatus, string> = {
 };
 
 type Props = {
-  customer: CustomerWithRelations;
-  onUpdated: (customer: Customer) => void;
+  customer: CompanyWithRelations;
+  onUpdated: (company: Company) => void;
   onChanged: () => void;
 };
 
@@ -56,15 +49,15 @@ function InlineField({
   value,
   field,
   placeholder,
-  customerId,
+  companyId,
   onUpdated,
   className,
 }: {
   value: string;
   field: string;
   placeholder: string;
-  customerId: string;
-  onUpdated: (c: Customer) => void;
+  companyId: string;
+  onUpdated: (c: Company) => void;
   className?: string;
 }) {
   const [editing, setEditing] = useState(false);
@@ -86,7 +79,7 @@ function InlineField({
     }
     setSaving(true);
     try {
-      const res = await updateCustomer(customerId, { [field]: trimmed || undefined });
+      const res = await updateCompany(companyId, { [field]: trimmed || undefined });
       onUpdated(res.data);
       setEditing(false);
       toast.success("Updated.");
@@ -148,15 +141,15 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
   const [statusSaving, setStatusSaving] = useState(false);
 
   async function onDelete() {
-    await removeCustomer(customer.id);
-    toast.success("Customer deleted.");
+    await removeCompany(customer.id);
+    toast.success("Company deleted.");
     router.push("/customers");
   }
 
   async function onStatusChange(newStatus: string) {
     setStatusSaving(true);
     try {
-      const res = await updateCustomer(customer.id, { status: newStatus as CustomerStatus });
+      const res = await updateCompany(customer.id, { status: newStatus as CompanyStatus });
       onUpdated(res.data);
       toast.success("Status updated.");
     } catch (err) {
@@ -167,7 +160,7 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
     }
   }
 
-  const displayName = customer.companyName?.trim() || "Untitled customer";
+  const displayName = customer.name?.trim() || "Untitled company";
 
   return (
     <div className="border-b px-6 py-4">
@@ -176,7 +169,7 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
           <BreadcrumbList>
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
-                <Link href="/customers">Customers</Link>
+                <Link href="/customers">Companies</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
@@ -193,15 +186,15 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <ConfirmDeleteButton
-              title="Delete customer?"
-              description="This will permanently remove the customer and all related data."
+              title="Delete company?"
+              description="This will permanently remove the company and all related data."
               onConfirm={onDelete}
               trigger={
                 <DropdownMenuItem
                   onSelect={(e) => e.preventDefault()}
                   className="text-destructive focus:text-destructive"
                 >
-                  Delete customer
+                  Delete company
                 </DropdownMenuItem>
               }
             />
@@ -213,21 +206,21 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
         <div className="flex items-center gap-2.5">
           <h1 className="text-lg font-semibold tracking-tight">
             <InlineField
-              value={customer.companyName ?? ""}
-              field="companyName"
+              value={customer.name ?? ""}
+              field="name"
               placeholder="Company name"
-              customerId={customer.id}
+              companyId={customer.id}
               onUpdated={onUpdated}
             />
           </h1>
           <DropdownMenu open={statusOpen} onOpenChange={setStatusOpen}>
             <DropdownMenuTrigger asChild>
               <button className="cursor-pointer" disabled={statusSaving}>
-                <CustomerStatusBadge status={customer.status} />
+                <CompanyStatusBadge status={customer.status} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">
-              {CUSTOMER_STATUSES.map((s) => (
+              {COMPANY_STATUSES.map((s) => (
                 <DropdownMenuItem
                   key={s}
                   onSelect={() => onStatusChange(s)}
@@ -245,7 +238,7 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
             value={customer.industry ?? ""}
             field="industry"
             placeholder="Add industry"
-            customerId={customer.id}
+            companyId={customer.id}
             onUpdated={onUpdated}
             className="text-sm"
           />
@@ -264,7 +257,7 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
               value=""
               field="website"
               placeholder="Add website"
-              customerId={customer.id}
+              companyId={customer.id}
               onUpdated={onUpdated}
               className="text-sm"
             />
@@ -272,7 +265,7 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
         </div>
         <div className="mt-2">
           <TagPicker
-            customerId={customer.id}
+            companyId={customer.id}
             assigned={customer.tags}
             onChanged={onChanged}
           />

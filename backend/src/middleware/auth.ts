@@ -3,8 +3,12 @@ import { jwtVerify } from "jose";
 import { config } from "../config.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "./errorHandler.js";
+import { upsertUser } from "../services/user.service.js";
 
 const encodedKey = new TextEncoder().encode(config.S2S_JWT_SECRET);
+
+// Simple in-memory cache of known UIDs to avoid upserting on every request
+const knownUids = new Set<string>();
 
 export const authMiddleware: Middleware = async (ctx, next) => {
   const header = ctx.headers.authorization;
@@ -23,6 +27,16 @@ export const authMiddleware: Middleware = async (ctx, next) => {
     };
   } catch {
     throw new AppError(401, "UNAUTHORIZED", "Invalid or expired token");
+  }
+
+  // Fire-and-forget upsert — only if not seen in this process lifetime
+  const { uid, email } = ctx.state.user;
+  if (!knownUids.has(uid)) {
+    knownUids.add(uid);
+    upsertUser(uid, email).catch(() => {
+      // If it fails, remove from cache so we retry next time
+      knownUids.delete(uid);
+    });
   }
 
   await next();

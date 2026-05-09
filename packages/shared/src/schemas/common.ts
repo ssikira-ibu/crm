@@ -1,12 +1,12 @@
 import { z } from "zod";
 
 export const uuidParam = z.object({
-  customerId: z.string().uuid(),
+  companyId: z.string().uuid(),
 });
 
 export const uuidWithChildParam = (childKey: string) =>
   z.object({
-    customerId: z.string().uuid(),
+    companyId: z.string().uuid(),
     [childKey]: z.string().uuid(),
   });
 

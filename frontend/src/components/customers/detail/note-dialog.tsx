@@ -29,7 +29,7 @@ import { describeError } from "@/lib/errors";
 import type { Note } from "@/lib/types";
 
 type Props = {
-  customerId: string;
+  companyId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Note | null;
@@ -48,7 +48,7 @@ function toValues(editing: Note | null): FormValues {
 }
 
 export function NoteDialog({
-  customerId,
+  companyId,
   open,
   onOpenChange,
   editing,
@@ -68,10 +68,10 @@ export function NoteDialog({
     try {
       const input = { title: values.title.trim(), body: values.body.trim() };
       if (editing) {
-        await updateNote(customerId, editing.id, input);
+        await updateNote(companyId, editing.id, input);
         toast.success("Note updated.");
       } else {
-        await createNote(customerId, input);
+        await createNote(companyId, input);
         toast.success("Note added.");
       }
       onSaved();

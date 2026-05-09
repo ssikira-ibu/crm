@@ -13,6 +13,7 @@ const router = new Router<AppState>();
 router.get("/organization/members", async (ctx) => {
   const members = await prisma.organizationMember.findMany({
     where: { organizationId: ctx.state.user.organizationId },
+    include: { user: true },
     orderBy: { createdAt: "asc" },
   });
   ctx.body = { data: members };
@@ -29,6 +30,7 @@ router.patch(
 
     const member = await prisma.organizationMember.findFirst({
       where: { id: memberId, organizationId },
+      include: { user: true },
     });
     if (!member) {
       throw new AppError(404, "MEMBER_NOT_FOUND", "Member not found");
@@ -46,13 +48,14 @@ router.patch(
     const updated = await prisma.organizationMember.update({
       where: { id: memberId },
       data: { role: role as "ADMIN" | "MANAGER" | "SALESPERSON" },
+      include: { user: true },
     });
     auditLog({
       action: "MEMBER_ROLE_CHANGED",
       actorId: ctx.state.user.uid,
       organizationId,
       targetId: memberId,
-      metadata: { oldRole: member.role, newRole: role, email: member.email },
+      metadata: { oldRole: member.role, newRole: role, email: member.user.email },
     });
     ctx.body = { data: updated };
   },
@@ -67,6 +70,7 @@ router.delete(
 
     const member = await prisma.organizationMember.findFirst({
       where: { id: memberId, organizationId },
+      include: { user: true },
     });
     if (!member) {
       throw new AppError(404, "MEMBER_NOT_FOUND", "Member not found");
@@ -81,7 +85,7 @@ router.delete(
       actorId: userId,
       organizationId,
       targetId: memberId,
-      metadata: { email: member.email, role: member.role },
+      metadata: { email: member.user.email, role: member.role },
     });
     ctx.status = 204;
   },
@@ -103,11 +107,17 @@ router.post(
     const { email, role } = ctx.state.body as { email: string; role: string };
     const { organizationId, uid: userId } = ctx.state.user;
 
-    const existingMember = await prisma.organizationMember.findFirst({
-      where: { organizationId, email },
+    // Check if user is already a member (by looking up User by email, then membership)
+    const existingUser = await prisma.user.findFirst({
+      where: { email },
     });
-    if (existingMember) {
-      throw new AppError(409, "ALREADY_MEMBER", "This email is already a member");
+    if (existingUser) {
+      const existingMember = await prisma.organizationMember.findFirst({
+        where: { organizationId, userId: existingUser.id },
+      });
+      if (existingMember) {
+        throw new AppError(409, "ALREADY_MEMBER", "This email is already a member");
+      }
     }
 
     const existingInvite = await prisma.invite.findFirst({

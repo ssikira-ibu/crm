@@ -1,16 +1,16 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerAccess } from "./customer.service.js";
+import { ensureCompanyAccess } from "./company.service.js";
 import type { OrgContext, CreatePhoneNumberInput, UpdatePhoneNumberInput } from "@crm/shared";
 
 async function ensureContactOwnership(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   contactId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const contact = await prisma.contact.findFirst({
-    where: { id: contactId, customerId },
+    where: { id: contactId, companyId },
     select: { id: true },
   });
   if (!contact) {
@@ -20,10 +20,10 @@ async function ensureContactOwnership(
 
 export async function listPhoneNumbers(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   contactId: string,
 ) {
-  await ensureContactOwnership(ctx, customerId, contactId);
+  await ensureContactOwnership(ctx, companyId, contactId);
   return prisma.phoneNumber.findMany({
     where: { contactId },
     orderBy: { createdAt: "desc" },
@@ -32,11 +32,11 @@ export async function listPhoneNumbers(
 
 export async function getPhoneNumber(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   contactId: string,
   phoneNumberId: string,
 ) {
-  await ensureContactOwnership(ctx, customerId, contactId);
+  await ensureContactOwnership(ctx, companyId, contactId);
   const phone = await prisma.phoneNumber.findFirst({
     where: { id: phoneNumberId, contactId },
   });
@@ -48,11 +48,11 @@ export async function getPhoneNumber(
 
 export async function createPhoneNumber(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   contactId: string,
   data: CreatePhoneNumberInput,
 ) {
-  await ensureContactOwnership(ctx, customerId, contactId);
+  await ensureContactOwnership(ctx, companyId, contactId);
   return prisma.phoneNumber.create({
     data: { ...data, contactId },
   });
@@ -60,12 +60,12 @@ export async function createPhoneNumber(
 
 export async function updatePhoneNumber(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   contactId: string,
   phoneNumberId: string,
   data: UpdatePhoneNumberInput,
 ) {
-  await ensureContactOwnership(ctx, customerId, contactId);
+  await ensureContactOwnership(ctx, companyId, contactId);
   const phone = await prisma.phoneNumber.findFirst({
     where: { id: phoneNumberId, contactId },
   });
@@ -77,11 +77,11 @@ export async function updatePhoneNumber(
 
 export async function deletePhoneNumber(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   contactId: string,
   phoneNumberId: string,
 ) {
-  await ensureContactOwnership(ctx, customerId, contactId);
+  await ensureContactOwnership(ctx, companyId, contactId);
   const phone = await prisma.phoneNumber.findFirst({
     where: { id: phoneNumberId, contactId },
   });

@@ -41,11 +41,11 @@ router.delete("/tags/:tagId", async (ctx) => {
 });
 
 router.put(
-  "/customers/:customerId/tags/:tagId",
+  "/companies/:companyId/tags/:tagId",
   async (ctx) => {
-    await tagService.addTagToCustomer(
+    await tagService.addTagToCompany(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.tagId,
     );
     ctx.status = 204;
@@ -53,11 +53,11 @@ router.put(
 );
 
 router.delete(
-  "/customers/:customerId/tags/:tagId",
+  "/companies/:companyId/tags/:tagId",
   async (ctx) => {
-    await tagService.removeTagFromCustomer(
+    await tagService.removeTagFromCompany(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.tagId,
     );
     ctx.status = 204;

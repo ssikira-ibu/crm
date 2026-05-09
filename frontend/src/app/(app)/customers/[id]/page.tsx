@@ -9,14 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/empty-state";
 import { CustomerHeader } from "@/components/customers/detail/header";
 import { ContactsTab } from "@/components/customers/detail/contacts-tab";
-import { RemindersTab } from "@/components/customers/detail/reminders-tab";
+import { TasksTab } from "@/components/customers/detail/tasks-tab";
 import { DealsTab } from "@/components/customers/detail/deals-tab";
 import { TimelineTab } from "@/components/customers/detail/timeline-tab";
 import { UnifiedActivityTab } from "@/components/customers/detail/unified-activity-tab";
-import { getCustomer } from "@/app/actions/customers";
-import { useRecentCustomers } from "@/hooks/use-recent-customers";
+import { getCompany } from "@/app/actions/companies";
+import { useRecentCompanies } from "@/hooks/use-recent-companies";
 import { describeError } from "@/lib/errors";
-import type { Customer, CustomerWithRelations } from "@/lib/types";
+import type { Company, CompanyWithRelations } from "@/lib/types";
 
 function TabCount({ count }: { count: number }) {
   if (count === 0) return null;
@@ -31,9 +31,9 @@ export default function CustomerDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id;
   const router = useRouter();
-  const { trackCustomer } = useRecentCustomers();
+  const { trackCompany } = useRecentCompanies();
 
-  const [data, setData] = useState<CustomerWithRelations | null>(null);
+  const [data, setData] = useState<CompanyWithRelations | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [reloadKey, setReloadKey] = useState(0);
@@ -49,10 +49,10 @@ export default function CustomerDetailPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await getCustomer(id);
+        const res = await getCompany(id);
         if (!cancelled) {
           setData(res.data);
-          trackCustomer(res.data.id, res.data.companyName ?? "Untitled");
+          trackCompany(res.data.id, res.data.name ?? "Untitled");
         }
       } catch (err) {
         if (cancelled) return;
@@ -65,9 +65,9 @@ export default function CustomerDetailPage() {
     };
     load();
     return () => { cancelled = true; };
-  }, [id, reloadKey, router, trackCustomer]);
+  }, [id, reloadKey, router, trackCompany]);
 
-  function handleHeaderUpdated(next: Customer) {
+  function handleHeaderUpdated(next: Company) {
     setData((prev) => (prev ? { ...prev, ...next } : prev));
   }
 
@@ -84,8 +84,8 @@ export default function CustomerDetailPage() {
       <div className="flex flex-1 items-center justify-center p-6">
         <EmptyState
           icon={FileWarning}
-          title="Customer unavailable"
-          description={error ?? "We couldn't load this customer."}
+          title="Company unavailable"
+          description={error ?? "We couldn't load this company."}
         />
       </div>
     );
@@ -108,41 +108,41 @@ export default function CustomerDetailPage() {
             <TabsTrigger value="activity">
               Activity <TabCount count={data.activities.length + data.notes.length} />
             </TabsTrigger>
-            <TabsTrigger value="reminders">
-              Reminders <TabCount count={data.reminders.length} />
+            <TabsTrigger value="tasks">
+              Tasks <TabCount count={data.tasks.length} />
             </TabsTrigger>
           </TabsList>
         </div>
         <div className="flex-1 overflow-auto px-6 py-4">
           <TabsContent value="timeline">
-            <TimelineTab customerId={data.id} reloadKey={reloadKey} />
+            <TimelineTab companyId={data.id} reloadKey={reloadKey} />
           </TabsContent>
           <TabsContent value="contacts">
             <ContactsTab
-              customerId={data.id}
+              companyId={data.id}
               items={data.contacts}
               onChanged={refresh}
             />
           </TabsContent>
           <TabsContent value="deals">
             <DealsTab
-              customerId={data.id}
+              companyId={data.id}
               items={data.deals}
               onChanged={refresh}
             />
           </TabsContent>
           <TabsContent value="activity">
             <UnifiedActivityTab
-              customerId={data.id}
+              companyId={data.id}
               activities={data.activities}
               notes={data.notes}
               onChanged={refresh}
             />
           </TabsContent>
-          <TabsContent value="reminders">
-            <RemindersTab
-              customerId={data.id}
-              items={data.reminders}
+          <TabsContent value="tasks">
+            <TasksTab
+              companyId={data.id}
+              items={data.tasks}
               onChanged={refresh}
             />
           </TabsContent>

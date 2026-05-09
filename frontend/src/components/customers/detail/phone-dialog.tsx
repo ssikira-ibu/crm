@@ -36,7 +36,7 @@ import { describeError } from "@/lib/errors";
 import { PHONE_LABELS, type PhoneLabel, type PhoneNumber } from "@/lib/types";
 
 type Props = {
-  customerId: string;
+  companyId: string;
   contactId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -71,7 +71,7 @@ function toValues(editing: PhoneNumber | null): FormValues {
 }
 
 export function PhoneDialog({
-  customerId,
+  companyId,
   contactId,
   open,
   onOpenChange,
@@ -97,10 +97,10 @@ export function PhoneDialog({
         isPrimary: values.isPrimary,
       };
       if (editing) {
-        await updatePhoneNumber(customerId, contactId, editing.id, input);
+        await updatePhoneNumber(companyId, contactId, editing.id, input);
         toast.success("Phone number updated.");
       } else {
-        await createPhoneNumber(customerId, contactId, input);
+        await createPhoneNumber(companyId, contactId, input);
         toast.success("Phone number added.");
       }
       onSaved();

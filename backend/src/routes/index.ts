@@ -1,17 +1,19 @@
 import Router from "@koa/router";
 import healthRouter from "./health.js";
 import dashboardRoutes from "./dashboard.js";
-import customerRoutes from "./customers.js";
+import companyRoutes from "./companies.js";
 import contactRoutes from "./contacts.js";
 import addressRoutes from "./addresses.js";
 import phoneNumberRoutes from "./phoneNumbers.js";
 import noteRoutes from "./notes.js";
-import reminderRoutes from "./reminders.js";
+import taskRoutes from "./tasks.js";
 import dealRoutes from "./deals.js";
 import activityRoutes from "./activities.js";
 import tagRoutes from "./tags.js";
 import eventRoutes from "./events.js";
 import searchRoutes from "./search.js";
+import pipelineRoutes from "./pipelines.js";
+import customFieldRoutes from "./customFields.js";
 import orgAdminRoutes from "./orgAdmin.js";
 import meRoutes from "./me.js";
 import organizationRoutes from "./organizations.js";
@@ -31,8 +33,8 @@ apiRouter.use(
   dashboardRoutes.allowedMethods(),
 );
 apiRouter.use(
-  customerRoutes.routes(),
-  customerRoutes.allowedMethods(),
+  companyRoutes.routes(),
+  companyRoutes.allowedMethods(),
 );
 apiRouter.use(
   contactRoutes.routes(),
@@ -51,8 +53,8 @@ apiRouter.use(
   noteRoutes.allowedMethods(),
 );
 apiRouter.use(
-  reminderRoutes.routes(),
-  reminderRoutes.allowedMethods(),
+  taskRoutes.routes(),
+  taskRoutes.allowedMethods(),
 );
 apiRouter.use(
   dealRoutes.routes(),
@@ -73,6 +75,14 @@ apiRouter.use(
 apiRouter.use(
   searchRoutes.routes(),
   searchRoutes.allowedMethods(),
+);
+apiRouter.use(
+  pipelineRoutes.routes(),
+  pipelineRoutes.allowedMethods(),
+);
+apiRouter.use(
+  customFieldRoutes.routes(),
+  customFieldRoutes.allowedMethods(),
 );
 apiRouter.use(
   orgAdminRoutes.routes(),

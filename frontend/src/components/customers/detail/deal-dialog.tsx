@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -39,18 +39,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { createDeal, updateDeal } from "@/app/actions/deals";
+import { listPipelines } from "@/app/actions/pipelines";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
-import { DEAL_STATUSES, type Deal, type DealStatus } from "@/lib/types";
-
-const STATUS_LABEL: Record<DealStatus, string> = {
-  OPEN: "Open",
-  WON: "Won",
-  LOST: "Lost",
-};
+import type { Deal, PipelineStage } from "@/lib/types";
 
 type Props = {
-  customerId: string;
+  companyId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Deal | null;
@@ -64,18 +59,18 @@ const schema = z.object({
     .string()
     .min(1, "Value is required.")
     .refine((v) => !isNaN(Number(v)) && Number(v) >= 0, "Value must be zero or positive."),
-  status: z.enum(DEAL_STATUSES),
+  stageId: z.string().min(1, "Stage is required."),
   expectedCloseDate: z.date().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-function toValues(editing: Deal | null): FormValues {
+function toValues(editing: Deal | null, defaultStageId: string): FormValues {
   return {
     title: editing?.title ?? "",
     description: editing?.description ?? "",
     value: String(editing?.value ?? 0),
-    status: editing?.status ?? "OPEN",
+    stageId: editing?.stageId ?? defaultStageId,
     expectedCloseDate: editing?.expectedCloseDate
       ? new Date(editing.expectedCloseDate)
       : undefined,
@@ -83,36 +78,76 @@ function toValues(editing: Deal | null): FormValues {
 }
 
 export function DealDialog({
-  customerId,
+  companyId,
   open,
   onOpenChange,
   editing,
   onSaved,
 }: Props) {
+  const [stages, setStages] = useState<PipelineStage[]>([]);
+  const [loadingStages, setLoadingStages] = useState(false);
+
+  const defaultStageId = stages.length > 0 ? stages[0].id : "";
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: toValues(editing),
+    defaultValues: toValues(editing, defaultStageId),
   });
   const pending = form.formState.isSubmitting;
 
+  // Load pipeline stages when dialog opens
   useEffect(() => {
-    if (open) form.reset(toValues(editing));
-  }, [open, editing, form]);
+    if (!open) return;
+    let cancelled = false;
+    const load = async () => {
+      setLoadingStages(true);
+      try {
+        const res = await listPipelines();
+        if (cancelled) return;
+        const pipelines = res.data;
+        const defaultPipeline = pipelines.find((p: { isDefault: boolean }) => p.isDefault) ?? pipelines[0];
+        if (defaultPipeline?.stages) {
+          const sorted = [...defaultPipeline.stages].sort((a: PipelineStage, b: PipelineStage) => a.position - b.position);
+          setStages(sorted);
+        }
+      } catch {
+        // silently ignore
+      } finally {
+        if (!cancelled) setLoadingStages(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
+  // Reset form when stages load or editing changes
+  useEffect(() => {
+    if (open && stages.length > 0) {
+      form.reset(toValues(editing, stages[0].id));
+    }
+  }, [open, editing, form, stages]);
 
   async function onSubmit(values: FormValues) {
     try {
-      const input = {
-        title: values.title.trim(),
-        description: values.description?.trim() || undefined,
-        value: Number(values.value),
-        status: values.status,
-        expectedCloseDate: values.expectedCloseDate?.toISOString(),
-      };
       if (editing) {
-        await updateDeal(customerId, editing.id, input);
+        await updateDeal(companyId, editing.id, {
+          title: values.title.trim(),
+          description: values.description?.trim() || undefined,
+          value: Number(values.value),
+          stageId: values.stageId,
+          expectedCloseDate: values.expectedCloseDate?.toISOString(),
+        });
         toast.success("Deal updated.");
       } else {
-        await createDeal(customerId, input);
+        await createDeal(companyId, {
+          title: values.title.trim(),
+          description: values.description?.trim() || undefined,
+          value: Number(values.value),
+          stageId: values.stageId,
+          expectedCloseDate: values.expectedCloseDate?.toISOString(),
+        });
         toast.success("Deal created.");
       }
       onSaved();
@@ -172,26 +207,24 @@ export function DealDialog({
               />
               <FormField
                 control={form.control}
-                name="status"
+                name="stageId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
+                    <FormLabel>Stage</FormLabel>
                     <Select
                       value={field.value}
-                      onValueChange={(v) =>
-                        field.onChange(v as (typeof DEAL_STATUSES)[number])
-                      }
-                      disabled={pending}
+                      onValueChange={field.onChange}
+                      disabled={pending || loadingStages}
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder={loadingStages ? "Loading..." : "Select stage"} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {DEAL_STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {STATUS_LABEL[s]}
+                        {stages.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -266,7 +299,7 @@ export function DealDialog({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={pending}>
+              <Button type="submit" disabled={pending || loadingStages}>
                 {pending ? (
                   <>
                     <Loader2 className="size-3.5 animate-spin" /> Saving

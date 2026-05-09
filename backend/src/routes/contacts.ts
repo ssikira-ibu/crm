@@ -11,23 +11,23 @@ import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
 
-// GET /customers/:customerId/contacts
-router.get("/customers/:customerId/contacts", async (ctx) => {
+// GET /companies/:companyId/contacts
+router.get("/companies/:companyId/contacts", async (ctx) => {
   const contacts = await contactService.listContacts(
     getOrgContext(ctx.state.user),
-    ctx.params.customerId,
+    ctx.params.companyId,
   );
   ctx.body = { data: contacts };
 });
 
-// POST /customers/:customerId/contacts
+// POST /companies/:companyId/contacts
 router.post(
-  "/customers/:customerId/contacts",
+  "/companies/:companyId/contacts",
   validate(createContactSchema, "body"),
   async (ctx) => {
     const contact = await contactService.createContact(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.state.body as CreateContactInput,
     );
     ctx.status = 201;
@@ -35,24 +35,24 @@ router.post(
   },
 );
 
-// GET /customers/:customerId/contacts/:contactId
-router.get("/customers/:customerId/contacts/:contactId", async (ctx) => {
+// GET /companies/:companyId/contacts/:contactId
+router.get("/companies/:companyId/contacts/:contactId", async (ctx) => {
   const contact = await contactService.getContact(
     getOrgContext(ctx.state.user),
-    ctx.params.customerId,
+    ctx.params.companyId,
     ctx.params.contactId,
   );
   ctx.body = { data: contact };
 });
 
-// PATCH /customers/:customerId/contacts/:contactId
+// PATCH /companies/:companyId/contacts/:contactId
 router.patch(
-  "/customers/:customerId/contacts/:contactId",
+  "/companies/:companyId/contacts/:contactId",
   validate(updateContactSchema, "body"),
   async (ctx) => {
     const contact = await contactService.updateContact(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.contactId,
       ctx.state.body as UpdateContactInput,
     );
@@ -60,13 +60,13 @@ router.patch(
   },
 );
 
-// DELETE /customers/:customerId/contacts/:contactId
+// DELETE /companies/:companyId/contacts/:contactId
 router.delete(
-  "/customers/:customerId/contacts/:contactId",
+  "/companies/:companyId/contacts/:contactId",
   async (ctx) => {
     await contactService.deleteContact(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.contactId,
     );
     ctx.status = 204;

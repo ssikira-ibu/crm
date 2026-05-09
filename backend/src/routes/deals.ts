@@ -13,12 +13,12 @@ import type { AppState } from "../types/index.js";
 const router = new Router<AppState>();
 
 router.get(
-  "/customers/:customerId/deals",
+  "/companies/:companyId/deals",
   validate(dealQuerySchema, "query"),
   async (ctx) => {
     const result = await dealService.listDeals(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.state.query as DealQueryParams,
     );
     ctx.body = result;
@@ -26,12 +26,12 @@ router.get(
 );
 
 router.post(
-  "/customers/:customerId/deals",
+  "/companies/:companyId/deals",
   validate(createDealSchema, "body"),
   async (ctx) => {
     const deal = await dealService.createDeal(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.state.body as CreateDealInput,
     );
     ctx.status = 201;
@@ -39,22 +39,22 @@ router.post(
   },
 );
 
-router.get("/customers/:customerId/deals/:dealId", async (ctx) => {
+router.get("/companies/:companyId/deals/:dealId", async (ctx) => {
   const deal = await dealService.getDeal(
     getOrgContext(ctx.state.user),
-    ctx.params.customerId,
+    ctx.params.companyId,
     ctx.params.dealId,
   );
   ctx.body = { data: deal };
 });
 
 router.patch(
-  "/customers/:customerId/deals/:dealId",
+  "/companies/:companyId/deals/:dealId",
   validate(updateDealSchema, "body"),
   async (ctx) => {
     const deal = await dealService.updateDeal(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.dealId,
       ctx.state.body as UpdateDealInput,
     );
@@ -62,10 +62,10 @@ router.patch(
   },
 );
 
-router.delete("/customers/:customerId/deals/:dealId", async (ctx) => {
+router.delete("/companies/:companyId/deals/:dealId", async (ctx) => {
   await dealService.deleteDeal(
     getOrgContext(ctx.state.user),
-    ctx.params.customerId,
+    ctx.params.companyId,
     ctx.params.dealId,
   );
   ctx.status = 204;

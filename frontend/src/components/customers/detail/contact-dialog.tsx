@@ -29,7 +29,7 @@ import { describeError } from "@/lib/errors";
 import type { Contact } from "@/lib/types";
 
 type Props = {
-  customerId: string;
+  companyId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Contact | null;
@@ -64,7 +64,7 @@ function toValues(editing: Contact | null): FormValues {
 }
 
 export function ContactDialog({
-  customerId,
+  companyId,
   open,
   onOpenChange,
   editing,
@@ -90,10 +90,10 @@ export function ContactDialog({
         isPrimary: values.isPrimary,
       };
       if (editing) {
-        await updateContact(customerId, editing.id, input);
+        await updateContact(companyId, editing.id, input);
         toast.success("Contact updated.");
       } else {
-        await createContact(customerId, input);
+        await createContact(companyId, input);
         toast.success("Contact added.");
       }
       onSaved();

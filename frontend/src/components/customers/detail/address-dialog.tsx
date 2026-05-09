@@ -35,7 +35,7 @@ import { describeError } from "@/lib/errors";
 import { ADDRESS_LABELS, type Address, type AddressLabel } from "@/lib/types";
 
 type Props = {
-  customerId: string;
+  companyId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Address | null;
@@ -74,7 +74,7 @@ function toValues(editing: Address | null): FormValues {
 }
 
 export function AddressDialog({
-  customerId,
+  companyId,
   open,
   onOpenChange,
   editing,
@@ -102,10 +102,10 @@ export function AddressDialog({
         country: values.country?.trim() || undefined,
       };
       if (editing) {
-        await updateAddress(customerId, editing.id, input);
+        await updateAddress(companyId, editing.id, input);
         toast.success("Address updated.");
       } else {
-        await createAddress(customerId, input);
+        await createAddress(companyId, input);
         toast.success("Address added.");
       }
       onSaved();

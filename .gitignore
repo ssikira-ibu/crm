@@ -6,6 +6,7 @@ dist/
 firebase-service-account.json
 *.log
 .DS_Store
+CLAUDE.md
 
 # Prisma
 prisma/migrations/**/migration_lock.toml

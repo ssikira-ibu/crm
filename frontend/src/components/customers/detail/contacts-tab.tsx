@@ -15,12 +15,12 @@ import { ContactDialog } from "./contact-dialog";
 type ContactWithPhones = Contact & { phoneNumbers: PhoneNumber[] };
 
 type Props = {
-  customerId: string;
+  companyId: string;
   items: ContactWithPhones[];
   onChanged: () => void;
 };
 
-export function ContactsTab({ customerId, items, onChanged }: Props) {
+export function ContactsTab({ companyId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<ContactWithPhones | null>(null);
 
@@ -35,7 +35,7 @@ export function ContactsTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(c: ContactWithPhones) {
     try {
-      await removeContact(customerId, c.id);
+      await removeContact(companyId, c.id);
       toast.success("Contact deleted.");
       onChanged();
     } catch (err) {
@@ -127,7 +127,7 @@ export function ContactsTab({ customerId, items, onChanged }: Props) {
       )}
 
       <ContactDialog
-        customerId={customerId}
+        companyId={companyId}
         open={open}
         onOpenChange={setOpen}
         editing={editing}

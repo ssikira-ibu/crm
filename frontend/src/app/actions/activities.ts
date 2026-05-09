@@ -8,37 +8,37 @@ import type {
 } from "@/lib/types";
 
 export async function listActivities(
-  customerId: string,
+  companyId: string,
   params?: ActivityListParams,
 ) {
-  return serverApi.activities.list(customerId, params);
+  return serverApi.activities.list(companyId, params);
 }
 
 export async function getActivity(
-  customerId: string,
+  companyId: string,
   activityId: string,
 ) {
-  return serverApi.activities.get(customerId, activityId);
+  return serverApi.activities.get(companyId, activityId);
 }
 
 export async function createActivity(
-  customerId: string,
+  companyId: string,
   input: ActivityCreate,
 ) {
-  return serverApi.activities.create(customerId, input);
+  return serverApi.activities.create(companyId, input);
 }
 
 export async function updateActivity(
-  customerId: string,
+  companyId: string,
   activityId: string,
   input: ActivityUpdate,
 ) {
-  return serverApi.activities.update(customerId, activityId, input);
+  return serverApi.activities.update(companyId, activityId, input);
 }
 
 export async function removeActivity(
-  customerId: string,
+  companyId: string,
   activityId: string,
 ) {
-  return serverApi.activities.remove(customerId, activityId);
+  return serverApi.activities.remove(companyId, activityId);
 }

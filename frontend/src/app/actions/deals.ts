@@ -4,28 +4,28 @@ import { serverApi } from "@/lib/api-server";
 import type { DealCreate, DealListParams, DealUpdate } from "@/lib/types";
 
 export async function listDeals(
-  customerId: string,
+  companyId: string,
   params?: DealListParams,
 ) {
-  return serverApi.deals.list(customerId, params);
+  return serverApi.deals.list(companyId, params);
 }
 
-export async function getDeal(customerId: string, dealId: string) {
-  return serverApi.deals.get(customerId, dealId);
+export async function getDeal(companyId: string, dealId: string) {
+  return serverApi.deals.get(companyId, dealId);
 }
 
-export async function createDeal(customerId: string, input: DealCreate) {
-  return serverApi.deals.create(customerId, input);
+export async function createDeal(companyId: string, input: DealCreate) {
+  return serverApi.deals.create(companyId, input);
 }
 
 export async function updateDeal(
-  customerId: string,
+  companyId: string,
   dealId: string,
   input: DealUpdate,
 ) {
-  return serverApi.deals.update(customerId, dealId, input);
+  return serverApi.deals.update(companyId, dealId, input);
 }
 
-export async function removeDeal(customerId: string, dealId: string) {
-  return serverApi.deals.remove(customerId, dealId);
+export async function removeDeal(companyId: string, dealId: string) {
+  return serverApi.deals.remove(companyId, dealId);
 }
