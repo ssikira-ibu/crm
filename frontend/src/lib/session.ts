@@ -1,9 +1,9 @@
 import "server-only";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
+import { serverEnv } from "./env";
 
-const SESSION_SECRET = process.env.SESSION_SECRET!;
-const encodedKey = new TextEncoder().encode(SESSION_SECRET);
+const encodedKey = new TextEncoder().encode(serverEnv.SESSION_SECRET);
 const COOKIE_NAME = "session";
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 const REFRESH_THRESHOLD_MS = SESSION_TTL_MS / 2; // refresh when < 12 hours remain

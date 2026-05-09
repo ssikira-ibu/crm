@@ -1,6 +1,7 @@
 import "server-only";
 import { SignJWT } from "jose";
 import { getSession } from "./session";
+import { serverEnv } from "./env";
 import type {
   Address,
   AddressCreate,
@@ -57,8 +58,7 @@ const API_URL =
     "",
   ) ?? "http://localhost:3000";
 
-const S2S_JWT_SECRET = process.env.S2S_JWT_SECRET!;
-const encodedKey = new TextEncoder().encode(S2S_JWT_SECRET);
+const encodedKey = new TextEncoder().encode(serverEnv.S2S_JWT_SECRET);
 
 async function createS2SToken(uid: string, email: string): Promise<string> {
   return new SignJWT({ uid, email })

@@ -57,7 +57,7 @@ crm/
 
 ## Prerequisites
 
-- Node.js
+- Node.js 24
 - Docker & Docker Compose
 - Firebase project (for authentication)
 
@@ -73,21 +73,24 @@ npm install
 ### 2. Configure environment variables
 
 ```bash
-cp .env.example .env
 cp backend/.env.example backend/.env
-cp frontend/.env.example frontend/.env
+cp frontend/.env.example frontend/.env.local
 ```
 
 Generate auth secrets:
 
 ```bash
-openssl rand -base64 32  # SESSION_SECRET
 openssl rand -base64 32  # S2S_JWT_SECRET
+openssl rand -base64 32  # SESSION_SECRET
 ```
 
-Set both values in `.env`, then fill in your Firebase config in `frontend/.env`.
+Set `S2S_JWT_SECRET` to the same value in `backend/.env` and `frontend/.env.local`. Set `SESSION_SECRET` only in `frontend/.env.local`.
 
-Place your Firebase service account JSON at the project root as `firebase-service-account.json`.
+Fill in your Firebase client config (`NEXT_PUBLIC_*` values) in `frontend/.env.local`.
+
+Download your Firebase service account key (Firebase Console > Project settings > Service accounts > Generate new private key) and save it as `firebase-service-account.json` in the project root.
+
+Local secrets live next to the service that reads them. Production uses `.env.production.example` as its template and injects Firebase Admin credentials as `FIREBASE_SERVICE_ACCOUNT_JSON`; see `docs/PRODUCTION.md`.
 
 ### 3. Start the development environment
 
