@@ -21,11 +21,15 @@ import { getFirebaseAuth } from "./firebase";
 
 async function exchangeTokenForSession(user: User) {
   const idToken = await user.getIdToken();
-  await fetch("/api/auth/session", {
+  const res = await fetch("/api/auth/session", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ idToken }),
   });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(body?.error ?? "Unable to create server session");
+  }
 }
 
 type AuthContextValue = {
@@ -44,11 +48,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     return onIdTokenChanged(getFirebaseAuth(), async (next) => {
-      setUser(next);
-      if (next) {
-        await exchangeTokenForSession(next);
+      if (!next) {
+        setUser(null);
+        setLoading(false);
+        return;
       }
-      setLoading(false);
+
+      try {
+        await exchangeTokenForSession(next);
+        setUser(next);
+      } catch (err) {
+        console.error("Failed to create server session", err);
+        setUser(null);
+        await firebaseSignOut(getFirebaseAuth());
+      } finally {
+        setLoading(false);
+      }
     });
   }, []);
 
@@ -62,14 +77,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email,
           password,
         );
-        await exchangeTokenForSession(result.user);
+        try {
+          await exchangeTokenForSession(result.user);
+        } catch (err) {
+          await firebaseSignOut(getFirebaseAuth());
+          throw err;
+        }
       },
       signInWithGoogle: async () => {
         const result = await signInWithPopup(
           getFirebaseAuth(),
           new GoogleAuthProvider(),
         );
-        await exchangeTokenForSession(result.user);
+        try {
+          await exchangeTokenForSession(result.user);
+        } catch (err) {
+          await firebaseSignOut(getFirebaseAuth());
+          throw err;
+        }
       },
       signOut: async () => {
         await fetch("/api/auth/session", { method: "DELETE" });
