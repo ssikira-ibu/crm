@@ -57,7 +57,12 @@ services:
       - ./frontend/public:/app/frontend/public
       - ./frontend/next.config.ts:/app/frontend/next.config.ts:ro
       - ./packages/shared/src:/app/packages/shared/src
-      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
+      - type: bind
+        source: ./firebase-service-account.json
+        target: /app/firebase-service-account.json
+        read_only: true
+        bind:
+          create_host_path: false
     depends_on:
       - backend
 

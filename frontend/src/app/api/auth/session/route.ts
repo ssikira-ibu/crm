@@ -15,7 +15,8 @@ export async function POST(request: Request) {
     await createSession(decoded.uid, decoded.email ?? "");
 
     return Response.json({ ok: true });
-  } catch {
+  } catch (err) {
+    console.error("Failed to create session", err);
     return Response.json(
       { error: "Invalid or expired token" },
       { status: 401 },

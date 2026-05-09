@@ -4,6 +4,7 @@ dist/
 .env.local
 .env.*.local
 firebase-service-account.json
+.codex-test-credentials.json
 *.log
 .DS_Store
 CLAUDE.md
