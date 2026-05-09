@@ -11,23 +11,23 @@ import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
 
-// GET /customers/:customerId/notes
-router.get("/customers/:customerId/notes", async (ctx) => {
+// GET /companies/:companyId/notes
+router.get("/companies/:companyId/notes", async (ctx) => {
   const notes = await noteService.listNotes(
     getOrgContext(ctx.state.user),
-    ctx.params.customerId,
+    ctx.params.companyId,
   );
   ctx.body = { data: notes };
 });
 
-// POST /customers/:customerId/notes
+// POST /companies/:companyId/notes
 router.post(
-  "/customers/:customerId/notes",
+  "/companies/:companyId/notes",
   validate(createNoteSchema, "body"),
   async (ctx) => {
     const note = await noteService.createNote(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.state.body as CreateNoteInput,
     );
     ctx.status = 201;
@@ -35,24 +35,24 @@ router.post(
   },
 );
 
-// GET /customers/:customerId/notes/:noteId
-router.get("/customers/:customerId/notes/:noteId", async (ctx) => {
+// GET /companies/:companyId/notes/:noteId
+router.get("/companies/:companyId/notes/:noteId", async (ctx) => {
   const note = await noteService.getNote(
     getOrgContext(ctx.state.user),
-    ctx.params.customerId,
+    ctx.params.companyId,
     ctx.params.noteId,
   );
   ctx.body = { data: note };
 });
 
-// PATCH /customers/:customerId/notes/:noteId
+// PATCH /companies/:companyId/notes/:noteId
 router.patch(
-  "/customers/:customerId/notes/:noteId",
+  "/companies/:companyId/notes/:noteId",
   validate(updateNoteSchema, "body"),
   async (ctx) => {
     const note = await noteService.updateNote(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.noteId,
       ctx.state.body as UpdateNoteInput,
     );
@@ -60,13 +60,13 @@ router.patch(
   },
 );
 
-// DELETE /customers/:customerId/notes/:noteId
+// DELETE /companies/:companyId/notes/:noteId
 router.delete(
-  "/customers/:customerId/notes/:noteId",
+  "/companies/:companyId/notes/:noteId",
   async (ctx) => {
     await noteService.deleteNote(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.noteId,
     );
     ctx.status = 204;

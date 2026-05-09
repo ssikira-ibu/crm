@@ -19,16 +19,16 @@ export async function removeTag(tagId: string) {
   return serverApi.tags.remove(tagId);
 }
 
-export async function addTagToCustomer(
-  customerId: string,
+export async function addTagToCompany(
+  companyId: string,
   tagId: string,
 ) {
-  return serverApi.tags.addToCustomer(customerId, tagId);
+  return serverApi.tags.addToCompany(companyId, tagId);
 }
 
-export async function removeTagFromCustomer(
-  customerId: string,
+export async function removeTagFromCompany(
+  companyId: string,
   tagId: string,
 ) {
-  return serverApi.tags.removeFromCustomer(customerId, tagId);
+  return serverApi.tags.removeFromCompany(companyId, tagId);
 }

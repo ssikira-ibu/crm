@@ -10,6 +10,7 @@ router.get("/me", async (ctx) => {
   const member = await prisma.organizationMember.findFirst({
     where: { userId: uid },
     include: {
+      user: true,
       organization: {
         include: { _count: { select: { members: true } } },
       },
@@ -20,6 +21,7 @@ router.get("/me", async (ctx) => {
     data: {
       uid,
       email,
+      displayName: member?.user?.displayName ?? null,
       organization: member
         ? {
             id: member.organization.id,

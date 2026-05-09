@@ -3,29 +3,29 @@
 import { serverApi } from "@/lib/api-server";
 import type { AddressCreate, AddressUpdate } from "@/lib/types";
 
-export async function listAddresses(customerId: string) {
-  return serverApi.addresses.list(customerId);
+export async function listAddresses(companyId: string) {
+  return serverApi.addresses.list(companyId);
 }
 
-export async function getAddress(customerId: string, addressId: string) {
-  return serverApi.addresses.get(customerId, addressId);
+export async function getAddress(companyId: string, addressId: string) {
+  return serverApi.addresses.get(companyId, addressId);
 }
 
 export async function createAddress(
-  customerId: string,
+  companyId: string,
   input: AddressCreate,
 ) {
-  return serverApi.addresses.create(customerId, input);
+  return serverApi.addresses.create(companyId, input);
 }
 
 export async function updateAddress(
-  customerId: string,
+  companyId: string,
   addressId: string,
   input: AddressUpdate,
 ) {
-  return serverApi.addresses.update(customerId, addressId, input);
+  return serverApi.addresses.update(companyId, addressId, input);
 }
 
-export async function removeAddress(customerId: string, addressId: string) {
-  return serverApi.addresses.remove(customerId, addressId);
+export async function removeAddress(companyId: string, addressId: string) {
+  return serverApi.addresses.remove(companyId, addressId);
 }

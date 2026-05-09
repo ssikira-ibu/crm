@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Bell,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   FileText,
@@ -26,22 +26,21 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreateCustomerDialog } from "@/components/customers/create-customer-dialog";
-import { CustomerStatusBadge } from "@/components/customers/status-badge";
+import { CompanyStatusBadge } from "@/components/customers/status-badge";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { listCustomers } from "@/app/actions/customers";
-import { cn } from "@/lib/utils";
+import { listCompanies } from "@/app/actions/companies";
 import {
-  CUSTOMER_STATUSES,
-  type CustomerWithCounts,
-  type CustomerStatus,
+  COMPANY_STATUSES,
+  type CompanyWithCounts,
+  type CompanyStatus,
   type PageMeta,
 } from "@/lib/types";
 
 const PAGE_SIZE = 20;
 const ANY = "ANY" as const;
-type StatusFilter = CustomerStatus | typeof ANY;
+type StatusFilter = CompanyStatus | typeof ANY;
 
-const STATUS_LABEL: Record<CustomerStatus, string> = {
+const STATUS_LABEL: Record<CompanyStatus, string> = {
   ACTIVE: "Active",
   INACTIVE: "Inactive",
   LEAD: "Lead",
@@ -50,7 +49,7 @@ const STATUS_LABEL: Record<CustomerStatus, string> = {
 
 function describe(err: unknown): string {
   if (err instanceof Error) return err.message;
-  return "Failed to load customers.";
+  return "Failed to load companies.";
 }
 
 export default function CustomersPage() {
@@ -59,7 +58,7 @@ export default function CustomersPage() {
   const debouncedSearch = useDebouncedValue(search, 250);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>(ANY);
   const [page, setPage] = useState(1);
-  const [customers, setCustomers] = useState<CustomerWithCounts[]>([]);
+  const [companies, setCompanies] = useState<CompanyWithCounts[]>([]);
   const [meta, setMeta] = useState<PageMeta | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -72,14 +71,14 @@ export default function CustomersPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await listCustomers({
+        const res = await listCompanies({
           page,
           limit: PAGE_SIZE,
           status: statusFilter === ANY ? undefined : statusFilter,
           search: debouncedSearch.trim() || undefined,
         });
         if (!cancelled) {
-          setCustomers(res.data);
+          setCompanies(res.data);
           setMeta(res.meta);
         }
       } catch (err) {
@@ -106,14 +105,14 @@ export default function CustomersPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-3 border-b px-6 py-4">
         <div>
-          <h1 className="text-lg font-semibold tracking-tight">Customers</h1>
+          <h1 className="text-lg font-semibold tracking-tight">Companies</h1>
           <p className="text-sm text-muted-foreground">
-            {meta ? `${meta.total} total` : "\u00A0"}
+            {meta ? `${meta.total} total` : " "}
           </p>
         </div>
         <Button size="sm" onClick={() => setCreateOpen(true)}>
           <Plus className="size-3.5" />
-          New customer
+          New company
         </Button>
       </div>
 
@@ -129,7 +128,7 @@ export default function CustomersPage() {
             }}
             placeholder="Search..."
             className="h-7 pl-8 text-sm"
-            aria-label="Search customers"
+            aria-label="Search companies"
           />
         </div>
         <Select
@@ -144,7 +143,7 @@ export default function CustomersPage() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ANY}>All statuses</SelectItem>
-            {CUSTOMER_STATUSES.map((s) => (
+            {COMPANY_STATUSES.map((s) => (
               <SelectItem key={s} value={s}>
                 {STATUS_LABEL[s]}
               </SelectItem>
@@ -159,25 +158,25 @@ export default function CustomersPage() {
           <div className="p-6">
             <EmptyState
               icon={Users}
-              title="Unable to load customers"
+              title="Unable to load companies"
               description={error}
             />
           </div>
-        ) : !loading && !error && customers.length === 0 ? (
+        ) : !loading && !error && companies.length === 0 ? (
           <div className="p-6">
             <EmptyState
               icon={Users}
-              title={hasFilters ? "No matching customers" : "No customers yet"}
+              title={hasFilters ? "No matching companies" : "No companies yet"}
               description={
                 hasFilters
                   ? "Try adjusting your search or filters."
-                  : "Add your first customer to start tracking relationships."
+                  : "Add your first company to start tracking relationships."
               }
               action={
                 !hasFilters ? (
                   <Button size="sm" onClick={() => setCreateOpen(true)}>
                     <Plus className="size-3.5" />
-                    New customer
+                    New company
                   </Button>
                 ) : null
               }
@@ -185,7 +184,7 @@ export default function CustomersPage() {
           </div>
         ) : (
           <div className="divide-y">
-            {loading && customers.length === 0
+            {loading && companies.length === 0
               ? Array.from({ length: 5 }).map((_, i) => (
                   <div key={`sk-${i}`} className="flex items-center gap-4 px-6 py-3">
                     <Skeleton className="h-4 w-40" />
@@ -194,7 +193,7 @@ export default function CustomersPage() {
                     <Skeleton className="h-4 w-16" />
                   </div>
                 ))
-              : customers.map((c) => (
+              : companies.map((c) => (
                   <div
                     key={c.id}
                     className="group flex cursor-pointer items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/50"
@@ -203,9 +202,9 @@ export default function CustomersPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2.5">
                         <span className="truncate text-sm font-medium">
-                          {c.companyName?.trim() || "Untitled customer"}
+                          {c.name?.trim() || "Untitled company"}
                         </span>
-                        <CustomerStatusBadge status={c.status} />
+                        <CompanyStatusBadge status={c.status} />
                       </div>
                       {c.industry && (
                         <p className="mt-0.5 truncate text-xs text-muted-foreground">
@@ -232,10 +231,10 @@ export default function CustomersPage() {
                           {c._count.notes}
                         </span>
                       )}
-                      {c._count.reminders > 0 && (
-                        <span className="flex items-center gap-1" title={`${c._count.reminders} reminder${c._count.reminders !== 1 ? "s" : ""}`}>
-                          <Bell className="size-3" />
-                          {c._count.reminders}
+                      {c._count.tasks > 0 && (
+                        <span className="flex items-center gap-1" title={`${c._count.tasks} task${c._count.tasks !== 1 ? "s" : ""}`}>
+                          <CheckSquare className="size-3" />
+                          {c._count.tasks}
                         </span>
                       )}
                     </div>

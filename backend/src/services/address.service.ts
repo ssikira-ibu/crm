@@ -1,24 +1,24 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerAccess } from "./customer.service.js";
+import { ensureCompanyAccess } from "./company.service.js";
 import type { OrgContext, CreateAddressInput, UpdateAddressInput } from "@crm/shared";
 
-export async function listAddresses(ctx: OrgContext, customerId: string) {
-  await ensureCustomerAccess(ctx, customerId);
+export async function listAddresses(ctx: OrgContext, companyId: string) {
+  await ensureCompanyAccess(ctx, companyId);
   return prisma.address.findMany({
-    where: { customerId },
+    where: { companyId },
     orderBy: { createdAt: "desc" },
   });
 }
 
 export async function getAddress(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   addressId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const address = await prisma.address.findFirst({
-    where: { id: addressId, customerId },
+    where: { id: addressId, companyId },
   });
   if (!address) {
     throw new AppError(404, "ADDRESS_NOT_FOUND", "Address not found");
@@ -28,24 +28,24 @@ export async function getAddress(
 
 export async function createAddress(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   data: CreateAddressInput,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   return prisma.address.create({
-    data: { ...data, customerId },
+    data: { ...data, companyId },
   });
 }
 
 export async function updateAddress(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   addressId: string,
   data: UpdateAddressInput,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const address = await prisma.address.findFirst({
-    where: { id: addressId, customerId },
+    where: { id: addressId, companyId },
   });
   if (!address) {
     throw new AppError(404, "ADDRESS_NOT_FOUND", "Address not found");
@@ -55,12 +55,12 @@ export async function updateAddress(
 
 export async function deleteAddress(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   addressId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const address = await prisma.address.findFirst({
-    where: { id: addressId, customerId },
+    where: { id: addressId, companyId },
   });
   if (!address) {
     throw new AppError(404, "ADDRESS_NOT_FOUND", "Address not found");

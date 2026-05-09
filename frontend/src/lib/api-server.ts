@@ -12,13 +12,13 @@ import type {
   Contact,
   ContactCreate,
   ContactUpdate,
-  Customer,
-  CustomerWithCounts,
+  Company,
+  CompanyWithCounts,
   DashboardData,
-  CustomerCreate,
-  CustomerListParams,
-  CustomerUpdate,
-  CustomerWithRelations,
+  CompanyCreate,
+  CompanyListParams,
+  CompanyUpdate,
+  CompanyWithRelations,
   Deal,
   DealCreate,
   DealListParams,
@@ -30,15 +30,16 @@ import type {
   PhoneNumber,
   PhoneNumberCreate,
   PhoneNumberUpdate,
-  Reminder,
-  ReminderCreate,
-  ReminderListParams,
-  ReminderUpdate,
+  Task,
+  TaskCreate,
+  TaskListParams,
+  TaskUpdate,
+  TaskWithCompany,
   Single,
   Tag,
   TagCreate,
   TagUpdate,
-  EventWithCustomer,
+  EventWithCompany,
   SearchResults,
   MeResponse,
   Organization,
@@ -47,6 +48,7 @@ import type {
   OrganizationCreate,
   InviteCreate,
   Invite,
+  Pipeline,
 } from "./types";
 
 const API_URL =
@@ -144,108 +146,110 @@ const dashboard = {
   get: () => serverRequest<Single<DashboardData>>("/dashboard"),
 };
 
-const customers = {
-  list: (params?: CustomerListParams) =>
-    serverRequest<Paginated<CustomerWithCounts>>("/customers", { query: params }),
+const companies = {
+  list: (params?: CompanyListParams) =>
+    serverRequest<Paginated<CompanyWithCounts>>("/companies", { query: params }),
   get: (id: string) =>
-    serverRequest<Single<CustomerWithRelations>>(`/customers/${id}`),
-  create: (input: CustomerCreate) =>
-    serverRequest<Single<Customer>>("/customers", { method: "POST", body: input }),
-  update: (id: string, input: CustomerUpdate) =>
-    serverRequest<Single<Customer>>(`/customers/${id}`, { method: "PATCH", body: input }),
+    serverRequest<Single<CompanyWithRelations>>(`/companies/${id}`),
+  create: (input: CompanyCreate) =>
+    serverRequest<Single<Company>>("/companies", { method: "POST", body: input }),
+  update: (id: string, input: CompanyUpdate) =>
+    serverRequest<Single<Company>>(`/companies/${id}`, { method: "PATCH", body: input }),
   remove: (id: string) =>
-    serverRequest<void>(`/customers/${id}`, { method: "DELETE" }),
+    serverRequest<void>(`/companies/${id}`, { method: "DELETE" }),
 };
 
 const contacts = {
-  list: (customerId: string) =>
-    serverRequest<Paginated<Contact>>(`/customers/${customerId}/contacts`),
-  get: (customerId: string, contactId: string) =>
-    serverRequest<Single<Contact>>(`/customers/${customerId}/contacts/${contactId}`),
-  create: (customerId: string, input: ContactCreate) =>
-    serverRequest<Single<Contact>>(`/customers/${customerId}/contacts`, { method: "POST", body: input }),
-  update: (customerId: string, contactId: string, input: ContactUpdate) =>
-    serverRequest<Single<Contact>>(`/customers/${customerId}/contacts/${contactId}`, { method: "PATCH", body: input }),
-  remove: (customerId: string, contactId: string) =>
-    serverRequest<void>(`/customers/${customerId}/contacts/${contactId}`, { method: "DELETE" }),
+  list: (companyId: string) =>
+    serverRequest<Paginated<Contact>>(`/companies/${companyId}/contacts`),
+  get: (companyId: string, contactId: string) =>
+    serverRequest<Single<Contact>>(`/companies/${companyId}/contacts/${contactId}`),
+  create: (companyId: string, input: ContactCreate) =>
+    serverRequest<Single<Contact>>(`/companies/${companyId}/contacts`, { method: "POST", body: input }),
+  update: (companyId: string, contactId: string, input: ContactUpdate) =>
+    serverRequest<Single<Contact>>(`/companies/${companyId}/contacts/${contactId}`, { method: "PATCH", body: input }),
+  remove: (companyId: string, contactId: string) =>
+    serverRequest<void>(`/companies/${companyId}/contacts/${contactId}`, { method: "DELETE" }),
 };
 
 const addresses = {
-  list: (customerId: string) =>
-    serverRequest<Paginated<Address>>(`/customers/${customerId}/addresses`),
-  get: (customerId: string, addressId: string) =>
-    serverRequest<Single<Address>>(`/customers/${customerId}/addresses/${addressId}`),
-  create: (customerId: string, input: AddressCreate) =>
-    serverRequest<Single<Address>>(`/customers/${customerId}/addresses`, { method: "POST", body: input }),
-  update: (customerId: string, addressId: string, input: AddressUpdate) =>
-    serverRequest<Single<Address>>(`/customers/${customerId}/addresses/${addressId}`, { method: "PATCH", body: input }),
-  remove: (customerId: string, addressId: string) =>
-    serverRequest<void>(`/customers/${customerId}/addresses/${addressId}`, { method: "DELETE" }),
+  list: (companyId: string) =>
+    serverRequest<Paginated<Address>>(`/companies/${companyId}/addresses`),
+  get: (companyId: string, addressId: string) =>
+    serverRequest<Single<Address>>(`/companies/${companyId}/addresses/${addressId}`),
+  create: (companyId: string, input: AddressCreate) =>
+    serverRequest<Single<Address>>(`/companies/${companyId}/addresses`, { method: "POST", body: input }),
+  update: (companyId: string, addressId: string, input: AddressUpdate) =>
+    serverRequest<Single<Address>>(`/companies/${companyId}/addresses/${addressId}`, { method: "PATCH", body: input }),
+  remove: (companyId: string, addressId: string) =>
+    serverRequest<void>(`/companies/${companyId}/addresses/${addressId}`, { method: "DELETE" }),
 };
 
 const phoneNumbers = {
-  list: (customerId: string, contactId: string) =>
-    serverRequest<Paginated<PhoneNumber>>(`/customers/${customerId}/contacts/${contactId}/phone-numbers`),
-  get: (customerId: string, contactId: string, phoneNumberId: string) =>
-    serverRequest<Single<PhoneNumber>>(`/customers/${customerId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`),
-  create: (customerId: string, contactId: string, input: PhoneNumberCreate) =>
-    serverRequest<Single<PhoneNumber>>(`/customers/${customerId}/contacts/${contactId}/phone-numbers`, { method: "POST", body: input }),
-  update: (customerId: string, contactId: string, phoneNumberId: string, input: PhoneNumberUpdate) =>
-    serverRequest<Single<PhoneNumber>>(`/customers/${customerId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`, { method: "PATCH", body: input }),
-  remove: (customerId: string, contactId: string, phoneNumberId: string) =>
-    serverRequest<void>(`/customers/${customerId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`, { method: "DELETE" }),
+  list: (companyId: string, contactId: string) =>
+    serverRequest<Paginated<PhoneNumber>>(`/companies/${companyId}/contacts/${contactId}/phone-numbers`),
+  get: (companyId: string, contactId: string, phoneNumberId: string) =>
+    serverRequest<Single<PhoneNumber>>(`/companies/${companyId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`),
+  create: (companyId: string, contactId: string, input: PhoneNumberCreate) =>
+    serverRequest<Single<PhoneNumber>>(`/companies/${companyId}/contacts/${contactId}/phone-numbers`, { method: "POST", body: input }),
+  update: (companyId: string, contactId: string, phoneNumberId: string, input: PhoneNumberUpdate) =>
+    serverRequest<Single<PhoneNumber>>(`/companies/${companyId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`, { method: "PATCH", body: input }),
+  remove: (companyId: string, contactId: string, phoneNumberId: string) =>
+    serverRequest<void>(`/companies/${companyId}/contacts/${contactId}/phone-numbers/${phoneNumberId}`, { method: "DELETE" }),
 };
 
 const notes = {
-  list: (customerId: string) =>
-    serverRequest<Paginated<Note>>(`/customers/${customerId}/notes`),
-  get: (customerId: string, noteId: string) =>
-    serverRequest<Single<Note>>(`/customers/${customerId}/notes/${noteId}`),
-  create: (customerId: string, input: NoteCreate) =>
-    serverRequest<Single<Note>>(`/customers/${customerId}/notes`, { method: "POST", body: input }),
-  update: (customerId: string, noteId: string, input: NoteUpdate) =>
-    serverRequest<Single<Note>>(`/customers/${customerId}/notes/${noteId}`, { method: "PATCH", body: input }),
-  remove: (customerId: string, noteId: string) =>
-    serverRequest<void>(`/customers/${customerId}/notes/${noteId}`, { method: "DELETE" }),
+  list: (companyId: string) =>
+    serverRequest<Paginated<Note>>(`/companies/${companyId}/notes`),
+  get: (companyId: string, noteId: string) =>
+    serverRequest<Single<Note>>(`/companies/${companyId}/notes/${noteId}`),
+  create: (companyId: string, input: NoteCreate) =>
+    serverRequest<Single<Note>>(`/companies/${companyId}/notes`, { method: "POST", body: input }),
+  update: (companyId: string, noteId: string, input: NoteUpdate) =>
+    serverRequest<Single<Note>>(`/companies/${companyId}/notes/${noteId}`, { method: "PATCH", body: input }),
+  remove: (companyId: string, noteId: string) =>
+    serverRequest<void>(`/companies/${companyId}/notes/${noteId}`, { method: "DELETE" }),
 };
 
-const reminders = {
-  list: (customerId: string, params?: ReminderListParams) =>
-    serverRequest<Paginated<Reminder>>(`/customers/${customerId}/reminders`, { query: params }),
-  get: (customerId: string, reminderId: string) =>
-    serverRequest<Single<Reminder>>(`/customers/${customerId}/reminders/${reminderId}`),
-  create: (customerId: string, input: ReminderCreate) =>
-    serverRequest<Single<Reminder>>(`/customers/${customerId}/reminders`, { method: "POST", body: input }),
-  update: (customerId: string, reminderId: string, input: ReminderUpdate) =>
-    serverRequest<Single<Reminder>>(`/customers/${customerId}/reminders/${reminderId}`, { method: "PATCH", body: input }),
-  remove: (customerId: string, reminderId: string) =>
-    serverRequest<void>(`/customers/${customerId}/reminders/${reminderId}`, { method: "DELETE" }),
+const tasks = {
+  list: (companyId: string, params?: TaskListParams) =>
+    serverRequest<Paginated<Task>>(`/companies/${companyId}/tasks`, { query: params }),
+  listAll: (params?: TaskListParams) =>
+    serverRequest<Paginated<TaskWithCompany>>("/tasks", { query: params }),
+  get: (companyId: string, taskId: string) =>
+    serverRequest<Single<Task>>(`/companies/${companyId}/tasks/${taskId}`),
+  create: (companyId: string, input: TaskCreate) =>
+    serverRequest<Single<Task>>(`/companies/${companyId}/tasks`, { method: "POST", body: input }),
+  update: (companyId: string, taskId: string, input: TaskUpdate) =>
+    serverRequest<Single<Task>>(`/companies/${companyId}/tasks/${taskId}`, { method: "PATCH", body: input }),
+  remove: (companyId: string, taskId: string) =>
+    serverRequest<void>(`/companies/${companyId}/tasks/${taskId}`, { method: "DELETE" }),
 };
 
 const deals = {
-  list: (customerId: string, params?: DealListParams) =>
-    serverRequest<Paginated<Deal>>(`/customers/${customerId}/deals`, { query: params }),
-  get: (customerId: string, dealId: string) =>
-    serverRequest<Single<Deal>>(`/customers/${customerId}/deals/${dealId}`),
-  create: (customerId: string, input: DealCreate) =>
-    serverRequest<Single<Deal>>(`/customers/${customerId}/deals`, { method: "POST", body: input }),
-  update: (customerId: string, dealId: string, input: DealUpdate) =>
-    serverRequest<Single<Deal>>(`/customers/${customerId}/deals/${dealId}`, { method: "PATCH", body: input }),
-  remove: (customerId: string, dealId: string) =>
-    serverRequest<void>(`/customers/${customerId}/deals/${dealId}`, { method: "DELETE" }),
+  list: (companyId: string, params?: DealListParams) =>
+    serverRequest<Paginated<Deal>>(`/companies/${companyId}/deals`, { query: params }),
+  get: (companyId: string, dealId: string) =>
+    serverRequest<Single<Deal>>(`/companies/${companyId}/deals/${dealId}`),
+  create: (companyId: string, input: DealCreate) =>
+    serverRequest<Single<Deal>>(`/companies/${companyId}/deals`, { method: "POST", body: input }),
+  update: (companyId: string, dealId: string, input: DealUpdate) =>
+    serverRequest<Single<Deal>>(`/companies/${companyId}/deals/${dealId}`, { method: "PATCH", body: input }),
+  remove: (companyId: string, dealId: string) =>
+    serverRequest<void>(`/companies/${companyId}/deals/${dealId}`, { method: "DELETE" }),
 };
 
 const activities = {
-  list: (customerId: string, params?: ActivityListParams) =>
-    serverRequest<Paginated<Activity>>(`/customers/${customerId}/activities`, { query: params }),
-  get: (customerId: string, activityId: string) =>
-    serverRequest<Single<Activity>>(`/customers/${customerId}/activities/${activityId}`),
-  create: (customerId: string, input: ActivityCreate) =>
-    serverRequest<Single<Activity>>(`/customers/${customerId}/activities`, { method: "POST", body: input }),
-  update: (customerId: string, activityId: string, input: ActivityUpdate) =>
-    serverRequest<Single<Activity>>(`/customers/${customerId}/activities/${activityId}`, { method: "PATCH", body: input }),
-  remove: (customerId: string, activityId: string) =>
-    serverRequest<void>(`/customers/${customerId}/activities/${activityId}`, { method: "DELETE" }),
+  list: (companyId: string, params?: ActivityListParams) =>
+    serverRequest<Paginated<Activity>>(`/companies/${companyId}/activities`, { query: params }),
+  get: (companyId: string, activityId: string) =>
+    serverRequest<Single<Activity>>(`/companies/${companyId}/activities/${activityId}`),
+  create: (companyId: string, input: ActivityCreate) =>
+    serverRequest<Single<Activity>>(`/companies/${companyId}/activities`, { method: "POST", body: input }),
+  update: (companyId: string, activityId: string, input: ActivityUpdate) =>
+    serverRequest<Single<Activity>>(`/companies/${companyId}/activities/${activityId}`, { method: "PATCH", body: input }),
+  remove: (companyId: string, activityId: string) =>
+    serverRequest<void>(`/companies/${companyId}/activities/${activityId}`, { method: "DELETE" }),
 };
 
 const tags = {
@@ -256,17 +260,17 @@ const tags = {
     serverRequest<Single<Tag>>(`/tags/${tagId}`, { method: "PATCH", body: input }),
   remove: (tagId: string) =>
     serverRequest<void>(`/tags/${tagId}`, { method: "DELETE" }),
-  addToCustomer: (customerId: string, tagId: string) =>
-    serverRequest<void>(`/customers/${customerId}/tags/${tagId}`, { method: "PUT" }),
-  removeFromCustomer: (customerId: string, tagId: string) =>
-    serverRequest<void>(`/customers/${customerId}/tags/${tagId}`, { method: "DELETE" }),
+  addToCompany: (companyId: string, tagId: string) =>
+    serverRequest<void>(`/companies/${companyId}/tags/${tagId}`, { method: "PUT" }),
+  removeFromCompany: (companyId: string, tagId: string) =>
+    serverRequest<void>(`/companies/${companyId}/tags/${tagId}`, { method: "DELETE" }),
 };
 
 const events = {
   global: (params?: { limit?: number; cursor?: string }) =>
-    serverRequest<Single<EventWithCustomer[]>>("/events", { query: params }),
-  forCustomer: (customerId: string, params?: { limit?: number; cursor?: string }) =>
-    serverRequest<Single<EventWithCustomer[]>>(`/customers/${customerId}/events`, { query: params }),
+    serverRequest<Single<EventWithCompany[]>>("/events", { query: params }),
+  forCompany: (companyId: string, params?: { limit?: number; cursor?: string }) =>
+    serverRequest<Single<EventWithCompany[]>>(`/companies/${companyId}/events`, { query: params }),
 };
 
 const search = {
@@ -302,20 +306,34 @@ const invites = {
     serverRequest<Single<{ organizationId: string }>>(`/invites/token/${token}/accept`, { method: "POST" }),
 };
 
+const pipelines = {
+  list: () =>
+    serverRequest<Single<Pipeline[]>>("/pipelines"),
+  get: (id: string) =>
+    serverRequest<Single<Pipeline>>(`/pipelines/${id}`),
+  create: (input: unknown) =>
+    serverRequest<Single<Pipeline>>("/pipelines", { method: "POST", body: input }),
+  update: (id: string, input: unknown) =>
+    serverRequest<Single<Pipeline>>(`/pipelines/${id}`, { method: "PATCH", body: input }),
+  remove: (id: string) =>
+    serverRequest<void>(`/pipelines/${id}`, { method: "DELETE" }),
+};
+
 export const serverApi = {
   me,
   organizations,
   invites,
   dashboard,
-  customers,
+  companies,
   contacts,
   addresses,
   phoneNumbers,
   notes,
-  reminders,
+  tasks,
   deals,
   activities,
   tags,
   events,
   search,
+  pipelines,
 };

@@ -1,25 +1,25 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerAccess } from "./customer.service.js";
+import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, CreateNoteInput, UpdateNoteInput } from "@crm/shared";
 
-export async function listNotes(ctx: OrgContext, customerId: string) {
-  await ensureCustomerAccess(ctx, customerId);
+export async function listNotes(ctx: OrgContext, companyId: string) {
+  await ensureCompanyAccess(ctx, companyId);
   return prisma.note.findMany({
-    where: { customerId },
+    where: { companyId },
     orderBy: { createdAt: "desc" },
   });
 }
 
 export async function getNote(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   noteId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const note = await prisma.note.findFirst({
-    where: { id: noteId, customerId },
+    where: { id: noteId, companyId },
   });
   if (!note) {
     throw new AppError(404, "NOTE_NOT_FOUND", "Note not found");
@@ -29,15 +29,15 @@ export async function getNote(
 
 export async function createNote(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   data: CreateNoteInput,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const note = await prisma.note.create({
-    data: { ...data, customerId },
+    data: { ...data, companyId },
   });
   await recordEvent({
-    ctx, customerId, entityType: "NOTE", entityId: note.id,
+    ctx, companyId, entityType: "NOTE", entityId: note.id,
     action: "CREATED",
     metadata: { title: note.title },
   });
@@ -46,13 +46,13 @@ export async function createNote(
 
 export async function updateNote(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   noteId: string,
   data: UpdateNoteInput,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const note = await prisma.note.findFirst({
-    where: { id: noteId, customerId },
+    where: { id: noteId, companyId },
   });
   if (!note) {
     throw new AppError(404, "NOTE_NOT_FOUND", "Note not found");
@@ -62,12 +62,12 @@ export async function updateNote(
 
 export async function deleteNote(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   noteId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const note = await prisma.note.findFirst({
-    where: { id: noteId, customerId },
+    where: { id: noteId, companyId },
   });
   if (!note) {
     throw new AppError(404, "NOTE_NOT_FOUND", "Note not found");

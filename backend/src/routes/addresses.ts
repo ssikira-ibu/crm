@@ -11,23 +11,23 @@ import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
 
-// GET /customers/:customerId/addresses
-router.get("/customers/:customerId/addresses", async (ctx) => {
+// GET /companies/:companyId/addresses
+router.get("/companies/:companyId/addresses", async (ctx) => {
   const addresses = await addressService.listAddresses(
     getOrgContext(ctx.state.user),
-    ctx.params.customerId,
+    ctx.params.companyId,
   );
   ctx.body = { data: addresses };
 });
 
-// POST /customers/:customerId/addresses
+// POST /companies/:companyId/addresses
 router.post(
-  "/customers/:customerId/addresses",
+  "/companies/:companyId/addresses",
   validate(createAddressSchema, "body"),
   async (ctx) => {
     const address = await addressService.createAddress(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.state.body as CreateAddressInput,
     );
     ctx.status = 201;
@@ -35,24 +35,24 @@ router.post(
   },
 );
 
-// GET /customers/:customerId/addresses/:addressId
-router.get("/customers/:customerId/addresses/:addressId", async (ctx) => {
+// GET /companies/:companyId/addresses/:addressId
+router.get("/companies/:companyId/addresses/:addressId", async (ctx) => {
   const address = await addressService.getAddress(
     getOrgContext(ctx.state.user),
-    ctx.params.customerId,
+    ctx.params.companyId,
     ctx.params.addressId,
   );
   ctx.body = { data: address };
 });
 
-// PATCH /customers/:customerId/addresses/:addressId
+// PATCH /companies/:companyId/addresses/:addressId
 router.patch(
-  "/customers/:customerId/addresses/:addressId",
+  "/companies/:companyId/addresses/:addressId",
   validate(updateAddressSchema, "body"),
   async (ctx) => {
     const address = await addressService.updateAddress(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.addressId,
       ctx.state.body as UpdateAddressInput,
     );
@@ -60,13 +60,13 @@ router.patch(
   },
 );
 
-// DELETE /customers/:customerId/addresses/:addressId
+// DELETE /companies/:companyId/addresses/:addressId
 router.delete(
-  "/customers/:customerId/addresses/:addressId",
+  "/companies/:companyId/addresses/:addressId",
   async (ctx) => {
     await addressService.deleteAddress(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.addressId,
     );
     ctx.status = 204;

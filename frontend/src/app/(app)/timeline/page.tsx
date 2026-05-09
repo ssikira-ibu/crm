@@ -6,10 +6,10 @@ import { toast } from "sonner";
 import { EmptyState } from "@/components/empty-state";
 import { Timeline } from "@/components/timeline";
 import { getGlobalEvents } from "@/app/actions/events";
-import type { EventWithCustomer } from "@/lib/types";
+import type { EventWithCompany } from "@/lib/types";
 
 export default function TimelinePage() {
-  const [events, setEvents] = useState<EventWithCustomer[]>([]);
+  const [events, setEvents] = useState<EventWithCompany[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export default function TimelinePage() {
       <div className="border-b px-6 py-5">
         <h1 className="text-lg font-semibold tracking-tight">Timeline</h1>
         <p className="mt-0.5 text-sm text-muted-foreground">
-          Everything that happened across all customers
+          Everything that happened across all companies
         </p>
       </div>
 
@@ -57,7 +57,7 @@ export default function TimelinePage() {
             <EmptyState
               icon={Zap}
               title="No activity yet"
-              description="Events will appear here as you work with customers — creating deals, logging calls, adding notes, and more."
+              description="Events will appear here as you work with companies — creating deals, logging calls, adding notes, and more."
             />
           ) : (
             <Timeline events={events} showCustomer />

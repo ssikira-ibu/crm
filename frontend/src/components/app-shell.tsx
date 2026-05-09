@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Building2, Home, Loader2, Settings, TrendingUp, Users, Zap } from "lucide-react";
 import { OrgContext, type OrgInfo } from "@/hooks/use-org";
-import type { OrgRole } from "@/lib/types";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { KeyboardShortcutHelp } from "./keyboard-shortcut-help";
 import {
@@ -25,14 +24,14 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { useRequireAuth } from "@/lib/auth";
-import { useRecentCustomers } from "@/hooks/use-recent-customers";
+import { useRecentCompanies } from "@/hooks/use-recent-companies";
 import { CommandPalette } from "./command-palette";
 import { CreateCustomerDialog } from "./customers/create-customer-dialog";
 import { UserMenu } from "./user-menu";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
-  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/customers", label: "Companies", icon: Users },
   { href: "/deals", label: "Deals", icon: TrendingUp },
   { href: "/timeline", label: "Timeline", icon: Zap },
 ] as const;
@@ -41,9 +40,9 @@ export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: 
   const { user, loading } = useRequireAuth("/");
   const pathname = usePathname();
   const router = useRouter();
-  const [createCustomerOpen, setCreateCustomerOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const [shortcutHelpOpen, setShortcutHelpOpen] = useState(false);
-  const { recentCustomers } = useRecentCustomers();
+  const { recentCompanies } = useRecentCompanies();
 
   const shortcuts = useMemo(
     () => [
@@ -54,7 +53,7 @@ export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: 
       { key: "?", handler: () => setShortcutHelpOpen(true) },
       {
         key: "n",
-        handler: () => setCreateCustomerOpen(true),
+        handler: () => setCreateOpen(true),
         when: pathname === "/customers",
       },
     ],
@@ -107,19 +106,19 @@ export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: 
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
-          {recentCustomers.length > 0 && (
+          {recentCompanies.length > 0 && (
             <SidebarGroup>
               <SidebarGroupLabel>Recent</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {recentCustomers.map((c) => {
+                  {recentCompanies.map((c) => {
                     const active = pathname === `/customers/${c.id}`;
                     return (
                       <SidebarMenuItem key={c.id}>
-                        <SidebarMenuButton asChild isActive={active} tooltip={c.companyName}>
+                        <SidebarMenuButton asChild isActive={active} tooltip={c.name}>
                           <Link href={`/customers/${c.id}`}>
                             <Building2 />
-                            <span>{c.companyName}</span>
+                            <span>{c.name}</span>
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -141,12 +140,12 @@ export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: 
         </div>
         <main className="flex flex-1 flex-col">{children}</main>
       </SidebarInset>
-      <CommandPalette onCreateCustomer={() => setCreateCustomerOpen(true)} />
+      <CommandPalette onCreateCustomer={() => setCreateOpen(true)} />
       <CreateCustomerDialog
-        open={createCustomerOpen}
-        onOpenChange={setCreateCustomerOpen}
+        open={createOpen}
+        onOpenChange={setCreateOpen}
         onCreated={(c) => {
-          setCreateCustomerOpen(false);
+          setCreateOpen(false);
           router.push(`/customers/${c.id}`);
         }}
       />

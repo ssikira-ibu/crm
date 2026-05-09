@@ -104,13 +104,13 @@ function MembersTab({ currentUserId }: { currentUserId: string }) {
             <div key={member.id} className="flex items-center justify-between py-3 gap-4">
               <div className="min-w-0">
                 <p className="text-sm font-medium truncate">
-                  {member.displayName ?? member.email}
+                  {member.user?.displayName ?? member.user?.email ?? "Unknown"}
                   {member.userId === currentUserId && (
                     <Badge variant="secondary" className="ml-2 text-xs">you</Badge>
                   )}
                 </p>
-                {member.displayName && (
-                  <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                {member.user?.displayName && member.user?.email && (
+                  <p className="text-xs text-muted-foreground truncate">{member.user.email}</p>
                 )}
               </div>
               <div className="flex items-center gap-2">

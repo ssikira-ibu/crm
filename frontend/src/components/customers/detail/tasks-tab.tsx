@@ -4,37 +4,53 @@ import { useMemo, useState } from "react";
 import { format, formatDistanceToNow, isPast } from "date-fns";
 import {
   AlertTriangle,
-  BellRing,
   CheckCircle2,
   Clock,
+  ListTodo,
   Pencil,
   Plus,
 } from "lucide-react";
 import { toast } from "sonner";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
 import { EmptyState } from "@/components/empty-state";
-import { updateReminder, removeReminder } from "@/app/actions/reminders";
+import { updateTask, removeTask } from "@/app/actions/tasks";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
-import type { Reminder } from "@/lib/types";
-import { ReminderDialog } from "./reminder-dialog";
+import type { Task, TaskPriority } from "@/lib/types";
+import { TaskDialog } from "./task-dialog";
+
+const PRIORITY_LABEL: Record<TaskPriority, string> = {
+  LOW: "Low",
+  NORMAL: "Normal",
+  HIGH: "High",
+  URGENT: "Urgent",
+};
+
+const PRIORITY_STYLE: Record<TaskPriority, string> = {
+  LOW: "text-muted-foreground",
+  NORMAL: "",
+  HIGH: "text-amber-600 dark:text-amber-400",
+  URGENT: "text-red-600 dark:text-red-400",
+};
 
 type Props = {
-  customerId: string;
-  items: Reminder[];
+  companyId: string;
+  items: Task[];
   onChanged: () => void;
 };
 
-type Status = "overdue" | "upcoming" | "completed";
+type DisplayStatus = "overdue" | "upcoming" | "completed";
 
-function statusOf(r: Reminder): Status {
-  if (r.dateCompleted) return "completed";
-  return isPast(new Date(r.dueDate)) ? "overdue" : "upcoming";
+function displayStatusOf(t: Task): DisplayStatus {
+  if (t.status === "DONE") return "completed";
+  if (t.dueDate && isPast(new Date(t.dueDate))) return "overdue";
+  return "upcoming";
 }
 
-function StatusIcon({ status }: { status: Status }) {
+function StatusIcon({ status }: { status: DisplayStatus }) {
   if (status === "overdue")
     return <AlertTriangle className="size-3.5 shrink-0 text-destructive" />;
   if (status === "completed")
@@ -42,17 +58,19 @@ function StatusIcon({ status }: { status: Status }) {
   return <Clock className="size-3.5 shrink-0 text-muted-foreground" />;
 }
 
-export function RemindersTab({ customerId, items, onChanged }: Props) {
+export function TasksTab({ companyId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Reminder | null>(null);
+  const [editing, setEditing] = useState<Task | null>(null);
   const [toggling, setToggling] = useState<Set<string>>(new Set());
 
   const sorted = useMemo(() => {
     return [...items].sort((a, b) => {
-      const rank: Record<Status, number> = { overdue: 0, upcoming: 1, completed: 2 };
-      const diff = rank[statusOf(a)] - rank[statusOf(b)];
+      const rank: Record<DisplayStatus, number> = { overdue: 0, upcoming: 1, completed: 2 };
+      const diff = rank[displayStatusOf(a)] - rank[displayStatusOf(b)];
       if (diff !== 0) return diff;
-      return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      const aDate = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const bDate = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return aDate - bDate;
     });
   }, [items]);
 
@@ -60,16 +78,16 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
     setEditing(null);
     setOpen(true);
   }
-  function startEdit(r: Reminder) {
-    setEditing(r);
+  function startEdit(t: Task) {
+    setEditing(t);
     setOpen(true);
   }
 
-  async function onToggle(r: Reminder, next: boolean) {
-    setToggling((prev) => new Set(prev).add(r.id));
+  async function onToggle(t: Task, next: boolean) {
+    setToggling((prev) => new Set(prev).add(t.id));
     try {
-      await updateReminder(customerId, r.id, {
-        dateCompleted: next ? new Date().toISOString() : null,
+      await updateTask(companyId, t.id, {
+        status: next ? "DONE" : "TODO",
       });
       onChanged();
     } catch (err) {
@@ -77,16 +95,16 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
     } finally {
       setToggling((prev) => {
         const copy = new Set(prev);
-        copy.delete(r.id);
+        copy.delete(t.id);
         return copy;
       });
     }
   }
 
-  async function onDelete(r: Reminder) {
+  async function onDelete(t: Task) {
     try {
-      await removeReminder(customerId, r.id);
-      toast.success("Reminder deleted.");
+      await removeTask(companyId, t.id);
+      toast.success("Task deleted.");
       onChanged();
     } catch (err) {
       toast.error(describeError(err));
@@ -98,7 +116,7 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <p className="text-xs text-muted-foreground">
-          {items.length} reminder{items.length === 1 ? "" : "s"}
+          {items.length} task{items.length === 1 ? "" : "s"}
         </p>
         <Button size="xs" variant="outline" onClick={startCreate}>
           <Plus className="size-3" />
@@ -108,25 +126,24 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
 
       {sorted.length === 0 ? (
         <EmptyState
-          icon={BellRing}
-          title="No reminders yet"
+          icon={ListTodo}
+          title="No tasks yet"
           description="Set follow-ups so nothing slips through the cracks."
           action={
             <Button size="sm" onClick={startCreate}>
               <Plus className="size-3.5" />
-              Add reminder
+              Add task
             </Button>
           }
         />
       ) : (
         <div className="space-y-1.5">
-          {sorted.map((r) => {
-            const s = statusOf(r);
-            const due = new Date(r.dueDate);
+          {sorted.map((t) => {
+            const s = displayStatusOf(t);
             const completed = s === "completed";
             return (
               <div
-                key={r.id}
+                key={t.id}
                 className={cn(
                   "group flex items-start gap-3 rounded-lg border px-3 py-2.5",
                   s === "overdue" && "border-destructive/20 bg-destructive/5 dark:bg-destructive/10",
@@ -136,8 +153,8 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
                 <Checkbox
                   className="mt-0.5"
                   checked={completed}
-                  disabled={toggling.has(r.id)}
-                  onCheckedChange={(v) => onToggle(r, v === true)}
+                  disabled={toggling.has(t.id)}
+                  onCheckedChange={(v) => onToggle(t, v === true)}
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
@@ -148,35 +165,42 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
                         completed && "line-through text-muted-foreground",
                       )}
                     >
-                      {r.title}
+                      {t.title}
                     </span>
+                    {t.priority !== "NORMAL" && (
+                      <Badge variant="secondary" className={cn("text-[10px] shrink-0", PRIORITY_STYLE[t.priority])}>
+                        {PRIORITY_LABEL[t.priority]}
+                      </Badge>
+                    )}
                   </div>
-                  {r.description && (
+                  {t.description && (
                     <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-                      {r.description}
+                      {t.description}
                     </p>
                   )}
-                  <p
-                    className={cn(
-                      "mt-1 text-[11px]",
-                      s === "overdue" ? "text-destructive" : "text-muted-foreground",
-                    )}
-                  >
-                    {format(due, "MMM d, yyyy 'at' h:mm a")} · {formatDistanceToNow(due, { addSuffix: true })}
-                  </p>
+                  {t.dueDate && (
+                    <p
+                      className={cn(
+                        "mt-1 text-[11px]",
+                        s === "overdue" ? "text-destructive" : "text-muted-foreground",
+                      )}
+                    >
+                      {format(new Date(t.dueDate), "MMM d, yyyy 'at' h:mm a")} · {formatDistanceToNow(new Date(t.dueDate), { addSuffix: true })}
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button
                     variant="ghost"
                     size="icon-xs"
-                    onClick={() => startEdit(r)}
-                    aria-label="Edit reminder"
+                    onClick={() => startEdit(t)}
+                    aria-label="Edit task"
                   >
                     <Pencil className="size-3" />
                   </Button>
                   <ConfirmDeleteButton
-                    title="Delete reminder?"
-                    onConfirm={() => onDelete(r)}
+                    title="Delete task?"
+                    onConfirm={() => onDelete(t)}
                   />
                 </div>
               </div>
@@ -185,8 +209,8 @@ export function RemindersTab({ customerId, items, onChanged }: Props) {
         </div>
       )}
 
-      <ReminderDialog
-        customerId={customerId}
+      <TaskDialog
+        companyId={companyId}
         open={open}
         onOpenChange={setOpen}
         editing={editing}

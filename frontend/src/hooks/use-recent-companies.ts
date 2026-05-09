@@ -2,21 +2,21 @@
 
 import { useCallback, useSyncExternalStore } from "react";
 
-type RecentCustomer = { id: string; companyName: string };
+type RecentCompany = { id: string; name: string };
 
-const STORAGE_KEY = "crm:recent-customers";
+const STORAGE_KEY = "crm:recent-companies";
 const MAX_ITEMS = 5;
-const EMPTY: RecentCustomer[] = [];
+const EMPTY: RecentCompany[] = [];
 
 let listeners: Array<() => void> = [];
-let cachedSnapshot: RecentCustomer[] | null = null;
+let cachedSnapshot: RecentCompany[] | null = null;
 
 function emit() {
   cachedSnapshot = null;
   listeners.forEach((l) => l());
 }
 
-function getSnapshot(): RecentCustomer[] {
+function getSnapshot(): RecentCompany[] {
   if (cachedSnapshot !== null) return cachedSnapshot;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -27,7 +27,7 @@ function getSnapshot(): RecentCustomer[] {
   return cachedSnapshot!;
 }
 
-function getServerSnapshot(): RecentCustomer[] {
+function getServerSnapshot(): RecentCompany[] {
   return EMPTY;
 }
 
@@ -38,16 +38,16 @@ function subscribe(listener: () => void) {
   };
 }
 
-export function useRecentCustomers() {
+export function useRecentCompanies() {
   const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const trackCustomer = useCallback((id: string, companyName: string) => {
+  const trackCompany = useCallback((id: string, name: string) => {
     const current = getSnapshot();
     const filtered = current.filter((c) => c.id !== id);
-    const next = [{ id, companyName }, ...filtered].slice(0, MAX_ITEMS);
+    const next = [{ id, name }, ...filtered].slice(0, MAX_ITEMS);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     emit();
   }, []);
 
-  return { recentCustomers: items, trackCustomer };
+  return { recentCompanies: items, trackCompany };
 }

@@ -11,20 +11,15 @@ import { EmptyState } from "@/components/empty-state";
 import { removeDeal } from "@/app/actions/deals";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
-import type { Deal, DealStatus } from "@/lib/types";
+import type { Deal, PipelineStage } from "@/lib/types";
 import { DealDialog } from "./deal-dialog";
 
-const STATUS_STYLE: Record<DealStatus, string> = {
-  OPEN: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  WON: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300",
-  LOST: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
-};
-
-const STATUS_LABEL: Record<DealStatus, string> = {
-  OPEN: "Open",
-  WON: "Won",
-  LOST: "Lost",
-};
+function stageStyle(stage?: PipelineStage): string {
+  if (!stage) return "bg-muted text-muted-foreground";
+  if (stage.isWon) return "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300";
+  if (stage.isLost) return "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300";
+  return "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
+}
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -35,28 +30,30 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+type DealWithStage = Deal & { stage: PipelineStage };
+
 type Props = {
-  customerId: string;
-  items: Deal[];
+  companyId: string;
+  items: DealWithStage[];
   onChanged: () => void;
 };
 
-export function DealsTab({ customerId, items, onChanged }: Props) {
+export function DealsTab({ companyId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<Deal | null>(null);
+  const [editing, setEditing] = useState<DealWithStage | null>(null);
 
   function startCreate() {
     setEditing(null);
     setOpen(true);
   }
-  function startEdit(d: Deal) {
+  function startEdit(d: DealWithStage) {
     setEditing(d);
     setOpen(true);
   }
 
-  async function onDelete(d: Deal) {
+  async function onDelete(d: DealWithStage) {
     try {
-      await removeDeal(customerId, d.id);
+      await removeDeal(companyId, d.id);
       toast.success("Deal deleted.");
       onChanged();
     } catch (err) {
@@ -65,7 +62,7 @@ export function DealsTab({ customerId, items, onChanged }: Props) {
     }
   }
 
-  const openDeals = items.filter((d) => d.status === "OPEN");
+  const openDeals = items.filter((d) => !d.stage?.isWon && !d.stage?.isLost);
   const totalOpen = openDeals.reduce((sum, d) => sum + d.value, 0);
 
   return (
@@ -91,7 +88,7 @@ export function DealsTab({ customerId, items, onChanged }: Props) {
         <EmptyState
           icon={TrendingUp}
           title="No deals yet"
-          description="Track opportunities and revenue for this customer."
+          description="Track opportunities and revenue for this company."
           action={
             <Button size="sm" onClick={startCreate}>
               <Plus className="size-3.5" />
@@ -106,8 +103,8 @@ export function DealsTab({ customerId, items, onChanged }: Props) {
               key={d.id}
               className={cn(
                 "group flex items-start gap-3 rounded-lg border px-3 py-2.5",
-                d.status === "WON" && "bg-emerald-50/50 dark:bg-emerald-950/20",
-                d.status === "LOST" && "bg-muted/30",
+                d.stage?.isWon && "bg-emerald-50/50 dark:bg-emerald-950/20",
+                d.stage?.isLost && "bg-muted/30",
               )}
             >
               <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
@@ -118,16 +115,16 @@ export function DealsTab({ customerId, items, onChanged }: Props) {
                   <span
                     className={cn(
                       "truncate text-sm font-medium",
-                      d.status === "LOST" && "line-through text-muted-foreground",
+                      d.stage?.isLost && "line-through text-muted-foreground",
                     )}
                   >
                     {d.title}
                   </span>
                   <Badge
                     variant="secondary"
-                    className={cn("text-[10px] shrink-0", STATUS_STYLE[d.status])}
+                    className={cn("text-[10px] shrink-0", stageStyle(d.stage))}
                   >
-                    {STATUS_LABEL[d.status]}
+                    {d.stage?.name ?? "Unknown"}
                   </Badge>
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
@@ -176,7 +173,7 @@ export function DealsTab({ customerId, items, onChanged }: Props) {
       )}
 
       <DealDialog
-        customerId={customerId}
+        companyId={companyId}
         open={open}
         onOpenChange={setOpen}
         editing={editing}

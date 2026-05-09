@@ -7,9 +7,9 @@ const recordEventMock = mock.fn(() => Promise.resolve());
 
 mock.module("../lib/prisma.js", { namedExports: { prisma: prismaMock } });
 mock.module("./event.service.js", { namedExports: { recordEvent: recordEventMock } });
-mock.module("./customer.service.js", {
+mock.module("./company.service.js", {
   namedExports: {
-    ensureCustomerAccess: mock.fn(() => Promise.resolve()),
+    ensureCompanyAccess: mock.fn(() => Promise.resolve()),
   },
 });
 
@@ -27,30 +27,30 @@ describe("contact.service", () => {
   });
 
   describe("listContacts", () => {
-    it("returns contacts for a customer", async () => {
+    it("returns contacts for a company", async () => {
       const contacts = [{ id: "ct1", firstName: "Jane", lastName: "Doe", phoneNumbers: [] }];
       prismaMock.contact.findMany = mock.fn(() => Promise.resolve(contacts));
 
-      const result = await listContacts(makeOrgContext(), "cust-1");
+      const result = await listContacts(makeOrgContext(), "comp-1");
       assert.deepEqual(result, contacts);
     });
 
-    it("scopes query to customerId", async () => {
+    it("scopes query to companyId", async () => {
       prismaMock.contact.findMany = mock.fn(() => Promise.resolve([]));
 
-      await listContacts(makeOrgContext(), "cust-1");
+      await listContacts(makeOrgContext(), "comp-1");
 
       const call = (prismaMock.contact.findMany as ReturnType<typeof mock.fn>).mock.calls[0];
-      assert.equal(call.arguments[0].where.customerId, "cust-1");
+      assert.equal(call.arguments[0].where.companyId, "comp-1");
     });
   });
 
   describe("getContact", () => {
     it("returns contact when found", async () => {
-      const contact = { id: "ct1", firstName: "Jane", lastName: "Doe", customerId: "cust-1", phoneNumbers: [] };
+      const contact = { id: "ct1", firstName: "Jane", lastName: "Doe", companyId: "comp-1", phoneNumbers: [] };
       prismaMock.contact.findFirst = mock.fn(() => Promise.resolve(contact));
 
-      const result = await getContact(makeOrgContext(), "cust-1", "ct1");
+      const result = await getContact(makeOrgContext(), "comp-1", "ct1");
       assert.equal(result, contact);
     });
 
@@ -58,7 +58,7 @@ describe("contact.service", () => {
       prismaMock.contact.findFirst = mock.fn(() => Promise.resolve(null));
 
       await assert.rejects(
-        () => getContact(makeOrgContext(), "cust-1", "bad"),
+        () => getContact(makeOrgContext(), "comp-1", "bad"),
         (err: any) => {
           assert.equal(err.statusCode, 404);
           assert.equal(err.code, "CONTACT_NOT_FOUND");
@@ -73,7 +73,7 @@ describe("contact.service", () => {
       const contact = { id: "ct1", firstName: "Jane", lastName: "Doe", email: "jane@example.com", phoneNumbers: [] };
       prismaMock.contact.create = mock.fn(() => Promise.resolve(contact));
 
-      const result = await createContact(makeOrgContext(), "cust-1", {
+      const result = await createContact(makeOrgContext(), "comp-1", {
         firstName: "Jane",
         lastName: "Doe",
         email: "jane@example.com",
@@ -93,7 +93,7 @@ describe("contact.service", () => {
       prismaMock.contact.findFirst = mock.fn(() => Promise.resolve(null));
 
       await assert.rejects(
-        () => updateContact(makeOrgContext(), "cust-1", "bad", { firstName: "X" } as any),
+        () => updateContact(makeOrgContext(), "comp-1", "bad", { firstName: "X" } as any),
         (err: any) => {
           assert.equal(err.statusCode, 404);
           return true;
@@ -102,12 +102,12 @@ describe("contact.service", () => {
     });
 
     it("updates and returns the contact", async () => {
-      const existing = { id: "ct1", firstName: "Jane", lastName: "Doe", customerId: "cust-1" };
+      const existing = { id: "ct1", firstName: "Jane", lastName: "Doe", companyId: "comp-1" };
       const updated = { ...existing, firstName: "Janet", phoneNumbers: [] };
       prismaMock.contact.findFirst = mock.fn(() => Promise.resolve(existing));
       prismaMock.contact.update = mock.fn(() => Promise.resolve(updated));
 
-      const result = await updateContact(makeOrgContext(), "cust-1", "ct1", { firstName: "Janet" } as any);
+      const result = await updateContact(makeOrgContext(), "comp-1", "ct1", { firstName: "Janet" } as any);
       assert.equal(result.firstName, "Janet");
     });
   });
@@ -117,7 +117,7 @@ describe("contact.service", () => {
       prismaMock.contact.findFirst = mock.fn(() => Promise.resolve(null));
 
       await assert.rejects(
-        () => deleteContact(makeOrgContext(), "cust-1", "bad"),
+        () => deleteContact(makeOrgContext(), "comp-1", "bad"),
         (err: any) => {
           assert.equal(err.statusCode, 404);
           return true;
@@ -126,11 +126,11 @@ describe("contact.service", () => {
     });
 
     it("deletes contact and records event", async () => {
-      const contact = { id: "ct1", firstName: "Jane", lastName: "Doe", customerId: "cust-1" };
+      const contact = { id: "ct1", firstName: "Jane", lastName: "Doe", companyId: "comp-1" };
       prismaMock.contact.findFirst = mock.fn(() => Promise.resolve(contact));
       prismaMock.contact.delete = mock.fn(() => Promise.resolve({}));
 
-      await deleteContact(makeOrgContext(), "cust-1", "ct1");
+      await deleteContact(makeOrgContext(), "comp-1", "ct1");
 
       assert.equal((prismaMock.contact.delete as ReturnType<typeof mock.fn>).mock.callCount(), 1);
       assert.equal(recordEventMock.mock.callCount(), 1);

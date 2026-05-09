@@ -51,13 +51,13 @@ type UnifiedItem =
   | { kind: "note"; data: Note; sortDate: number };
 
 type Props = {
-  customerId: string;
+  companyId: string;
   activities: Activity[];
   notes: Note[];
   onChanged: () => void;
 };
 
-export function UnifiedActivityTab({ customerId, activities, notes, onChanged }: Props) {
+export function UnifiedActivityTab({ companyId, activities, notes, onChanged }: Props) {
   const [activityDialogOpen, setActivityDialogOpen] = useState(false);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
@@ -82,7 +82,7 @@ export function UnifiedActivityTab({ customerId, activities, notes, onChanged }:
 
   async function onDeleteActivity(a: Activity) {
     try {
-      await removeActivity(customerId, a.id);
+      await removeActivity(companyId, a.id);
       toast.success("Activity deleted.");
       onChanged();
     } catch (err) {
@@ -93,7 +93,7 @@ export function UnifiedActivityTab({ customerId, activities, notes, onChanged }:
 
   async function onDeleteNote(n: Note) {
     try {
-      await removeNote(customerId, n.id);
+      await removeNote(companyId, n.id);
       toast.success("Note deleted.");
       onChanged();
     } catch (err) {
@@ -268,14 +268,14 @@ export function UnifiedActivityTab({ customerId, activities, notes, onChanged }:
       )}
 
       <ActivityDialog
-        customerId={customerId}
+        companyId={companyId}
         open={activityDialogOpen}
         onOpenChange={setActivityDialogOpen}
         editing={editingActivity}
         onSaved={onChanged}
       />
       <NoteDialog
-        customerId={customerId}
+        companyId={companyId}
         open={noteDialogOpen}
         onOpenChange={setNoteDialogOpen}
         editing={editingNote}

@@ -1,36 +1,47 @@
 export {
-  CUSTOMER_STATUSES,
+  COMPANY_STATUSES,
   ADDRESS_LABELS,
   PHONE_LABELS,
   ACTIVITY_TYPES,
-  DEAL_STATUSES,
+  TASK_STATUSES,
+  TASK_PRIORITIES,
+  CUSTOM_FIELD_TYPES,
+  CUSTOM_FIELD_ENTITIES,
   ORG_ROLES,
   INVITE_STATUSES,
 } from "@crm/shared";
 
 export type {
-  CustomerStatus,
+  CompanyStatus,
   AddressLabel,
   PhoneLabel,
   ActivityType,
-  DealStatus,
-  Customer,
+  TaskStatus,
+  TaskPriority,
+  CustomFieldType,
+  CustomFieldEntity,
+  User,
+  Company,
   Contact,
   Address,
   PhoneNumber,
   Note,
-  Reminder,
+  Task,
+  TaskWithCompany,
   Deal,
+  DealWithCompany,
   Activity,
+  ActivityWithCompany,
+  NoteWithCompany,
   Tag,
-  CustomerWithCounts,
-  CustomerWithRelations,
-  ReminderWithCustomer,
-  NoteWithCustomer,
+  CompanyWithCounts,
+  CompanyWithRelations,
   Event,
-  EventWithCustomer,
-  DealWithCustomer,
-  ActivityWithCustomer,
+  EventWithCompany,
+  Pipeline,
+  PipelineStage,
+  CustomFieldDefinition,
+  CustomFieldValue,
   DashboardData,
   PageMeta,
   Single,
@@ -38,7 +49,6 @@ export type {
   ApiErrorBody,
   SearchResults,
   SearchResultItem,
-  SearchQueryParams,
   Organization,
   OrganizationMember,
   Invite,
@@ -46,12 +56,9 @@ export type {
   InviteStatus,
   OrgContext,
   MeResponse,
-  CreateOrganizationInput as OrganizationCreate,
-  CreateInviteInput as InviteCreate,
-  UpdateMemberRoleInput as MemberRoleUpdate,
-  CreateCustomerInput as CustomerCreate,
-  UpdateCustomerInput as CustomerUpdate,
-  CustomerQueryParams as CustomerListParams,
+  CreateCompanyInput as CompanyCreate,
+  UpdateCompanyInput as CompanyUpdate,
+  CompanyQueryParams as CompanyListParams,
   CreateContactInput as ContactCreate,
   UpdateContactInput as ContactUpdate,
   CreateAddressInput as AddressCreate,
@@ -62,26 +69,43 @@ export type {
   UpdateNoteInput as NoteUpdate,
   CreateTagInput as TagCreate,
   UpdateTagInput as TagUpdate,
+  CreateOrganizationInput as OrganizationCreate,
+  CreateInviteInput as InviteCreate,
+  UpdateMemberRoleInput as MemberRoleUpdate,
+  CreatePipelineInput as PipelineCreate,
+  UpdatePipelineInput as PipelineUpdate,
+  CreatePipelineStageInput as PipelineStageCreate,
+  UpdatePipelineStageInput as PipelineStageUpdate,
 } from "@crm/shared";
 
-import type { ActivityType, DealStatus } from "@crm/shared";
+import type { ActivityType, TaskStatus, TaskPriority } from "@crm/shared";
 
 // Frontend sends dates as ISO strings over JSON.
 // The backend Zod schemas use z.coerce.date() for validation,
 // so these types reflect the wire format rather than the parsed type.
 
-export type ReminderCreate = {
+export type TaskCreate = {
   title: string;
   description?: string;
-  dueDate: string;
-  dateCompleted?: string | null;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  dueDate?: string;
+  assigneeId?: string;
   contactId?: string;
   dealId?: string;
 };
-export type ReminderUpdate = Partial<ReminderCreate>;
-export type ReminderListParams = {
+export type TaskUpdate = Partial<TaskCreate> & {
+  dueDate?: string | null;
+  assigneeId?: string | null;
+  contactId?: string | null;
+  dealId?: string | null;
+};
+export type TaskListParams = {
   page?: number;
   limit?: number;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assigneeId?: string;
   completed?: boolean;
   dueBefore?: string;
 };
@@ -90,15 +114,24 @@ export type DealCreate = {
   title: string;
   description?: string;
   value: number;
-  status?: DealStatus;
+  stageId: string;
+  pipelineId?: string;
   expectedCloseDate?: string;
   contactId?: string;
 };
-export type DealUpdate = Partial<DealCreate>;
+export type DealUpdate = Partial<{
+  title: string;
+  description: string;
+  value: number;
+  expectedCloseDate: string;
+  contactId: string | null;
+  stageId: string;
+}>;
 export type DealListParams = {
   page?: number;
   limit?: number;
-  status?: DealStatus;
+  pipelineId?: string;
+  stageId?: string;
 };
 
 export type ActivityCreate = {

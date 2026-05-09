@@ -3,64 +3,80 @@ import { prisma } from "../lib/prisma.js";
 import type { OrgContext } from "@crm/shared";
 
 export async function getDashboard(ctx: OrgContext) {
-  const customerWhere: Prisma.CustomerWhereInput = {
+  const companyWhere: Prisma.CompanyWhereInput = {
     organizationId: ctx.organizationId,
   };
   if (ctx.role === "SALESPERSON") {
-    customerWhere.ownerId = ctx.userId;
+    companyWhere.ownerId = ctx.userId;
   }
 
-  const customerIds = await prisma.customer.findMany({
-    where: customerWhere,
+  const companyIds = await prisma.company.findMany({
+    where: companyWhere,
     select: { id: true },
   });
-  const ids = customerIds.map((c) => c.id);
+  const ids = companyIds.map((c) => c.id);
 
-  const [reminders, recentNotes, recentActivities, deals, statusCounts, dealAgg] =
+  const [tasks, recentNotes, recentActivities, deals, statusCounts, dealAgg] =
     await Promise.all([
-      prisma.reminder.findMany({
-        where: { customerId: { in: ids }, dateCompleted: null },
+      prisma.task.findMany({
+        where: {
+          organizationId: ctx.organizationId,
+          status: { not: "DONE" },
+          ...(ctx.role === "SALESPERSON"
+            ? {
+                OR: [
+                  { companyId: { in: ids } },
+                  { companyId: null, assigneeId: ctx.userId },
+                  { companyId: null, createdById: ctx.userId },
+                ],
+              }
+            : {}),
+        },
         include: {
-          customer: {
-            select: { id: true, companyName: true, status: true },
+          company: {
+            select: { id: true, name: true, status: true },
           },
         },
         orderBy: { dueDate: "asc" },
         take: 50,
       }),
       prisma.note.findMany({
-        where: { customerId: { in: ids } },
+        where: { companyId: { in: ids } },
         include: {
-          customer: { select: { id: true, companyName: true } },
+          company: { select: { id: true, name: true } },
         },
         orderBy: { updatedAt: "desc" },
         take: 10,
       }),
       prisma.activity.findMany({
-        where: { customerId: { in: ids } },
+        where: { companyId: { in: ids } },
         include: {
-          customer: { select: { id: true, companyName: true } },
+          company: { select: { id: true, name: true } },
         },
         orderBy: { date: "desc" },
         take: 10,
       }),
       prisma.deal.findMany({
-        where: { customerId: { in: ids } },
+        where: { companyId: { in: ids } },
         include: {
-          customer: {
-            select: { id: true, companyName: true, status: true },
+          stage: true,
+          company: {
+            select: { id: true, name: true, status: true },
           },
         },
         orderBy: { createdAt: "desc" },
         take: 100,
       }),
-      prisma.customer.groupBy({
+      prisma.company.groupBy({
         by: ["status"],
-        where: customerWhere,
+        where: companyWhere,
         _count: { _all: true },
       }),
       prisma.deal.aggregate({
-        where: { customerId: { in: ids }, status: "OPEN" },
+        where: {
+          companyId: { in: ids },
+          stage: { isWon: false, isLost: false },
+        },
         _sum: { value: true },
         _count: true,
       }),
@@ -75,5 +91,5 @@ export async function getDashboard(ctx: OrgContext) {
     openDealsCount: dealAgg._count,
   };
 
-  return { reminders, recentNotes, recentActivities, deals, stats };
+  return { tasks, recentNotes, recentActivities, deals, stats };
 }

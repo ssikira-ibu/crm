@@ -7,7 +7,6 @@ import {
   DollarSign,
   FileText,
   Mail,
-  MapPin,
   MoreHorizontal,
   Phone,
   Tag,
@@ -19,17 +18,16 @@ import {
   Zap,
 } from "lucide-react";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import type { EventWithCustomer } from "@/lib/types";
+import type { EventWithCompany } from "@/lib/types";
 
 type EventConfig = {
   icon: React.ComponentType<{ className?: string }>;
   style: string;
-  describe: (e: EventWithCustomer) => string;
+  describe: (e: EventWithCompany) => string;
 };
 
-function getEventConfig(e: EventWithCustomer): EventConfig {
+function getEventConfig(e: EventWithCompany): EventConfig {
   const m = (e.metadata ?? {}) as Record<string, unknown>;
   const entity = e.entityType;
   const action = e.action;
@@ -44,6 +42,34 @@ function getEventConfig(e: EventWithCustomer): EventConfig {
       },
     };
   }
+  if (entity === "DEAL" && action === "STAGE_CHANGED") {
+    const newStage = m.new as string;
+    const isWon = m.isWon === true;
+    const isLost = m.isLost === true;
+    if (isWon) {
+      return {
+        icon: Trophy,
+        style: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
+        describe: () => {
+          const val = typeof m.value === "number" ? ` — ${formatCurrency(m.value)}` : "";
+          return `Won deal ${m.title ? `"${m.title}"` : ""}${val}`;
+        },
+      };
+    }
+    if (isLost) {
+      return {
+        icon: XCircle,
+        style: "bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400",
+        describe: () => `Lost deal ${m.title ? `"${m.title}"` : ""}`,
+      };
+    }
+    return {
+      icon: TrendingUp,
+      style: "bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400",
+      describe: () => `Deal ${m.title ? `"${m.title}"` : ""} moved to ${newStage}`,
+    };
+  }
+  // Keep backward compat for old STATUS_CHANGED events
   if (entity === "DEAL" && action === "STATUS_CHANGED") {
     const newStatus = m.new as string;
     if (newStatus === "WON") {
@@ -97,6 +123,21 @@ function getEventConfig(e: EventWithCustomer): EventConfig {
       describe: () => `Added note ${m.title ? `"${m.title}"` : ""}`,
     };
   }
+  if (entity === "TASK" && action === "CREATED") {
+    return {
+      icon: Calendar,
+      style: "bg-amber-100 text-amber-600 dark:bg-amber-950 dark:text-amber-400",
+      describe: () => `Created task ${m.title ? `"${m.title}"` : ""}`,
+    };
+  }
+  if (entity === "TASK" && action === "COMPLETED") {
+    return {
+      icon: CheckCircle2,
+      style: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400",
+      describe: () => `Completed task ${m.title ? `"${m.title}"` : ""}`,
+    };
+  }
+  // Keep backward compat for old REMINDER events
   if (entity === "REMINDER" && action === "CREATED") {
     return {
       icon: Calendar,
@@ -145,7 +186,7 @@ function getEventConfig(e: EventWithCustomer): EventConfig {
       describe: () => `Removed tag "${m.name ?? ""}"`,
     };
   }
-  if (entity === "CUSTOMER" && action === "STATUS_CHANGED") {
+  if ((entity === "COMPANY" || entity === "CUSTOMER") && action === "STATUS_CHANGED") {
     return {
       icon: Zap,
       style: "bg-cyan-100 text-cyan-600 dark:bg-cyan-950 dark:text-cyan-400",
@@ -168,8 +209,8 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function groupByDate(events: EventWithCustomer[]): [string, EventWithCustomer[]][] {
-  const groups = new Map<string, EventWithCustomer[]>();
+function groupByDate(events: EventWithCompany[]): [string, EventWithCompany[]][] {
+  const groups = new Map<string, EventWithCompany[]>();
   for (const e of events) {
     const d = new Date(e.createdAt);
     let label: string;
@@ -184,7 +225,7 @@ function groupByDate(events: EventWithCustomer[]): [string, EventWithCustomer[]]
 }
 
 type Props = {
-  events: EventWithCustomer[];
+  events: EventWithCompany[];
   showCustomer?: boolean;
 };
 
@@ -221,10 +262,10 @@ export function Timeline({ events, showCustomer = false }: Props) {
                   <div className="min-w-0 flex-1 pt-0.5">
                     <p className="text-sm">{desc}</p>
                     <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                      {showCustomer && (
+                      {showCustomer && e.company && (
                         <>
                           <span className="font-medium">
-                            {e.customer.companyName ?? "Untitled"}
+                            {e.company.name ?? "Untitled"}
                           </span>
                           <span className="text-border">|</span>
                         </>
@@ -238,11 +279,11 @@ export function Timeline({ events, showCustomer = false }: Props) {
                 </>
               );
 
-              if (showCustomer) {
+              if (showCustomer && e.companyId) {
                 return (
                   <Link
                     key={e.id}
-                    href={`/customers/${e.customerId}`}
+                    href={`/customers/${e.companyId}`}
                     className="group relative flex items-start gap-3 rounded-md py-2.5 pl-1 pr-2 transition-colors hover:bg-muted/50"
                   >
                     {inner}

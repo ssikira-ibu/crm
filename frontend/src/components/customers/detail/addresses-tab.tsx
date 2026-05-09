@@ -13,7 +13,7 @@ import type { Address } from "@/lib/types";
 import { AddressDialog } from "./address-dialog";
 
 type Props = {
-  customerId: string;
+  companyId: string;
   items: Address[];
   onChanged: () => void;
 };
@@ -26,7 +26,7 @@ function formatAddress(a: Address): string {
   return parts.join(" · ");
 }
 
-export function AddressesTab({ customerId, items, onChanged }: Props) {
+export function AddressesTab({ companyId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Address | null>(null);
 
@@ -41,7 +41,7 @@ export function AddressesTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(a: Address) {
     try {
-      await removeAddress(customerId, a.id);
+      await removeAddress(companyId, a.id);
       toast.success("Address deleted.");
       onChanged();
     } catch (err) {
@@ -102,7 +102,7 @@ export function AddressesTab({ customerId, items, onChanged }: Props) {
       )}
 
       <AddressDialog
-        customerId={customerId}
+        companyId={companyId}
         open={open}
         onOpenChange={setOpen}
         editing={editing}

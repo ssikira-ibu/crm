@@ -1,18 +1,18 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerAccess } from "./customer.service.js";
+import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, ActivityQueryParams, CreateActivityInput, UpdateActivityInput } from "@crm/shared";
 
 export async function listActivities(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   params: ActivityQueryParams,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const { page, limit, type } = params;
-  const where: Prisma.ActivityWhereInput = { customerId };
+  const where: Prisma.ActivityWhereInput = { companyId };
 
   if (type) {
     where.type = type;
@@ -36,12 +36,12 @@ export async function listActivities(
 
 export async function getActivity(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   activityId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const activity = await prisma.activity.findFirst({
-    where: { id: activityId, customerId },
+    where: { id: activityId, companyId },
   });
   if (!activity) {
     throw new AppError(404, "ACTIVITY_NOT_FOUND", "Activity not found");
@@ -51,15 +51,15 @@ export async function getActivity(
 
 export async function createActivity(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   data: CreateActivityInput,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const activity = await prisma.activity.create({
-    data: { ...data, customerId },
+    data: { ...data, companyId },
   });
   await recordEvent({
-    ctx, customerId, entityType: "ACTIVITY", entityId: activity.id,
+    ctx, companyId, entityType: "ACTIVITY", entityId: activity.id,
     action: "CREATED",
     metadata: { title: activity.title, type: activity.type },
   });
@@ -68,13 +68,13 @@ export async function createActivity(
 
 export async function updateActivity(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   activityId: string,
   data: UpdateActivityInput,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const activity = await prisma.activity.findFirst({
-    where: { id: activityId, customerId },
+    where: { id: activityId, companyId },
   });
   if (!activity) {
     throw new AppError(404, "ACTIVITY_NOT_FOUND", "Activity not found");
@@ -84,12 +84,12 @@ export async function updateActivity(
 
 export async function deleteActivity(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   activityId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const activity = await prisma.activity.findFirst({
-    where: { id: activityId, customerId },
+    where: { id: activityId, companyId },
   });
   if (!activity) {
     throw new AppError(404, "ACTIVITY_NOT_FOUND", "Activity not found");

@@ -12,11 +12,11 @@ import type { AppState } from "../types/index.js";
 const router = new Router<AppState>();
 
 router.get(
-  "/customers/:customerId/contacts/:contactId/phone-numbers",
+  "/companies/:companyId/contacts/:contactId/phone-numbers",
   async (ctx) => {
     const phoneNumbers = await phoneNumberService.listPhoneNumbers(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.contactId,
     );
     ctx.body = { data: phoneNumbers };
@@ -24,12 +24,12 @@ router.get(
 );
 
 router.post(
-  "/customers/:customerId/contacts/:contactId/phone-numbers",
+  "/companies/:companyId/contacts/:contactId/phone-numbers",
   validate(createPhoneNumberSchema, "body"),
   async (ctx) => {
     const phoneNumber = await phoneNumberService.createPhoneNumber(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.contactId,
       ctx.state.body as CreatePhoneNumberInput,
     );
@@ -39,11 +39,11 @@ router.post(
 );
 
 router.get(
-  "/customers/:customerId/contacts/:contactId/phone-numbers/:phoneNumberId",
+  "/companies/:companyId/contacts/:contactId/phone-numbers/:phoneNumberId",
   async (ctx) => {
     const phoneNumber = await phoneNumberService.getPhoneNumber(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.contactId,
       ctx.params.phoneNumberId,
     );
@@ -52,12 +52,12 @@ router.get(
 );
 
 router.patch(
-  "/customers/:customerId/contacts/:contactId/phone-numbers/:phoneNumberId",
+  "/companies/:companyId/contacts/:contactId/phone-numbers/:phoneNumberId",
   validate(updatePhoneNumberSchema, "body"),
   async (ctx) => {
     const phoneNumber = await phoneNumberService.updatePhoneNumber(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.contactId,
       ctx.params.phoneNumberId,
       ctx.state.body as UpdatePhoneNumberInput,
@@ -67,11 +67,11 @@ router.patch(
 );
 
 router.delete(
-  "/customers/:customerId/contacts/:contactId/phone-numbers/:phoneNumberId",
+  "/companies/:companyId/contacts/:contactId/phone-numbers/:phoneNumberId",
   async (ctx) => {
     await phoneNumberService.deletePhoneNumber(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.contactId,
       ctx.params.phoneNumberId,
     );

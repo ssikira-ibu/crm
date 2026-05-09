@@ -13,12 +13,12 @@ import type { AppState } from "../types/index.js";
 const router = new Router<AppState>();
 
 router.get(
-  "/customers/:customerId/activities",
+  "/companies/:companyId/activities",
   validate(activityQuerySchema, "query"),
   async (ctx) => {
     const result = await activityService.listActivities(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.state.query as ActivityQueryParams,
     );
     ctx.body = result;
@@ -26,12 +26,12 @@ router.get(
 );
 
 router.post(
-  "/customers/:customerId/activities",
+  "/companies/:companyId/activities",
   validate(createActivitySchema, "body"),
   async (ctx) => {
     const activity = await activityService.createActivity(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.state.body as CreateActivityInput,
     );
     ctx.status = 201;
@@ -40,11 +40,11 @@ router.post(
 );
 
 router.get(
-  "/customers/:customerId/activities/:activityId",
+  "/companies/:companyId/activities/:activityId",
   async (ctx) => {
     const activity = await activityService.getActivity(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.activityId,
     );
     ctx.body = { data: activity };
@@ -52,12 +52,12 @@ router.get(
 );
 
 router.patch(
-  "/customers/:customerId/activities/:activityId",
+  "/companies/:companyId/activities/:activityId",
   validate(updateActivitySchema, "body"),
   async (ctx) => {
     const activity = await activityService.updateActivity(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.activityId,
       ctx.state.body as UpdateActivityInput,
     );
@@ -66,11 +66,11 @@ router.patch(
 );
 
 router.delete(
-  "/customers/:customerId/activities/:activityId",
+  "/companies/:companyId/activities/:activityId",
   async (ctx) => {
     await activityService.deleteActivity(
       getOrgContext(ctx.state.user),
-      ctx.params.customerId,
+      ctx.params.companyId,
       ctx.params.activityId,
     );
     ctx.status = 204;

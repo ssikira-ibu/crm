@@ -44,12 +44,12 @@ const TYPE_STYLE: Record<ActivityType, string> = {
 };
 
 type Props = {
-  customerId: string;
+  companyId: string;
   items: Activity[];
   onChanged: () => void;
 };
 
-export function ActivitiesTab({ customerId, items, onChanged }: Props) {
+export function ActivitiesTab({ companyId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Activity | null>(null);
 
@@ -72,7 +72,7 @@ export function ActivitiesTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(a: Activity) {
     try {
-      await removeActivity(customerId, a.id);
+      await removeActivity(companyId, a.id);
       toast.success("Activity deleted.");
       onChanged();
     } catch (err) {
@@ -164,7 +164,7 @@ export function ActivitiesTab({ customerId, items, onChanged }: Props) {
       )}
 
       <ActivityDialog
-        customerId={customerId}
+        companyId={companyId}
         open={open}
         onOpenChange={setOpen}
         editing={editing}

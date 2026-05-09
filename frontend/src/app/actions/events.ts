@@ -9,9 +9,9 @@ export async function getGlobalEvents(params?: {
   return serverApi.events.global(params);
 }
 
-export async function getCustomerEvents(
-  customerId: string,
+export async function getCompanyEvents(
+  companyId: string,
   params?: { limit?: number; cursor?: string },
 ) {
-  return serverApi.events.forCustomer(customerId, params);
+  return serverApi.events.forCompany(companyId, params);
 }

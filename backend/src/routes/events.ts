@@ -1,6 +1,6 @@
 import Router from "@koa/router";
 import * as eventService from "../services/event.service.js";
-import { ensureCustomerAccess } from "../services/customer.service.js";
+import { ensureCompanyAccess } from "../services/company.service.js";
 import { getOrgContext } from "../lib/orgContext.js";
 import type { AppState } from "../types/index.js";
 
@@ -17,14 +17,14 @@ router.get("/events", async (ctx) => {
   ctx.body = { data };
 });
 
-router.get("/customers/:customerId/events", async (ctx) => {
+router.get("/companies/:companyId/events", async (ctx) => {
   const orgCtx = getOrgContext(ctx.state.user);
-  await ensureCustomerAccess(orgCtx, ctx.params.customerId);
+  await ensureCompanyAccess(orgCtx, ctx.params.companyId);
   const limit = Math.min(Number(ctx.query.limit) || 50, 100);
   const cursor = ctx.query.cursor as string | undefined;
-  const data = await eventService.listCustomerEvents(
+  const data = await eventService.listCompanyEvents(
     orgCtx,
-    ctx.params.customerId,
+    ctx.params.companyId,
     limit,
     cursor,
   );

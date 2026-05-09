@@ -13,12 +13,12 @@ import type { Note } from "@/lib/types";
 import { NoteDialog } from "./note-dialog";
 
 type Props = {
-  customerId: string;
+  companyId: string;
   items: Note[];
   onChanged: () => void;
 };
 
-export function NotesTab({ customerId, items, onChanged }: Props) {
+export function NotesTab({ companyId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<Note | null>(null);
 
@@ -33,7 +33,7 @@ export function NotesTab({ customerId, items, onChanged }: Props) {
 
   async function onDelete(n: Note) {
     try {
-      await removeNote(customerId, n.id);
+      await removeNote(companyId, n.id);
       toast.success("Note deleted.");
       onChanged();
     } catch (err) {
@@ -106,7 +106,7 @@ export function NotesTab({ customerId, items, onChanged }: Props) {
       )}
 
       <NoteDialog
-        customerId={customerId}
+        companyId={companyId}
         open={open}
         onOpenChange={setOpen}
         editing={editing}

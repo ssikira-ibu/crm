@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
-import { ensureCustomerAccess } from "./customer.service.js";
+import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, CreateTagInput, UpdateTagInput } from "@crm/shared";
 
@@ -41,43 +41,43 @@ export async function deleteTag(ctx: OrgContext, tagId: string) {
   await prisma.tag.delete({ where: { id: tagId } });
 }
 
-export async function addTagToCustomer(
+export async function addTagToCompany(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   tagId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const tag = await prisma.tag.findFirst({
     where: { id: tagId, organizationId: ctx.organizationId },
   });
   if (!tag) {
     throw new AppError(404, "TAG_NOT_FOUND", "Tag not found");
   }
-  await prisma.customerTag.upsert({
-    where: { customerId_tagId: { customerId, tagId } },
-    create: { customerId, tagId },
+  await prisma.companyTag.upsert({
+    where: { companyId_tagId: { companyId, tagId } },
+    create: { companyId, tagId },
     update: {},
   });
   await recordEvent({
-    ctx, customerId, entityType: "TAG", entityId: tagId,
+    ctx, companyId, entityType: "TAG", entityId: tagId,
     action: "TAGGED",
     metadata: { name: tag.name, color: tag.color },
   });
 }
 
-export async function removeTagFromCustomer(
+export async function removeTagFromCompany(
   ctx: OrgContext,
-  customerId: string,
+  companyId: string,
   tagId: string,
 ) {
-  await ensureCustomerAccess(ctx, customerId);
+  await ensureCompanyAccess(ctx, companyId);
   const tag = await prisma.tag.findFirst({ where: { id: tagId, organizationId: ctx.organizationId } });
-  await prisma.customerTag.deleteMany({
-    where: { customerId, tagId },
+  await prisma.companyTag.deleteMany({
+    where: { companyId, tagId },
   });
   if (tag) {
     await recordEvent({
-      ctx, customerId, entityType: "TAG", entityId: tagId,
+      ctx, companyId, entityType: "TAG", entityId: tagId,
       action: "UNTAGGED",
       metadata: { name: tag.name },
     });

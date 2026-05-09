@@ -1,12 +1,27 @@
 import type {
-  CustomerStatus,
+  CompanyStatus,
   AddressLabel,
   PhoneLabel,
   ActivityType,
-  DealStatus,
+  TaskStatus,
+  TaskPriority,
+  CustomFieldType,
+  CustomFieldEntity,
   OrgRole,
   InviteStatus,
 } from "./enums.js";
+
+// ---------------------------------------------------------------------------
+// Auth & Org
+// ---------------------------------------------------------------------------
+
+export type User = {
+  id: string;
+  email: string;
+  displayName: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
 
 export type Organization = {
   id: string;
@@ -19,11 +34,10 @@ export type OrganizationMember = {
   id: string;
   organizationId: string;
   userId: string;
-  email: string;
-  displayName: string | null;
   role: OrgRole;
   createdAt: string;
   updatedAt: string;
+  user?: User;
 };
 
 export type Invite = {
@@ -47,24 +61,32 @@ export type OrgContext = {
 export type MeResponse = {
   uid: string;
   email: string;
+  displayName: string | null;
   organization: (Organization & { role: OrgRole; memberCount: number }) | null;
 };
 
-export type Customer = {
+// ---------------------------------------------------------------------------
+// CRM Core
+// ---------------------------------------------------------------------------
+
+export type Company = {
   id: string;
   organizationId: string;
   ownerId: string;
-  companyName: string | null;
+  name: string;
   industry: string | null;
   website: string | null;
-  status: CustomerStatus;
+  phone: string | null;
+  email: string | null;
+  status: CompanyStatus;
   createdAt: string;
   updatedAt: string;
 };
 
 export type Contact = {
   id: string;
-  customerId: string;
+  companyId: string;
+  ownerId: string | null;
   firstName: string;
   lastName: string;
   email: string | null;
@@ -76,7 +98,7 @@ export type Contact = {
 
 export type Address = {
   id: string;
-  customerId: string;
+  companyId: string;
   label: AddressLabel;
   street1: string;
   street2: string | null;
@@ -99,46 +121,59 @@ export type PhoneNumber = {
   updatedAt: string;
 };
 
-export type Note = {
+// ---------------------------------------------------------------------------
+// Pipeline & Deals
+// ---------------------------------------------------------------------------
+
+export type Pipeline = {
   id: string;
-  customerId: string;
-  contactId: string | null;
-  dealId: string | null;
-  title: string;
-  body: string;
+  organizationId: string;
+  name: string;
+  isDefault: boolean;
+  position: number;
   createdAt: string;
   updatedAt: string;
+  stages?: PipelineStage[];
 };
 
-export type Reminder = {
+export type PipelineStage = {
   id: string;
-  customerId: string;
-  contactId: string | null;
-  dealId: string | null;
-  title: string;
-  description: string | null;
-  dueDate: string;
-  dateCompleted: string | null;
+  pipelineId: string;
+  name: string;
+  position: number;
+  probability: number;
+  isWon: boolean;
+  isLost: boolean;
   createdAt: string;
   updatedAt: string;
 };
 
 export type Deal = {
   id: string;
-  customerId: string;
+  organizationId: string;
+  companyId: string;
   contactId: string | null;
+  ownerId: string;
+  pipelineId: string;
+  stageId: string;
   title: string;
   description: string | null;
   value: number;
-  status: DealStatus;
   expectedCloseDate: string | null;
+  closedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  stage?: PipelineStage;
+  company?: { id: string; name: string | null; status: CompanyStatus };
 };
+
+// ---------------------------------------------------------------------------
+// Activities, Notes, Tasks
+// ---------------------------------------------------------------------------
 
 export type Activity = {
   id: string;
-  customerId: string;
+  companyId: string;
   contactId: string | null;
   dealId: string | null;
   type: ActivityType;
@@ -149,6 +184,39 @@ export type Activity = {
   updatedAt: string;
 };
 
+export type Note = {
+  id: string;
+  companyId: string;
+  contactId: string | null;
+  dealId: string | null;
+  title: string;
+  body: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Task = {
+  id: string;
+  organizationId: string;
+  companyId: string | null;
+  contactId: string | null;
+  dealId: string | null;
+  assigneeId: string | null;
+  createdById: string;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  dueDate: string | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// ---------------------------------------------------------------------------
+// Tags
+// ---------------------------------------------------------------------------
+
 export type Tag = {
   id: string;
   organizationId: string;
@@ -158,66 +226,104 @@ export type Tag = {
   updatedAt: string;
 };
 
+// ---------------------------------------------------------------------------
+// Event Log
+// ---------------------------------------------------------------------------
+
 export type Event = {
   id: string;
+  sequence: number;
   organizationId: string;
-  actorId: string;
-  customerId: string;
+  actorId: string | null;
+  companyId: string | null;
   entityType: string;
   entityId: string;
   action: string;
+  source: string;
   metadata: Record<string, unknown> | null;
   createdAt: string;
 };
 
-export type EventWithCustomer = Event & {
-  customer: { id: string; companyName: string | null; status: CustomerStatus };
+export type EventWithCompany = Event & {
+  company: { id: string; name: string | null; status: CompanyStatus } | null;
 };
 
-export type CustomerWithCounts = Customer & {
+// ---------------------------------------------------------------------------
+// Custom Fields
+// ---------------------------------------------------------------------------
+
+export type CustomFieldDefinition = {
+  id: string;
+  organizationId: string;
+  entityType: CustomFieldEntity;
+  name: string;
+  fieldKey: string;
+  fieldType: CustomFieldType;
+  options: string[] | null;
+  isRequired: boolean;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CustomFieldValue = {
+  id: string;
+  definitionId: string;
+  entityId: string;
+  value: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+// ---------------------------------------------------------------------------
+// Composite / View Types
+// ---------------------------------------------------------------------------
+
+export type CompanyWithCounts = Company & {
   _count: {
     contacts: number;
-    reminders: number;
+    tasks: number;
     notes: number;
     deals: number;
     activities: number;
   };
 };
 
-export type CustomerWithRelations = Customer & {
+export type CompanyWithRelations = Company & {
   contacts: (Contact & { phoneNumbers: PhoneNumber[] })[];
   addresses: Address[];
-  deals: Deal[];
+  deals: (Deal & { stage: PipelineStage })[];
   activities: Activity[];
   notes: Note[];
-  reminders: Reminder[];
+  tasks: Task[];
   tags: Tag[];
 };
 
-export type ReminderWithCustomer = Reminder & {
-  customer: { id: string; companyName: string | null; status: CustomerStatus };
+export type TaskWithCompany = Task & {
+  company: { id: string; name: string | null; status: CompanyStatus } | null;
 };
 
-export type NoteWithCustomer = Note & {
-  customer: { id: string; companyName: string | null };
+export type NoteWithCompany = Note & {
+  company: { id: string; name: string | null };
 };
 
-export type DealWithCustomer = Deal & {
-  customer: { id: string; companyName: string | null; status: CustomerStatus };
+export type DealWithCompany = Deal & {
+  stage: PipelineStage;
+  company: { id: string; name: string | null; status: CompanyStatus };
 };
 
-export type ActivityWithCustomer = Activity & {
-  customer: { id: string; companyName: string | null };
+export type ActivityWithCompany = Activity & {
+  company: { id: string; name: string | null };
 };
 
 export type DashboardData = {
-  reminders: ReminderWithCustomer[];
-  recentNotes: NoteWithCustomer[];
-  recentActivities: ActivityWithCustomer[];
-  deals: DealWithCustomer[];
+  tasks: TaskWithCompany[];
+  recentNotes: NoteWithCompany[];
+  recentActivities: ActivityWithCompany[];
+  deals: DealWithCompany[];
   stats: {
     total: number;
-    byStatus: Partial<Record<CustomerStatus, number>>;
+    byStatus: Partial<Record<CompanyStatus, number>>;
     openDealsValue: number;
     openDealsCount: number;
   };
@@ -239,11 +345,11 @@ export type ApiErrorBody = {
 
 export type SearchResultItem = {
   id: string;
-  type: "customer" | "contact" | "deal" | "note" | "activity" | "reminder";
+  type: "company" | "contact" | "deal" | "note" | "activity" | "task";
   title: string;
   subtitle: string | null;
-  customerId: string;
-  customerName: string | null;
+  companyId: string;
+  companyName: string | null;
   similarity: number;
 };
 

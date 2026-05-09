@@ -60,7 +60,6 @@ router.post("/invites/token/:token/accept", async (ctx) => {
       data: {
         organizationId: invite.organizationId,
         userId: uid,
-        email,
         role: invite.role,
       },
     }),

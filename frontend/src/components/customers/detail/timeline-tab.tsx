@@ -5,16 +5,16 @@ import { Loader2, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { EmptyState } from "@/components/empty-state";
 import { Timeline } from "@/components/timeline";
-import { getCustomerEvents } from "@/app/actions/events";
-import type { EventWithCustomer } from "@/lib/types";
+import { getCompanyEvents } from "@/app/actions/events";
+import type { EventWithCompany } from "@/lib/types";
 
 type Props = {
-  customerId: string;
+  companyId: string;
   reloadKey: number;
 };
 
-export function TimelineTab({ customerId, reloadKey }: Props) {
-  const [events, setEvents] = useState<EventWithCustomer[]>([]);
+export function TimelineTab({ companyId, reloadKey }: Props) {
+  const [events, setEvents] = useState<EventWithCompany[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function TimelineTab({ customerId, reloadKey }: Props) {
     const load = async () => {
       setLoading(true);
       try {
-        const res = await getCustomerEvents(customerId, { limit: 50 });
+        const res = await getCompanyEvents(companyId, { limit: 50 });
         if (!cancelled) setEvents(res.data);
       } catch (err) {
         if (cancelled) return;
@@ -37,7 +37,7 @@ export function TimelineTab({ customerId, reloadKey }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [customerId, reloadKey]);
+  }, [companyId, reloadKey]);
 
   if (loading && events.length === 0) {
     return (
@@ -52,7 +52,7 @@ export function TimelineTab({ customerId, reloadKey }: Props) {
       <EmptyState
         icon={Zap}
         title="No events yet"
-        description="A timeline of everything that happens with this customer will appear here."
+        description="A timeline of everything that happens with this company will appear here."
       />
     );
   }

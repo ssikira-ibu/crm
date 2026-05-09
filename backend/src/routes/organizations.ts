@@ -7,7 +7,7 @@ import type { AuthOnlyState } from "../types/index.js";
 const router = new Router<AuthOnlyState>();
 
 router.post("/organizations", validate(createOrganizationSchema, "body"), async (ctx) => {
-  const { uid, email } = ctx.state.user;
+  const { uid } = ctx.state.user;
   const { name } = ctx.state.body as { name: string };
 
   const existing = await prisma.organizationMember.findFirst({
@@ -25,7 +25,6 @@ router.post("/organizations", validate(createOrganizationSchema, "body"), async 
       members: {
         create: {
           userId: uid,
-          email,
           role: "ADMIN",
         },
       },

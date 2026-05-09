@@ -30,16 +30,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { createCustomer } from "@/app/actions/customers";
-import { CUSTOMER_STATUSES, type Customer, type CustomerStatus } from "@/lib/types";
+import { createCompany } from "@/app/actions/companies";
+import { COMPANY_STATUSES, type Company, type CompanyStatus } from "@/lib/types";
 
 type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreated: (customer: Customer) => void;
+  onCreated: (company: Company) => void;
 };
 
-const STATUS_LABEL: Record<CustomerStatus, string> = {
+const STATUS_LABEL: Record<CompanyStatus, string> = {
   ACTIVE: "Active",
   INACTIVE: "Inactive",
   LEAD: "Lead",
@@ -47,7 +47,7 @@ const STATUS_LABEL: Record<CustomerStatus, string> = {
 };
 
 const schema = z.object({
-  companyName: z.string().trim().min(1, "Company name is required."),
+  name: z.string().trim().min(1, "Company name is required."),
   industry: z.string().trim().optional().or(z.literal("")),
   website: z
     .string()
@@ -57,13 +57,13 @@ const schema = z.object({
       (v) => !v || /^https?:\/\/.+/i.test(v),
       "Enter a valid URL (including http:// or https://).",
     ),
-  status: z.enum(CUSTOMER_STATUSES),
+  status: z.enum(COMPANY_STATUSES),
 });
 
 type FormValues = z.infer<typeof schema>;
 
 const defaults: FormValues = {
-  companyName: "",
+  name: "",
   industry: "",
   website: "",
   status: "LEAD",
@@ -78,18 +78,18 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
 
   async function onSubmit(values: FormValues) {
     try {
-      const res = await createCustomer({
-        companyName: values.companyName.trim(),
+      const res = await createCompany({
+        name: values.name.trim(),
         industry: values.industry?.trim() || undefined,
         website: values.website?.trim() || undefined,
         status: values.status,
       });
-      toast.success("Customer created.");
+      toast.success("Company created.");
       onCreated(res.data);
       form.reset(defaults);
       onOpenChange(false);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Failed to create customer.";
+      const msg = err instanceof Error ? err.message : "Failed to create company.";
       toast.error(msg);
     }
   }
@@ -105,7 +105,7 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
     >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>New customer</DialogTitle>
+          <DialogTitle>New company</DialogTitle>
           <DialogDescription>
             Add a company to your CRM. You can fill in more details later.
           </DialogDescription>
@@ -118,7 +118,7 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
           >
             <FormField
               control={form.control}
-              name="companyName"
+              name="name"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Company name</FormLabel>
@@ -159,7 +159,7 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
                     <FormLabel>Status</FormLabel>
                     <Select
                       value={field.value}
-                      onValueChange={(v) => field.onChange(v as CustomerStatus)}
+                      onValueChange={(v) => field.onChange(v as CompanyStatus)}
                       disabled={pending}
                     >
                       <FormControl>
@@ -168,7 +168,7 @@ export function CreateCustomerDialog({ open, onOpenChange, onCreated }: Props) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {CUSTOMER_STATUSES.map((s) => (
+                        {COMPANY_STATUSES.map((s) => (
                           <SelectItem key={s} value={s}>
                             {STATUS_LABEL[s]}
                           </SelectItem>

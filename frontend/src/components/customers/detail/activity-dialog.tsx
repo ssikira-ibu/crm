@@ -51,7 +51,7 @@ const TYPE_LABEL: Record<ActivityType, string> = {
 };
 
 type Props = {
-  customerId: string;
+  companyId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Activity | null;
@@ -87,7 +87,7 @@ function toValues(editing: Activity | null): FormValues {
 }
 
 export function ActivityDialog({
-  customerId,
+  companyId,
   open,
   onOpenChange,
   editing,
@@ -113,10 +113,10 @@ export function ActivityDialog({
         date: dateTime.toISOString(),
       };
       if (editing) {
-        await updateActivity(customerId, editing.id, input);
+        await updateActivity(companyId, editing.id, input);
         toast.success("Activity updated.");
       } else {
-        await createActivity(customerId, input);
+        await createActivity(companyId, input);
         toast.success("Activity logged.");
       }
       onSaved();
