@@ -23,11 +23,12 @@ services:
       target: development
     expose:
       - "3000"
+    env_file:
+      - ./backend/.env
     environment:
       DATABASE_URL: postgresql://crm_user:crm_password@db:5432/crm_dev?schema=public
       PORT: "3000"
       NODE_ENV: development
-      S2S_JWT_SECRET: ${S2S_JWT_SECRET}
     volumes:
       - ./backend/src:/app/backend/src
       - ./backend/prisma:/app/backend/prisma
@@ -50,15 +51,13 @@ services:
     environment:
       NODE_ENV: development
       API_URL: http://backend:3000
-      SESSION_SECRET: ${SESSION_SECRET}
-      S2S_JWT_SECRET: ${S2S_JWT_SECRET}
-      GOOGLE_APPLICATION_CREDENTIALS: /app/frontend/firebase-service-account.json
+      GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
     volumes:
       - ./frontend/src:/app/frontend/src
       - ./frontend/public:/app/frontend/public
       - ./frontend/next.config.ts:/app/frontend/next.config.ts:ro
       - ./packages/shared/src:/app/packages/shared/src
-      - ./firebase-service-account.json:/app/frontend/firebase-service-account.json:ro
+      - ./firebase-service-account.json:/app/firebase-service-account.json:ro
     depends_on:
       - backend
 

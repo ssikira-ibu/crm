@@ -31,6 +31,12 @@ ENV NEXT_PUBLIC_FIREBASE_API_KEY=$NEXT_PUBLIC_FIREBASE_API_KEY \
     NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=$NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET \
     NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=$NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID \
     NEXT_PUBLIC_FIREBASE_APP_ID=$NEXT_PUBLIC_FIREBASE_APP_ID
+# Server-only env is validated while Next analyzes routes. These build-only
+# placeholders are not copied into the production image; runtime env comes from
+# docker-compose.prod.yml.
+ENV SESSION_SECRET=build-session-secret-that-is-at-least-32-characters \
+    S2S_JWT_SECRET=build-s2s-secret-that-is-at-least-32-characters \
+    GOOGLE_APPLICATION_CREDENTIALS=/tmp/firebase-service-account.json
 RUN npm ci --workspace=packages/shared --workspace=frontend --include-workspace-root
 COPY packages/shared ./packages/shared/
 RUN npm run --workspace=packages/shared build

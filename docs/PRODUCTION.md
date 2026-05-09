@@ -43,7 +43,7 @@ Bootstrap is done via `scripts/cloud-init.yml` (paste as user-data when creating
 
 ## Environment variables
 
-Everything the stack needs lives in `/home/deploy/crm/.env`. Template is `.env.example`. Keys:
+Everything the stack needs lives in `/home/deploy/crm/.env`. Template is `.env.production.example`. Keys:
 
 | Key | Source | Notes |
 |---|---|---|
