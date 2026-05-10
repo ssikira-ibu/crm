@@ -33,7 +33,7 @@ function stageHeaderColor(stage: PipelineStage): string {
 function DealCard({ deal }: { deal: DealWithCompany }) {
   return (
     <Link
-      href={`/customers/${deal.companyId}`}
+      href={`/deals/${deal.id}`}
       className="group block rounded-lg border bg-card p-3 transition-all hover:border-foreground/20 hover:shadow-sm"
     >
       <div className="flex items-start justify-between gap-2">

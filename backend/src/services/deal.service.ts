@@ -210,6 +210,26 @@ export async function deleteDeal(
   });
 }
 
+export async function getDealDetail(ctx: OrgContext, dealId: string) {
+  const deal = await prisma.deal.findFirst({
+    where: { id: dealId, organizationId: ctx.organizationId },
+    include: {
+      stage: true,
+      pipeline: { include: { stages: { orderBy: { position: "asc" } } } },
+      company: { select: { id: true, name: true, status: true } },
+      contact: { select: { id: true, firstName: true, lastName: true, email: true, jobTitle: true } },
+      owner: { select: { id: true, displayName: true, email: true } },
+      activities: { orderBy: { date: "desc" } },
+      notes: { orderBy: { createdAt: "desc" } },
+      tasks: { orderBy: { createdAt: "desc" } },
+    },
+  });
+  if (!deal) {
+    throw new AppError(404, "DEAL_NOT_FOUND", "Deal not found");
+  }
+  return serializeDeal(deal);
+}
+
 export async function getDealsOverview(ctx: OrgContext) {
   const companyWhere: Prisma.CompanyWhereInput = {
     organizationId: ctx.organizationId,

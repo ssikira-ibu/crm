@@ -685,7 +685,7 @@ export default function DealsPage() {
               {sortedDeals.map((d) => (
                 <Link
                   key={d.id}
-                  href={`/customers/${d.companyId}`}
+                  href={`/deals/${d.id}`}
                   className="group grid grid-cols-[1fr_160px_110px_110px_100px_20px] items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/50"
                 >
                   <div className="min-w-0">

@@ -7,6 +7,10 @@ export async function getDealsOverview() {
   return serverApi.deals.overview();
 }
 
+export async function getDealDetail(dealId: string) {
+  return serverApi.deals.detail(dealId);
+}
+
 export async function listDeals(
   companyId: string,
   params?: DealListParams,

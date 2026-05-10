@@ -29,6 +29,7 @@ export type {
   Task,
   TaskWithCompany,
   Deal,
+  DealDetail,
   DealWithCompany,
   Activity,
   ActivityWithCompany,

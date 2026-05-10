@@ -22,6 +22,7 @@ import type {
   CompanyWithRelations,
   Deal,
   DealCreate,
+  DealDetail,
   DealListParams,
   DealUpdate,
   DealsOverview,
@@ -230,6 +231,8 @@ const tasks = {
 const deals = {
   overview: () =>
     serverRequest<Single<DealsOverview>>(`/deals/overview`),
+  detail: (dealId: string) =>
+    serverRequest<Single<DealDetail>>(`/deals/${dealId}`),
   list: (companyId: string, params?: DealListParams) =>
     serverRequest<Paginated<Deal>>(`/companies/${companyId}/deals`, { query: params }),
   get: (companyId: string, dealId: string) =>
