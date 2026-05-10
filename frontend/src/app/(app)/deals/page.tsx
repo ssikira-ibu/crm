@@ -163,26 +163,46 @@ const SEGMENT_TEXT_COLORS: string[] = [
   "text-orange-400",
 ];
 
-function PipelineFunnel({ stages }: { stages: DealsOverviewStageSummary[] }) {
+function PipelineFunnel({
+  stages,
+  activeStageIds,
+}: {
+  stages: DealsOverviewStageSummary[];
+  activeStageIds?: Set<string>;
+}) {
   if (stages.length === 0) return null;
+
+  const hasFilter = activeStageIds != null;
 
   return (
     <PartitionBar size="sm" gap={1}>
-      {stages.map((stage, i) => (
-        <PartitionBarSegment
-          key={stage.id}
-          num={stage.value}
-          className={SEGMENT_BAR_COLORS[i % SEGMENT_BAR_COLORS.length]}
-          alignment="left"
-        >
-          <PartitionBarSegmentTitle className={cn("text-muted-foreground font-normal", SEGMENT_TEXT_COLORS[i % SEGMENT_TEXT_COLORS.length])}>
-            {stage.name}
-          </PartitionBarSegmentTitle>
-          <PartitionBarSegmentValue className="text-foreground font-medium tabular-nums">
-            {formatCurrency(stage.value)} <span className="text-muted-foreground/50 font-normal">({stage.count})</span>
-          </PartitionBarSegmentValue>
-        </PartitionBarSegment>
-      ))}
+      {stages.map((stage, i) => {
+        const dimmed = hasFilter && !activeStageIds.has(stage.id);
+        return (
+          <PartitionBarSegment
+            key={stage.id}
+            num={stage.value}
+            className={cn(
+              SEGMENT_BAR_COLORS[i % SEGMENT_BAR_COLORS.length],
+              dimmed && "opacity-20",
+            )}
+            alignment="left"
+          >
+            <PartitionBarSegmentTitle className={cn(
+              "font-normal transition-opacity",
+              dimmed ? "text-muted-foreground/30" : cn("text-muted-foreground", SEGMENT_TEXT_COLORS[i % SEGMENT_TEXT_COLORS.length]),
+            )}>
+              {stage.name}
+            </PartitionBarSegmentTitle>
+            <PartitionBarSegmentValue className={cn(
+              "font-medium tabular-nums transition-opacity",
+              dimmed ? "text-muted-foreground/20" : "text-foreground",
+            )}>
+              {formatCurrency(stage.value)} <span className={dimmed ? "text-muted-foreground/10" : "text-muted-foreground/50"}>{" "}({stage.count})</span>
+            </PartitionBarSegmentValue>
+          </PartitionBarSegment>
+        );
+      })}
     </PartitionBar>
   );
 }
@@ -414,35 +434,22 @@ export default function DealsPage() {
     return result;
   }, [allDeals, statusFilter, selectedStages, ownerFilter, debouncedSearch]);
 
-  const filteredStageSummary = useMemo(() => {
-    const open = filteredDeals.filter((d) => !d.stage?.isWon && !d.stage?.isLost);
-    const stageMap = new Map<string, { stage: typeof open[0]["stage"]; value: number; count: number }>();
-    for (const d of open) {
-      const existing = stageMap.get(d.stageId);
-      if (existing) {
-        existing.value += d.value;
-        existing.count += 1;
-      } else {
-        stageMap.set(d.stageId, { stage: d.stage, value: d.value, count: 1 });
-      }
-    }
-    return Array.from(stageMap.values())
-      .sort((a, b) => (a.stage?.position ?? 0) - (b.stage?.position ?? 0))
-      .map((s) => ({
-        id: s.stage.id,
-        name: s.stage.name,
-        position: s.stage.position,
-        probability: s.stage.probability,
-        value: s.value,
-        count: s.count,
-      }));
-  }, [filteredDeals]);
-
   const hasActiveFilters =
     debouncedSearch.trim().length > 0 ||
     statusFilter !== "ALL" ||
     selectedStages.size > 0 ||
     ownerFilter !== "ALL";
+
+  const activeStageIds = useMemo(() => {
+    if (!hasActiveFilters) return undefined;
+    const ids = new Set<string>();
+    for (const d of filteredDeals) {
+      if (!d.stage?.isWon && !d.stage?.isLost) {
+        ids.add(d.stageId);
+      }
+    }
+    return ids;
+  }, [filteredDeals, hasActiveFilters]);
 
   function clearFilters() {
     setSearch("");
@@ -545,8 +552,11 @@ export default function DealsPage() {
           </div>
         )}
 
-        {filteredStageSummary.length > 0 && (
-          <PipelineFunnel stages={filteredStageSummary} />
+        {(data?.stageSummary ?? []).length > 0 && (
+          <PipelineFunnel
+            stages={data!.stageSummary}
+            activeStageIds={activeStageIds}
+          />
         )}
       </div>
 
