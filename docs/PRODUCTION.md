@@ -10,7 +10,7 @@ user -> Cloudflare (TLS, WAF, DNS for crm.ssikira.com)
      -> docker network "crm_default" on Hetzner VPS
           tunnel -> frontend:3001 (Next.js BFF, standalone output)
           frontend -> backend:3000 (Koa, S2S JWT)
-          backend  -> db:5432 (Postgres 17)
+          backend  -> db:5432 (Postgres 18)
                     redis:6379 (rate limiting)
 ```
 
