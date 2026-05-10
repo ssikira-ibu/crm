@@ -78,7 +78,7 @@ export function BoardView({ deals }: Props) {
   }
 
   return (
-    <div className="flex gap-3 overflow-x-auto pb-4">
+    <div className="flex gap-3 pb-4">
       {stages.map((stage) => {
         const columnDeals = deals.filter((d) => d.stageId === stage.id);
         const totalValue = columnDeals.reduce((sum, d) => sum + d.value, 0);
