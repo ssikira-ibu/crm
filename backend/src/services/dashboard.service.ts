@@ -91,5 +91,7 @@ export async function getDashboard(ctx: OrgContext) {
     openDealsCount: dealAgg._count,
   };
 
-  return { tasks, recentNotes, recentActivities, deals, stats };
+  const serializedDeals = deals.map((d) => ({ ...d, value: Number(d.value) }));
+
+  return { tasks, recentNotes, recentActivities, deals: serializedDeals, stats };
 }

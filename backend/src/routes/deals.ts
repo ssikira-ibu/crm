@@ -12,6 +12,11 @@ import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
 
+router.get("/deals/overview", async (ctx) => {
+  const data = await dealService.getDealsOverview(getOrgContext(ctx.state.user));
+  ctx.body = { data };
+});
+
 router.get(
   "/companies/:companyId/deals",
   validate(dealQuerySchema, "query"),

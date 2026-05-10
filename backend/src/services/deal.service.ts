@@ -5,6 +5,14 @@ import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, DealQueryParams, CreateDealInput, UpdateDealInput } from "@crm/shared";
 
+function serializeDeal<T extends { value: unknown }>(deal: T): T & { value: number } {
+  return { ...deal, value: Number(deal.value) };
+}
+
+function serializeDeals<T extends { value: unknown }>(deals: T[]): (T & { value: number })[] {
+  return deals.map(serializeDeal);
+}
+
 export async function listDeals(
   ctx: OrgContext,
   companyId: string,
@@ -33,7 +41,7 @@ export async function listDeals(
   ]);
 
   return {
-    data,
+    data: serializeDeals(data),
     meta: { page, limit, total, totalPages: Math.ceil(total / limit) },
   };
 }
@@ -51,7 +59,7 @@ export async function getDeal(
   if (!deal) {
     throw new AppError(404, "DEAL_NOT_FOUND", "Deal not found");
   }
-  return deal;
+  return serializeDeal(deal);
 }
 
 export async function createDeal(
@@ -103,7 +111,7 @@ export async function createDeal(
     action: "CREATED",
     metadata: { title: deal.title, value: Number(deal.value) },
   });
-  return deal;
+  return serializeDeal(deal);
 }
 
 export async function updateDeal(
@@ -179,7 +187,7 @@ export async function updateDeal(
     });
   }
 
-  return deal;
+  return serializeDeal(deal);
 }
 
 export async function deleteDeal(
@@ -200,4 +208,104 @@ export async function deleteDeal(
     action: "DELETED",
     metadata: { title: deal.title, value: Number(deal.value) },
   });
+}
+
+export async function getDealsOverview(ctx: OrgContext) {
+  const companyWhere: Prisma.CompanyWhereInput = {
+    organizationId: ctx.organizationId,
+  };
+  if (ctx.role === "SALESPERSON") {
+    companyWhere.ownerId = ctx.userId;
+  }
+
+  const companyIds = (
+    await prisma.company.findMany({ where: companyWhere, select: { id: true } })
+  ).map((c) => c.id);
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+  const [deals, wonThisMonth, wonLastMonth] = await Promise.all([
+    prisma.deal.findMany({
+      where: { companyId: { in: companyIds } },
+      include: {
+        stage: true,
+        company: { select: { id: true, name: true, status: true } },
+        owner: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.deal.findMany({
+      where: {
+        companyId: { in: companyIds },
+        stage: { isWon: true },
+        closedAt: { gte: monthStart },
+      },
+      select: { value: true },
+    }),
+    prisma.deal.findMany({
+      where: {
+        companyId: { in: companyIds },
+        stage: { isWon: true },
+        closedAt: { gte: prevMonthStart, lt: monthStart },
+      },
+      select: { value: true },
+    }),
+  ]);
+
+  const serialized = serializeDeals(deals);
+
+  const open = serialized.filter((d) => !d.stage?.isWon && !d.stage?.isLost);
+  const won = serialized.filter((d) => d.stage?.isWon);
+  const lost = serialized.filter((d) => d.stage?.isLost);
+
+  const pipelineValue = open.reduce((s, d) => s + d.value, 0);
+  const weightedForecast = open.reduce(
+    (s, d) => s + d.value * ((d.stage?.probability ?? 0) / 100),
+    0,
+  );
+  const wonThisMonthValue = wonThisMonth.reduce((s, d) => s + Number(d.value), 0);
+  const wonLastMonthValue = wonLastMonth.reduce((s, d) => s + Number(d.value), 0);
+  const winRate =
+    won.length + lost.length > 0
+      ? Math.round((won.length / (won.length + lost.length)) * 100)
+      : 0;
+
+  const stageMap = new Map<string, { stage: typeof serialized[0]["stage"]; value: number; count: number }>();
+  for (const d of open) {
+    const existing = stageMap.get(d.stageId);
+    if (existing) {
+      existing.value += d.value;
+      existing.count += 1;
+    } else {
+      stageMap.set(d.stageId, { stage: d.stage, value: d.value, count: 1 });
+    }
+  }
+  const stageSummary = Array.from(stageMap.values())
+    .sort((a, b) => (a.stage?.position ?? 0) - (b.stage?.position ?? 0))
+    .map((s) => ({
+      id: s.stage!.id,
+      name: s.stage!.name,
+      position: s.stage!.position,
+      probability: s.stage!.probability,
+      value: s.value,
+      count: s.count,
+    }));
+
+  return {
+    deals: serialized,
+    metrics: {
+      pipelineValue,
+      weightedForecast,
+      wonThisMonth: wonThisMonthValue,
+      wonLastMonth: wonLastMonthValue,
+      winRate,
+      totalDeals: serialized.length,
+      openCount: open.length,
+      wonCount: won.length,
+      lostCount: lost.length,
+    },
+    stageSummary,
+  };
 }

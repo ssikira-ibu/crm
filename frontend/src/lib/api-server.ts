@@ -24,6 +24,7 @@ import type {
   DealCreate,
   DealListParams,
   DealUpdate,
+  DealsOverview,
   Note,
   NoteCreate,
   NoteUpdate,
@@ -227,6 +228,8 @@ const tasks = {
 };
 
 const deals = {
+  overview: () =>
+    serverRequest<Single<DealsOverview>>(`/deals/overview`),
   list: (companyId: string, params?: DealListParams) =>
     serverRequest<Paginated<Deal>>(`/companies/${companyId}/deals`, { query: params }),
   get: (companyId: string, dealId: string) =>
