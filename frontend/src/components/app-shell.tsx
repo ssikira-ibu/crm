@@ -3,7 +3,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, Home, Loader2, Settings, TrendingUp, Users, Zap } from "lucide-react";
+import { Building2, Home, Settings, TrendingUp, Users, Zap } from "lucide-react";
 import { OrgContext, type OrgInfo } from "@/hooks/use-org";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { KeyboardShortcutHelp } from "./keyboard-shortcut-help";
@@ -23,7 +23,6 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
-import { useRequireAuth } from "@/lib/auth";
 import { useRecentCompanies } from "@/hooks/use-recent-companies";
 import { CommandPalette } from "./command-palette";
 import { CreateCustomerDialog } from "./customers/create-customer-dialog";
@@ -37,7 +36,6 @@ const NAV = [
 ] as const;
 
 export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: OrgInfo }) {
-  const { user, loading } = useRequireAuth("/");
   const pathname = usePathname();
   const router = useRouter();
   const [createOpen, setCreateOpen] = useState(false);
@@ -61,14 +59,6 @@ export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: 
   );
 
   useKeyboardShortcuts(shortcuts);
-
-  if (loading || !user) {
-    return (
-      <div className="flex flex-1 items-center justify-center">
-        <Loader2 className="size-4 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
 
   return (
     <OrgContext.Provider value={orgInfo}>
