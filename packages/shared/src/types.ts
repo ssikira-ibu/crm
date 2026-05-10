@@ -310,7 +310,7 @@ export type NoteWithCompany = Note & {
 export type DealWithCompany = Deal & {
   stage: PipelineStage;
   company: { id: string; name: string | null; status: CompanyStatus };
-  owner?: { id: string; name: string | null; email: string };
+  owner?: { id: string; displayName: string | null; email: string };
 };
 
 export type DealsOverviewMetrics = {
