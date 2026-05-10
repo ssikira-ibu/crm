@@ -232,7 +232,7 @@ export async function getDealsOverview(ctx: OrgContext) {
       include: {
         stage: true,
         company: { select: { id: true, name: true, status: true } },
-        owner: { select: { id: true, name: true, email: true } },
+        owner: { select: { id: true, displayName: true, email: true } },
       },
       orderBy: { createdAt: "desc" },
     }),
