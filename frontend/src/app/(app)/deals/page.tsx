@@ -7,6 +7,7 @@ import {
   ArrowUp,
   ArrowUpDown,
   Calendar,
+  ChevronRight,
   DollarSign,
   Kanban,
   List,
@@ -19,6 +20,7 @@ import {
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { EmptyState } from "@/components/empty-state";
 import { BoardView } from "@/components/deals/board-view";
 import { getDealsOverview } from "@/app/actions/deals";
@@ -30,9 +32,21 @@ import type {
   PipelineStage,
 } from "@/lib/types";
 
-type ViewMode = "board" | "list";
 type SortField = "title" | "value" | "company" | "stage" | "expectedCloseDate";
 type SortDir = "asc" | "desc";
+
+const STAGE_COLORS: Record<number, { bar: string; dot: string }> = {
+  0: { bar: "bg-sky-400", dot: "bg-sky-400" },
+  1: { bar: "bg-amber-400", dot: "bg-amber-400" },
+  2: { bar: "bg-rose-400", dot: "bg-rose-400" },
+  3: { bar: "bg-violet-400", dot: "bg-violet-400" },
+  4: { bar: "bg-teal-400", dot: "bg-teal-400" },
+  5: { bar: "bg-orange-400", dot: "bg-orange-400" },
+};
+
+function getStageColor(index: number) {
+  return STAGE_COLORS[index % Object.keys(STAGE_COLORS).length];
+}
 
 function formatCurrency(value: number): string {
   if (value >= 1_000_000) {
@@ -58,9 +72,9 @@ function formatFullCurrency(value: number): string {
   }).format(value);
 }
 
-function getInitialView(): ViewMode {
+function getInitialView(): string {
   if (typeof window === "undefined") return "list";
-  return (localStorage.getItem("crm:deals-view") as ViewMode) || "list";
+  return localStorage.getItem("crm:deals-view") || "list";
 }
 
 function stageStyle(stage: PipelineStage): string {
@@ -116,47 +130,33 @@ function PipelineFunnel({ stages, total }: { stages: DealsOverviewStageSummary[]
   if (stages.length === 0) return null;
 
   return (
-    <div className="space-y-2">
-      <div className="flex h-2.5 overflow-hidden rounded-full bg-muted/50">
+    <div className="space-y-2.5">
+      <div className="flex h-2 overflow-hidden rounded-full bg-muted/40">
         {stages.map((stage, i) => {
           const pct = total > 0 ? (stage.value / total) * 100 : 0;
           if (pct === 0) return null;
-          const colors = [
-            "bg-blue-400",
-            "bg-blue-500",
-            "bg-indigo-500",
-            "bg-violet-500",
-            "bg-purple-500",
-            "bg-fuchsia-500",
-          ];
+          const color = getStageColor(i);
           return (
             <div
               key={stage.id}
-              className={cn("transition-all", colors[i % colors.length])}
+              className={cn("transition-all", color.bar)}
               style={{ width: `${pct}%` }}
               title={`${stage.name}: ${formatFullCurrency(stage.value)}`}
             />
           );
         })}
       </div>
-      <div className="flex flex-wrap gap-x-4 gap-y-1">
+      <div className="flex flex-wrap gap-x-5 gap-y-1">
         {stages.map((stage, i) => {
-          const colors = [
-            "bg-blue-400",
-            "bg-blue-500",
-            "bg-indigo-500",
-            "bg-violet-500",
-            "bg-purple-500",
-            "bg-fuchsia-500",
-          ];
+          const color = getStageColor(i);
           return (
             <div key={stage.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className={cn("size-2 rounded-full", colors[i % colors.length])} />
+              <span className={cn("size-2 rounded-full", color.dot)} />
               <span>{stage.name}</span>
               <span className="font-medium tabular-nums text-foreground">
                 {formatCurrency(stage.value)}
               </span>
-              <span className="text-muted-foreground/60">
+              <span className="text-muted-foreground/50">
                 ({stage.count})
               </span>
             </div>
@@ -228,7 +228,7 @@ function sortDeals(deals: DealWithCompany[], field: SortField, dir: SortDir): De
 export default function DealsPage() {
   const [data, setData] = useState<DealsOverview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<ViewMode>(getInitialView);
+  const [view, setView] = useState(getInitialView);
   const [sortField, setSortField] = useState<SortField>("value");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -250,7 +250,7 @@ export default function DealsPage() {
     return () => { cancelled = true; };
   }, []);
 
-  function switchView(v: ViewMode) {
+  function handleViewChange(v: string) {
     setView(v);
     localStorage.setItem("crm:deals-view", v);
   }
@@ -289,161 +289,161 @@ export default function DealsPage() {
     : undefined;
 
   return (
-    <div className="flex flex-1 flex-col overflow-hidden">
+    <Tabs value={view} onValueChange={handleViewChange} className="flex flex-1 flex-col overflow-hidden gap-0 min-w-0">
       {/* Header */}
-      <div className="border-b px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-lg font-semibold tracking-tight">Deals</h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {metrics ? `${metrics.totalDeals} deals across your pipeline` : " "}
-            </p>
-          </div>
-          <div className="flex items-center gap-1 rounded-lg border p-0.5">
-            <button
-              onClick={() => switchView("list")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                view === "list"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <List className="size-3.5" />
-              List
-            </button>
-            <button
-              onClick={() => switchView("board")}
-              className={cn(
-                "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
-                view === "board"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Kanban className="size-3.5" />
-              Board
-            </button>
-          </div>
+      <div className="flex items-center justify-between gap-3 border-b px-6 py-4">
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">Deals</h1>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            {metrics ? `${metrics.totalDeals} deals across your pipeline` : " "}
+          </p>
         </div>
+        <TabsList>
+          <TabsTrigger value="list">
+            <List className="size-4" />
+            List
+          </TabsTrigger>
+          <TabsTrigger value="board">
+            <Kanban className="size-4" />
+            Board
+          </TabsTrigger>
+        </TabsList>
       </div>
 
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto max-w-6xl space-y-6 px-6 py-6">
-          {/* Metric Cards */}
-          {metrics && (
-            <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <MetricCard
-                label="Pipeline"
-                value={formatCurrency(metrics.pipelineValue)}
-                subValue={`${metrics.openCount} open`}
-                icon={TrendingUp}
-              />
-              <MetricCard
-                label="Weighted Forecast"
-                value={formatCurrency(metrics.weightedForecast)}
-                subValue="by probability"
-                icon={Target}
-              />
-              <MetricCard
-                label="Won This Month"
-                value={formatCurrency(metrics.wonThisMonth)}
-                subValue={`${metrics.wonCount} total won`}
-                icon={Trophy}
-                trend={wonTrend}
-              />
-              <MetricCard
-                label="Win Rate"
-                value={`${metrics.winRate}%`}
-                subValue={`${metrics.wonCount}W / ${metrics.lostCount}L`}
-                icon={DollarSign}
-              />
-            </div>
-          )}
+      {/* Metrics + Funnel — shared between views */}
+      <div className="border-b px-6 py-4 space-y-4">
+        {metrics && (
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <MetricCard
+              label="Pipeline"
+              value={formatCurrency(metrics.pipelineValue)}
+              subValue={`${metrics.openCount} open`}
+              icon={TrendingUp}
+            />
+            <MetricCard
+              label="Weighted Forecast"
+              value={formatCurrency(metrics.weightedForecast)}
+              subValue="by probability"
+              icon={Target}
+            />
+            <MetricCard
+              label="Won This Month"
+              value={formatCurrency(metrics.wonThisMonth)}
+              subValue={`${metrics.wonCount} total won`}
+              icon={Trophy}
+              trend={wonTrend}
+            />
+            <MetricCard
+              label="Win Rate"
+              value={`${metrics.winRate}%`}
+              subValue={`${metrics.wonCount}W / ${metrics.lostCount}L`}
+              icon={DollarSign}
+            />
+          </div>
+        )}
 
-          {/* Pipeline Funnel Bar */}
-          {stageSummary.length > 0 && metrics && (
-            <PipelineFunnel stages={stageSummary} total={metrics.pipelineValue} />
-          )}
+        {stageSummary.length > 0 && metrics && (
+          <PipelineFunnel stages={stageSummary} total={metrics.pipelineValue} />
+        )}
+      </div>
 
-          {/* Content */}
-          {deals.length === 0 ? (
+      {/* List View */}
+      <TabsContent value="list" className="flex-1 overflow-auto mt-0">
+        {deals.length === 0 ? (
+          <div className="p-6">
             <EmptyState
               icon={TrendingUp}
               title="No deals yet"
               description="Create deals from the company detail page to start tracking your pipeline."
             />
-          ) : view === "board" ? (
-            <BoardView deals={deals} />
-          ) : (
-            <div className="rounded-lg border">
-              {/* Table Header */}
-              <div className="grid grid-cols-[1fr_140px_120px_120px_100px] items-center gap-4 border-b px-4 py-2">
-                <div className="group/th">
-                  <SortableHeader label="Deal" field="title" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                </div>
-                <div className="group/th">
-                  <SortableHeader label="Company" field="company" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                </div>
-                <div className="group/th">
-                  <SortableHeader label="Stage" field="stage" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
-                </div>
-                <div className="group/th flex justify-end">
-                  <SortableHeader label="Close Date" field="expectedCloseDate" currentSort={sortField} currentDir={sortDir} onSort={handleSort} className="justify-end" />
-                </div>
-                <div className="group/th flex justify-end">
-                  <SortableHeader label="Value" field="value" currentSort={sortField} currentDir={sortDir} onSort={handleSort} className="justify-end" />
-                </div>
+          </div>
+        ) : (
+          <>
+            {/* Column Headers */}
+            <div className="grid grid-cols-[1fr_160px_110px_110px_100px_20px] items-center gap-4 border-b px-6 py-2 sticky top-0 bg-background z-10">
+              <div className="group/th">
+                <SortableHeader label="Deal" field="title" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
               </div>
-
-              {/* Table Rows */}
-              <div className="divide-y">
-                {sortedDeals.map((d) => (
-                  <Link
-                    key={d.id}
-                    href={`/customers/${d.companyId}`}
-                    className="group grid grid-cols-[1fr_140px_120px_120px_100px] items-center gap-4 px-4 py-2.5 transition-colors hover:bg-muted/50"
-                  >
-                    <div className="min-w-0">
-                      <span className="truncate text-sm font-medium group-hover:text-foreground">
-                        {d.title}
-                      </span>
-                    </div>
-                    <div className="min-w-0">
-                      <span className="truncate text-sm text-muted-foreground">
-                        {d.company?.name ?? "—"}
-                      </span>
-                    </div>
-                    <div>
-                      <Badge
-                        variant="outline"
-                        className={cn("text-[11px] font-medium", stageStyle(d.stage))}
-                      >
-                        {d.stage.name}
-                      </Badge>
-                    </div>
-                    <div className="text-right">
-                      {d.expectedCloseDate ? (
-                        <span className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
-                          <Calendar className="size-3" />
-                          {format(new Date(d.expectedCloseDate), "MMM d")}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground/40">—</span>
-                      )}
-                    </div>
-                    <div className="text-right">
-                      <span className="text-sm font-medium tabular-nums">
-                        {formatFullCurrency(d.value)}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
+              <div className="group/th">
+                <SortableHeader label="Company" field="company" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
               </div>
+              <div className="group/th">
+                <SortableHeader label="Stage" field="stage" currentSort={sortField} currentDir={sortDir} onSort={handleSort} />
+              </div>
+              <div className="group/th flex justify-end">
+                <SortableHeader label="Close Date" field="expectedCloseDate" currentSort={sortField} currentDir={sortDir} onSort={handleSort} className="justify-end" />
+              </div>
+              <div className="group/th flex justify-end">
+                <SortableHeader label="Value" field="value" currentSort={sortField} currentDir={sortDir} onSort={handleSort} className="justify-end" />
+              </div>
+              <div />
             </div>
-          )}
-        </div>
-      </div>
-    </div>
+
+            {/* Rows */}
+            <div className="divide-y">
+              {sortedDeals.map((d) => (
+                <Link
+                  key={d.id}
+                  href={`/customers/${d.companyId}`}
+                  className="group grid grid-cols-[1fr_160px_110px_110px_100px_20px] items-center gap-4 px-6 py-3 transition-colors hover:bg-muted/50"
+                >
+                  <div className="min-w-0">
+                    <span className="truncate text-sm font-medium">
+                      {d.title}
+                    </span>
+                  </div>
+                  <div className="min-w-0">
+                    <span className="truncate text-sm text-muted-foreground">
+                      {d.company?.name ?? "—"}
+                    </span>
+                  </div>
+                  <div>
+                    <Badge
+                      variant="outline"
+                      className={cn("text-[11px] font-medium", stageStyle(d.stage))}
+                    >
+                      {d.stage.name}
+                    </Badge>
+                  </div>
+                  <div className="text-right">
+                    {d.expectedCloseDate ? (
+                      <span className="flex items-center justify-end gap-1 text-xs text-muted-foreground">
+                        <Calendar className="size-3" />
+                        {format(new Date(d.expectedCloseDate), "MMM d")}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground/40">—</span>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-medium tabular-nums">
+                      {formatFullCurrency(d.value)}
+                    </span>
+                  </div>
+                  <ChevronRight className="size-4 text-muted-foreground/40 transition-colors group-hover:text-muted-foreground" />
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </TabsContent>
+
+      {/* Board View */}
+      <TabsContent value="board" className="flex-1 overflow-hidden mt-0 min-w-0">
+        {deals.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              icon={TrendingUp}
+              title="No deals yet"
+              description="Create deals from the company detail page to start tracking your pipeline."
+            />
+          </div>
+        ) : (
+          <div className="h-full overflow-x-auto p-6">
+            <BoardView deals={deals} />
+          </div>
+        )}
+      </TabsContent>
+    </Tabs>
   );
 }
