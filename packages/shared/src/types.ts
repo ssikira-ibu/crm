@@ -310,6 +310,34 @@ export type NoteWithCompany = Note & {
 export type DealWithCompany = Deal & {
   stage: PipelineStage;
   company: { id: string; name: string | null; status: CompanyStatus };
+  owner?: { id: string; name: string | null; email: string };
+};
+
+export type DealsOverviewMetrics = {
+  pipelineValue: number;
+  weightedForecast: number;
+  wonThisMonth: number;
+  wonLastMonth: number;
+  winRate: number;
+  totalDeals: number;
+  openCount: number;
+  wonCount: number;
+  lostCount: number;
+};
+
+export type DealsOverviewStageSummary = {
+  id: string;
+  name: string;
+  position: number;
+  probability: number;
+  value: number;
+  count: number;
+};
+
+export type DealsOverview = {
+  deals: DealWithCompany[];
+  metrics: DealsOverviewMetrics;
+  stageSummary: DealsOverviewStageSummary[];
 };
 
 export type ActivityWithCompany = Activity & {

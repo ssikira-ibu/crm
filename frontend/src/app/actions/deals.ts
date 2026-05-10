@@ -3,6 +3,10 @@
 import { serverApi } from "@/lib/api-server";
 import type { DealCreate, DealListParams, DealUpdate } from "@/lib/types";
 
+export async function getDealsOverview() {
+  return serverApi.deals.overview();
+}
+
 export async function listDeals(
   companyId: string,
   params?: DealListParams,
