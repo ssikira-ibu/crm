@@ -52,6 +52,7 @@ const PRIORITY_LABEL: Record<TaskPriority, string> = {
 
 type Props = {
   companyId: string;
+  dealId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Task | null;
@@ -95,6 +96,7 @@ function toValues(editing: Task | null): FormValues {
 
 export function TaskDialog({
   companyId,
+  dealId,
   open,
   onOpenChange,
   editing,
@@ -118,6 +120,7 @@ export function TaskDialog({
         description: values.description?.trim() || undefined,
         priority: values.priority,
         dueDate: due.toISOString(),
+        dealId,
       };
       if (editing) {
         await updateTask(companyId, editing.id, input);

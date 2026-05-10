@@ -6,14 +6,16 @@ import Link from "next/link";
 import {
   Building2,
   Calendar,
-  DollarSign,
+  CheckSquare,
+  FileText,
   FileWarning,
   Loader2,
   MessageSquare,
-  MoreHorizontal,
   Pencil,
-  TrendingUp,
+  Phone,
+  Plus,
   User,
+  Zap,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
@@ -27,17 +29,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { EmptyState } from "@/components/empty-state";
-import { getDealDetail } from "@/app/actions/deals";
-import { updateDeal } from "@/app/actions/deals";
+import { ActivityDialog } from "@/components/customers/detail/activity-dialog";
+import { NoteDialog } from "@/components/customers/detail/note-dialog";
+import { TaskDialog } from "@/components/customers/detail/task-dialog";
+import { getDealDetail, updateDeal } from "@/app/actions/deals";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import type { DealDetail, PipelineStage, Activity, Note, Task } from "@/lib/types";
@@ -51,19 +48,42 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function stageBadgeStyle(stage: PipelineStage): string {
-  if (stage.isWon) return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
-  if (stage.isLost) return "bg-red-500/10 text-red-400 border-red-500/20";
-  return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+const STAGE_COLORS = [
+  { bg: "bg-sky-400",    ring: "ring-sky-400",    badge: "bg-sky-500/10 text-sky-400 border-sky-500/20" },
+  { bg: "bg-amber-400",  ring: "ring-amber-400",  badge: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  { bg: "bg-rose-400",   ring: "ring-rose-400",   badge: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
+  { bg: "bg-violet-400", ring: "ring-violet-400", badge: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
+  { bg: "bg-teal-400",   ring: "ring-teal-400",   badge: "bg-teal-500/10 text-teal-400 border-teal-500/20" },
+  { bg: "bg-orange-400", ring: "ring-orange-400", badge: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
+];
+const WON_COLOR  = { bg: "bg-emerald-500", ring: "ring-emerald-500", badge: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
+const LOST_COLOR = { bg: "bg-red-400",     ring: "ring-red-400",     badge: "bg-red-500/10 text-red-400 border-red-500/20" };
+
+function getStageColor(stage: PipelineStage, openIndex: number) {
+  if (stage.isWon) return WON_COLOR;
+  if (stage.isLost) return LOST_COLOR;
+  return STAGE_COLORS[openIndex % STAGE_COLORS.length];
+}
+
+function buildStageColorMap(stages: PipelineStage[]) {
+  const map = new Map<string, typeof STAGE_COLORS[0]>();
+  let openIdx = 0;
+  for (const s of stages) {
+    map.set(s.id, getStageColor(s, openIdx));
+    if (!s.isWon && !s.isLost) openIdx++;
+  }
+  return map;
 }
 
 function StagePipeline({
   stages,
   currentStageId,
+  colorMap,
   onStageChange,
 }: {
   stages: PipelineStage[];
   currentStageId: string;
+  colorMap: Map<string, typeof STAGE_COLORS[0]>;
   onStageChange: (stageId: string) => void;
 }) {
   const currentIdx = stages.findIndex((s) => s.id === currentStageId);
@@ -75,17 +95,15 @@ function StagePipeline({
         {stages.map((stage, i) => {
           const isActive = i <= currentIdx;
           const isCurrent = stage.id === currentStageId;
-          const isTerminal = stage.isWon || stage.isLost;
+          const colors = colorMap.get(stage.id) ?? STAGE_COLORS[0];
           return (
             <button
               key={stage.id}
               onClick={() => onStageChange(stage.id)}
               className={cn(
                 "h-2 flex-1 rounded-full transition-all",
-                isCurrent && "ring-1 ring-offset-1 ring-offset-background",
-                isTerminal && stage.isWon && (isActive ? "bg-emerald-500 ring-emerald-500" : "bg-muted"),
-                isTerminal && stage.isLost && (isActive ? "bg-red-400 ring-red-400" : "bg-muted"),
-                !isTerminal && (isActive ? "bg-blue-500 ring-blue-500" : "bg-muted"),
+                isCurrent && cn("ring-1 ring-offset-1 ring-offset-background", colors.ring),
+                isActive ? colors.bg : "bg-muted",
               )}
               title={stage.name}
             />
@@ -124,7 +142,7 @@ function Timeline({ activities, notes }: { activities: Activity[]; notes: Note[]
       <div className="flex flex-col items-center justify-center py-12 text-center">
         <MessageSquare className="size-8 text-muted-foreground/30 mb-3" />
         <p className="text-sm text-muted-foreground">No activity yet</p>
-        <p className="text-xs text-muted-foreground/60 mt-1">Activities and notes will appear here</p>
+        <p className="text-xs text-muted-foreground/60 mt-1">Log an activity or add a note to get started</p>
       </div>
     );
   }
@@ -212,6 +230,10 @@ export default function DealDetailPage() {
   const [reloadKey, setReloadKey] = useState(0);
   const [updatingStage, setUpdatingStage] = useState(false);
 
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [noteOpen, setNoteOpen] = useState(false);
+  const [taskOpen, setTaskOpen] = useState(false);
+
   const refresh = useCallback(() => {
     setReloadKey((k) => k + 1);
   }, []);
@@ -272,6 +294,8 @@ export default function DealDetailPage() {
   }
 
   const allStages = deal.pipeline.stages;
+  const colorMap = buildStageColorMap(allStages);
+  const currentColor = colorMap.get(deal.stageId) ?? STAGE_COLORS[0];
 
   return (
     <div className="flex flex-1 flex-col overflow-hidden">
@@ -297,7 +321,7 @@ export default function DealDetailPage() {
             <div className="flex items-center gap-3 mt-1">
               <Badge
                 variant="outline"
-                className={cn("text-[11px] font-medium", stageBadgeStyle(deal.stage))}
+                className={cn("text-[11px] font-medium", currentColor.badge)}
               >
                 {deal.stage.name}
               </Badge>
@@ -309,6 +333,7 @@ export default function DealDetailPage() {
         <StagePipeline
           stages={allStages}
           currentStageId={deal.stageId}
+          colorMap={colorMap}
           onStageChange={handleStageChange}
         />
       </div>
@@ -317,15 +342,24 @@ export default function DealDetailPage() {
       <div className="flex flex-1 flex-col lg:flex-row overflow-hidden">
         {/* Activity timeline — main content */}
         <div className="flex-1 overflow-y-auto">
-          <div className="border-b px-6 py-2.5">
+          <div className="flex items-center justify-between border-b px-6 py-2.5">
             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Activity</h2>
+            <div className="flex items-center gap-1">
+              <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setActivityOpen(true)}>
+                <Zap className="size-3" />
+                Log activity
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" onClick={() => setNoteOpen(true)}>
+                <FileText className="size-3" />
+                Add note
+              </Button>
+            </div>
           </div>
           <Timeline activities={deal.activities} notes={deal.notes} />
         </div>
 
         {/* Sidebar — deal metadata */}
         <aside className="w-full lg:w-80 shrink-0 border-t lg:border-t-0 lg:border-l overflow-y-auto">
-          {/* Details section */}
           <div className="px-4 py-3 space-y-0">
             <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">Details</h3>
 
@@ -387,7 +421,6 @@ export default function DealDetailPage() {
 
           <Separator />
 
-          {/* Description */}
           {deal.description && (
             <>
               <div className="px-4 py-3">
@@ -398,12 +431,14 @@ export default function DealDetailPage() {
             </>
           )}
 
-          {/* Tasks */}
           <div className="px-4 py-3">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
                 Tasks {deal.tasks.length > 0 && `(${deal.tasks.length})`}
               </h3>
+              <Button variant="ghost" size="icon-xs" onClick={() => setTaskOpen(true)}>
+                <Plus className="size-3" />
+              </Button>
             </div>
             {deal.tasks.length > 0 ? (
               <TaskList tasks={deal.tasks} />
@@ -413,6 +448,32 @@ export default function DealDetailPage() {
           </div>
         </aside>
       </div>
+
+      {/* Dialogs */}
+      <ActivityDialog
+        companyId={deal.companyId}
+        dealId={deal.id}
+        open={activityOpen}
+        onOpenChange={setActivityOpen}
+        editing={null}
+        onSaved={refresh}
+      />
+      <NoteDialog
+        companyId={deal.companyId}
+        dealId={deal.id}
+        open={noteOpen}
+        onOpenChange={setNoteOpen}
+        editing={null}
+        onSaved={refresh}
+      />
+      <TaskDialog
+        companyId={deal.companyId}
+        dealId={deal.id}
+        open={taskOpen}
+        onOpenChange={setTaskOpen}
+        editing={null}
+        onSaved={refresh}
+      />
     </div>
   );
 }

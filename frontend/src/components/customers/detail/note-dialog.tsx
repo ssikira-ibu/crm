@@ -30,6 +30,7 @@ import type { Note } from "@/lib/types";
 
 type Props = {
   companyId: string;
+  dealId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Note | null;
@@ -49,6 +50,7 @@ function toValues(editing: Note | null): FormValues {
 
 export function NoteDialog({
   companyId,
+  dealId,
   open,
   onOpenChange,
   editing,
@@ -66,7 +68,7 @@ export function NoteDialog({
 
   async function onSubmit(values: FormValues) {
     try {
-      const input = { title: values.title.trim(), body: values.body.trim() };
+      const input = { title: values.title.trim(), body: values.body.trim(), dealId };
       if (editing) {
         await updateNote(companyId, editing.id, input);
         toast.success("Note updated.");
