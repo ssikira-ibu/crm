@@ -1,13 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { format, formatDistanceToNow } from "date-fns";
-import { DollarSign, Pencil, Plus, TrendingUp } from "lucide-react";
+import { Pencil, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDeleteButton } from "@/components/confirm-delete-button";
-import { EmptyState } from "@/components/empty-state";
+import { formatCurrency } from "@/components/timeline";
 import { removeDeal } from "@/app/actions/deals";
 import { describeError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -21,15 +20,6 @@ function stageStyle(stage?: PipelineStage): string {
   return "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300";
 }
 
-function formatCurrency(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 type DealWithStage = Deal & { stage: PipelineStage };
 
 type Props = {
@@ -38,7 +28,7 @@ type Props = {
   onChanged: () => void;
 };
 
-export function DealsTab({ companyId, items, onChanged }: Props) {
+export function SidebarDeals({ companyId, items, onChanged }: Props) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DealWithStage | null>(null);
 
@@ -66,52 +56,38 @@ export function DealsTab({ companyId, items, onChanged }: Props) {
   const totalOpen = openDeals.reduce((sum, d) => sum + Number(d.value), 0);
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <p className="text-xs text-muted-foreground">
-            {items.length} deal{items.length === 1 ? "" : "s"}
-          </p>
-          {totalOpen > 0 && (
-            <p className="text-xs font-medium text-blue-600 dark:text-blue-400">
-              {formatCurrency(totalOpen)} open
-            </p>
-          )}
-        </div>
-        <Button size="xs" variant="outline" onClick={startCreate}>
+    <div className="border-b px-4 py-3">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Deals{items.length > 0 && ` (${items.length})`}
+        </h3>
+        <Button variant="ghost" size="icon-xs" onClick={startCreate}>
           <Plus className="size-3" />
-          Add
         </Button>
       </div>
 
+      {totalOpen > 0 && (
+        <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-2">
+          {formatCurrency(totalOpen)} in pipeline
+        </p>
+      )}
+
       {items.length === 0 ? (
-        <EmptyState
-          icon={TrendingUp}
-          title="No deals yet"
-          description="Track opportunities and revenue for this company."
-          action={
-            <Button size="sm" onClick={startCreate}>
-              <Plus className="size-3.5" />
-              Add deal
-            </Button>
-          }
-        />
+        <button
+          onClick={startCreate}
+          className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          + Add a deal
+        </button>
       ) : (
-        <div className="space-y-1.5">
+        <div className="space-y-0">
           {items.map((d) => (
             <div
               key={d.id}
-              className={cn(
-                "group flex items-start gap-3 rounded-lg border px-3 py-2.5",
-                d.stage?.isWon && "bg-emerald-50/50 dark:bg-emerald-950/20",
-                d.stage?.isLost && "bg-muted/30",
-              )}
+              className="group flex items-center gap-2 py-1.5 -mx-1 px-1 rounded-sm hover:bg-muted/50"
             >
-              <div className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-md bg-muted">
-                <DollarSign className="size-3.5 text-muted-foreground" />
-              </div>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <span
                     className={cn(
                       "truncate text-sm font-medium",
@@ -127,38 +103,15 @@ export function DealsTab({ companyId, items, onChanged }: Props) {
                     {d.stage?.name ?? "Unknown"}
                   </Badge>
                 </div>
-                <div className="mt-0.5 flex flex-wrap items-center gap-x-3 text-xs text-muted-foreground">
-                  <span className="font-medium tabular-nums">
-                    {formatCurrency(d.value)}
-                  </span>
-                  {d.expectedCloseDate && (
-                    <>
-                      <span className="text-border">|</span>
-                      <span>
-                        Close{" "}
-                        {format(new Date(d.expectedCloseDate), "MMM d, yyyy")}
-                      </span>
-                    </>
-                  )}
-                  <span className="text-border">|</span>
-                  <span>
-                    {formatDistanceToNow(new Date(d.updatedAt), {
-                      addSuffix: true,
-                    })}
-                  </span>
-                </div>
-                {d.description && (
-                  <p className="mt-1 whitespace-pre-wrap text-xs text-muted-foreground">
-                    {d.description}
-                  </p>
-                )}
               </div>
+              <span className="text-xs font-medium tabular-nums shrink-0 text-muted-foreground">
+                {formatCurrency(d.value)}
+              </span>
               <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                 <Button
                   variant="ghost"
                   size="icon-xs"
                   onClick={() => startEdit(d)}
-                  aria-label="Edit deal"
                 >
                   <Pencil className="size-3" />
                 </Button>

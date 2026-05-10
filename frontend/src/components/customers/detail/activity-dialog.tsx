@@ -55,6 +55,7 @@ type Props = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editing: Activity | null;
+  defaultType?: ActivityType;
   onSaved: () => void;
 };
 
@@ -75,10 +76,10 @@ function withTime(date: Date, hhmm: string): Date {
   return next;
 }
 
-function toValues(editing: Activity | null): FormValues {
+function toValues(editing: Activity | null, defaultType?: ActivityType): FormValues {
   const d = editing ? new Date(editing.date) : new Date();
   return {
-    type: editing?.type ?? "CALL",
+    type: editing?.type ?? defaultType ?? "CALL",
     title: editing?.title ?? "",
     description: editing?.description ?? "",
     date: d,
@@ -91,17 +92,18 @@ export function ActivityDialog({
   open,
   onOpenChange,
   editing,
+  defaultType,
   onSaved,
 }: Props) {
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: toValues(editing),
+    defaultValues: toValues(editing, defaultType),
   });
   const pending = form.formState.isSubmitting;
 
   useEffect(() => {
-    if (open) form.reset(toValues(editing));
-  }, [open, editing, form]);
+    if (open) form.reset(toValues(editing, defaultType));
+  }, [open, editing, defaultType, form]);
 
   async function onSubmit(values: FormValues) {
     try {

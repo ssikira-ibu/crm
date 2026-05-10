@@ -21,13 +21,13 @@ import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { EventWithCompany } from "@/lib/types";
 
-type EventConfig = {
+export type EventConfig = {
   icon: React.ComponentType<{ className?: string }>;
   style: string;
   describe: (e: EventWithCompany) => string;
 };
 
-function getEventConfig(e: EventWithCompany): EventConfig {
+export function getEventConfig(e: EventWithCompany): EventConfig {
   const m = (e.metadata ?? {}) as Record<string, unknown>;
   const entity = e.entityType;
   const action = e.action;
@@ -200,7 +200,7 @@ function getEventConfig(e: EventWithCompany): EventConfig {
   };
 }
 
-function formatCurrency(value: number): string {
+export function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
@@ -209,7 +209,7 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
-function groupByDate(events: EventWithCompany[]): [string, EventWithCompany[]][] {
+export function groupByDate(events: EventWithCompany[]): [string, EventWithCompany[]][] {
   const groups = new Map<string, EventWithCompany[]>();
   for (const e of events) {
     const d = new Date(e.createdAt);

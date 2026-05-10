@@ -163,7 +163,7 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
   const displayName = customer.name?.trim() || "Untitled company";
 
   return (
-    <div className="border-b px-6 py-4">
+    <div className="border-b px-6 py-3">
       <div className="flex items-center justify-between gap-2">
         <Breadcrumb>
           <BreadcrumbList>
@@ -202,7 +202,7 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
         </DropdownMenu>
       </div>
 
-      <div className="mt-2 space-y-1">
+      <div className="mt-1.5">
         <div className="flex items-center gap-2.5">
           <h1 className="text-lg font-semibold tracking-tight">
             <InlineField
@@ -233,15 +233,16 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-xs text-muted-foreground">
           <InlineField
             value={customer.industry ?? ""}
             field="industry"
             placeholder="Add industry"
             companyId={customer.id}
             onUpdated={onUpdated}
-            className="text-sm"
+            className="text-xs"
           />
+          <span className="text-muted-foreground/40">·</span>
           {customer.website ? (
             <a
               href={customer.website}
@@ -259,11 +260,10 @@ export function CustomerHeader({ customer, onUpdated, onChanged }: Props) {
               placeholder="Add website"
               companyId={customer.id}
               onUpdated={onUpdated}
-              className="text-sm"
+              className="text-xs"
             />
           )}
-        </div>
-        <div className="mt-2">
+          <span className="text-muted-foreground/40">·</span>
           <TagPicker
             companyId={customer.id}
             assigned={customer.tags}
