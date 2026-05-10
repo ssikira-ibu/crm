@@ -96,10 +96,10 @@ function getInitialView(): string {
   return localStorage.getItem("crm:deals-view") || "list";
 }
 
-function stageStyle(stage: PipelineStage): string {
-  if (stage.isWon) return "bg-emerald-500/10 text-emerald-500 border-emerald-500/20";
-  if (stage.isLost) return "bg-red-500/10 text-red-400 border-red-500/20";
-  return "bg-blue-500/10 text-blue-400 border-blue-500/20";
+function stageBadgeStyle(stage: PipelineStage, colorMap: StageColorMap): string {
+  if (stage.isWon) return WON_STYLE.badge;
+  if (stage.isLost) return LOST_STYLE.badge;
+  return colorMap.get(stage.id)?.badge ?? STAGE_PALETTE[0].badge;
 }
 
 function MetricCard({
@@ -145,29 +145,37 @@ function MetricCard({
   );
 }
 
-const SEGMENT_BAR_COLORS: string[] = [
-  "bg-sky-400",
-  "bg-amber-400",
-  "bg-rose-400",
-  "bg-violet-400",
-  "bg-teal-400",
-  "bg-orange-400",
+const STAGE_PALETTE = [
+  { bar: "bg-sky-400",    text: "text-sky-400",    badge: "bg-sky-500/10 text-sky-400 border-sky-500/20" },
+  { bar: "bg-amber-400",  text: "text-amber-400",  badge: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  { bar: "bg-rose-400",   text: "text-rose-400",   badge: "bg-rose-500/10 text-rose-400 border-rose-500/20" },
+  { bar: "bg-violet-400", text: "text-violet-400", badge: "bg-violet-500/10 text-violet-400 border-violet-500/20" },
+  { bar: "bg-teal-400",   text: "text-teal-400",   badge: "bg-teal-500/10 text-teal-400 border-teal-500/20" },
+  { bar: "bg-orange-400", text: "text-orange-400", badge: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
 ];
 
-const SEGMENT_TEXT_COLORS: string[] = [
-  "text-sky-400",
-  "text-amber-400",
-  "text-rose-400",
-  "text-violet-400",
-  "text-teal-400",
-  "text-orange-400",
-];
+const WON_STYLE  = { bar: "bg-emerald-500", text: "text-emerald-500", badge: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20" };
+const LOST_STYLE = { bar: "bg-red-400",     text: "text-red-400",     badge: "bg-red-500/10 text-red-400 border-red-500/20" };
+
+type StageColorMap = Map<string, typeof STAGE_PALETTE[0]>;
+
+function buildStageColorMap(stages: DealsOverviewStageSummary[]): StageColorMap {
+  const map: StageColorMap = new Map();
+  let paletteIdx = 0;
+  for (const s of stages) {
+    map.set(s.id, STAGE_PALETTE[paletteIdx % STAGE_PALETTE.length]);
+    paletteIdx++;
+  }
+  return map;
+}
 
 function PipelineFunnel({
   stages,
+  colorMap,
   activeStageIds,
 }: {
   stages: DealsOverviewStageSummary[];
+  colorMap: StageColorMap;
   activeStageIds?: Set<string>;
 }) {
   if (stages.length === 0) return null;
@@ -176,21 +184,19 @@ function PipelineFunnel({
 
   return (
     <PartitionBar size="sm" gap={1}>
-      {stages.map((stage, i) => {
+      {stages.map((stage) => {
         const dimmed = hasFilter && !activeStageIds.has(stage.id);
+        const colors = colorMap.get(stage.id) ?? STAGE_PALETTE[0];
         return (
           <PartitionBarSegment
             key={stage.id}
             num={stage.value}
-            className={cn(
-              SEGMENT_BAR_COLORS[i % SEGMENT_BAR_COLORS.length],
-              dimmed && "opacity-20",
-            )}
+            className={cn(colors.bar, dimmed && "opacity-20")}
             alignment="left"
           >
             <PartitionBarSegmentTitle className={cn(
               "font-normal transition-opacity",
-              dimmed ? "text-muted-foreground/30" : cn("text-muted-foreground", SEGMENT_TEXT_COLORS[i % SEGMENT_TEXT_COLORS.length]),
+              dimmed ? "text-muted-foreground/30" : cn("text-muted-foreground", colors.text),
             )}>
               {stage.name}
             </PartitionBarSegmentTitle>
@@ -373,6 +379,12 @@ export default function DealsPage() {
   }, []);
 
   const allDeals = data?.deals ?? [];
+  const stageSummary = data?.stageSummary ?? [];
+
+  const stageColorMap = useMemo(
+    () => buildStageColorMap(stageSummary),
+    [stageSummary],
+  );
 
   const availableStages = useMemo(() => {
     const map = new Map<string, { id: string; name: string; position: number; isWon: boolean; isLost: boolean }>();
@@ -552,9 +564,10 @@ export default function DealsPage() {
           </div>
         )}
 
-        {(data?.stageSummary ?? []).length > 0 && (
+        {stageSummary.length > 0 && (
           <PipelineFunnel
-            stages={data!.stageSummary}
+            stages={stageSummary}
+            colorMap={stageColorMap}
             activeStageIds={activeStageIds}
           />
         )}
@@ -688,7 +701,7 @@ export default function DealsPage() {
                   <div>
                     <Badge
                       variant="outline"
-                      className={cn("text-[11px] font-medium", stageStyle(d.stage))}
+                      className={cn("text-[11px] font-medium", stageBadgeStyle(d.stage, stageColorMap))}
                     >
                       {d.stage.name}
                     </Badge>
