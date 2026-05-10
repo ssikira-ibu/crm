@@ -104,6 +104,35 @@ This starts PostgreSQL, runs database migrations, and launches both the backend 
 
 Open [http://localhost:3001](http://localhost:3001) in your browser.
 
+## Seeding sample data
+
+The seed script populates the database with realistic sample data (20 companies, 43 contacts, 26 deals, 46 activities, etc.) by calling the backend API, ensuring all side effects like the audit event log are generated automatically.
+
+**Prerequisites:** the full Docker stack must be running (`docker compose up`).
+
+```bash
+# Seed for a specific user (look up your UID first)
+docker compose exec db psql -U crm_user -d crm_dev -c "SELECT id, email FROM users;"
+
+docker compose exec \
+  -e SEED_USER_ID="<firebase-uid>" \
+  -e SEED_USER_EMAIL="<email>" \
+  -e SEED_USER_NAME="<display-name>" \
+  -e S2S_JWT_SECRET="<your-s2s-secret>" \
+  -e API_URL="http://backend:3000" \
+  backend npx tsx prisma/seed.ts
+```
+
+To reset all CRM data before re-seeding:
+
+```bash
+docker compose exec db psql -U crm_user -d crm_dev -c "
+TRUNCATE events, tasks, notes, activities, deals, company_tags, tags,
+  phone_numbers, addresses, contacts, companies, pipeline_stages, pipelines,
+  custom_field_values, custom_field_definitions CASCADE;
+"
+```
+
 ## Development
 
 Run outside Docker for faster iteration:
