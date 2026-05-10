@@ -313,6 +313,17 @@ export type DealWithCompany = Deal & {
   owner?: { id: string; displayName: string | null; email: string };
 };
 
+export type DealDetail = Deal & {
+  stage: PipelineStage;
+  pipeline: Pipeline & { stages: PipelineStage[] };
+  company: { id: string; name: string | null; status: CompanyStatus };
+  contact: { id: string; firstName: string; lastName: string; email: string | null; jobTitle: string | null } | null;
+  owner: { id: string; displayName: string | null; email: string };
+  activities: Activity[];
+  notes: Note[];
+  tasks: Task[];
+};
+
 export type DealsOverviewMetrics = {
   pipelineValue: number;
   weightedForecast: number;

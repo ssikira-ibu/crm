@@ -17,6 +17,11 @@ router.get("/deals/overview", async (ctx) => {
   ctx.body = { data };
 });
 
+router.get("/deals/:dealId", async (ctx) => {
+  const data = await dealService.getDealDetail(getOrgContext(ctx.state.user), ctx.params.dealId);
+  ctx.body = { data };
+});
+
 router.get(
   "/companies/:companyId/deals",
   validate(dealQuerySchema, "query"),
