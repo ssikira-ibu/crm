@@ -21,6 +21,11 @@ import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import PartitionBar, {
+  PartitionBarSegment,
+  PartitionBarSegmentTitle,
+  PartitionBarSegmentValue,
+} from "@/components/ui/partition-bar";
 import { EmptyState } from "@/components/empty-state";
 import { BoardView } from "@/components/deals/board-view";
 import { getDealsOverview } from "@/app/actions/deals";
@@ -35,18 +40,6 @@ import type {
 type SortField = "title" | "value" | "company" | "stage" | "expectedCloseDate";
 type SortDir = "asc" | "desc";
 
-const STAGE_COLORS: Record<number, { bar: string; dot: string }> = {
-  0: { bar: "bg-sky-400", dot: "bg-sky-400" },
-  1: { bar: "bg-amber-400", dot: "bg-amber-400" },
-  2: { bar: "bg-rose-400", dot: "bg-rose-400" },
-  3: { bar: "bg-violet-400", dot: "bg-violet-400" },
-  4: { bar: "bg-teal-400", dot: "bg-teal-400" },
-  5: { bar: "bg-orange-400", dot: "bg-orange-400" },
-};
-
-function getStageColor(index: number) {
-  return STAGE_COLORS[index % Object.keys(STAGE_COLORS).length];
-}
 
 function formatCurrency(value: number): string {
   if (value >= 1_000_000) {
@@ -126,44 +119,45 @@ function MetricCard({
   );
 }
 
-function PipelineFunnel({ stages, total }: { stages: DealsOverviewStageSummary[]; total: number }) {
+const SEGMENT_BAR_COLORS: string[] = [
+  "bg-sky-400",
+  "bg-amber-400",
+  "bg-rose-400",
+  "bg-violet-400",
+  "bg-teal-400",
+  "bg-orange-400",
+];
+
+const SEGMENT_TEXT_COLORS: string[] = [
+  "text-sky-400",
+  "text-amber-400",
+  "text-rose-400",
+  "text-violet-400",
+  "text-teal-400",
+  "text-orange-400",
+];
+
+function PipelineFunnel({ stages }: { stages: DealsOverviewStageSummary[] }) {
   if (stages.length === 0) return null;
 
   return (
-    <div className="space-y-2.5">
-      <div className="flex h-2 overflow-hidden rounded-full bg-muted/40">
-        {stages.map((stage, i) => {
-          const pct = total > 0 ? (stage.value / total) * 100 : 0;
-          if (pct === 0) return null;
-          const color = getStageColor(i);
-          return (
-            <div
-              key={stage.id}
-              className={cn("transition-all", color.bar)}
-              style={{ width: `${pct}%` }}
-              title={`${stage.name}: ${formatFullCurrency(stage.value)}`}
-            />
-          );
-        })}
-      </div>
-      <div className="flex flex-wrap gap-x-5 gap-y-1">
-        {stages.map((stage, i) => {
-          const color = getStageColor(i);
-          return (
-            <div key={stage.id} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <span className={cn("size-2 rounded-full", color.dot)} />
-              <span>{stage.name}</span>
-              <span className="font-medium tabular-nums text-foreground">
-                {formatCurrency(stage.value)}
-              </span>
-              <span className="text-muted-foreground/50">
-                ({stage.count})
-              </span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
+    <PartitionBar size="sm" gap={1}>
+      {stages.map((stage, i) => (
+        <PartitionBarSegment
+          key={stage.id}
+          num={stage.value}
+          className={SEGMENT_BAR_COLORS[i % SEGMENT_BAR_COLORS.length]}
+          alignment="left"
+        >
+          <PartitionBarSegmentTitle className={cn("text-muted-foreground font-normal", SEGMENT_TEXT_COLORS[i % SEGMENT_TEXT_COLORS.length])}>
+            {stage.name}
+          </PartitionBarSegmentTitle>
+          <PartitionBarSegmentValue className="text-foreground font-medium tabular-nums">
+            {formatCurrency(stage.value)} <span className="text-muted-foreground/50 font-normal">({stage.count})</span>
+          </PartitionBarSegmentValue>
+        </PartitionBarSegment>
+      ))}
+    </PartitionBar>
   );
 }
 
@@ -342,8 +336,8 @@ export default function DealsPage() {
           </div>
         )}
 
-        {stageSummary.length > 0 && metrics && (
-          <PipelineFunnel stages={stageSummary} total={metrics.pipelineValue} />
+        {stageSummary.length > 0 && (
+          <PipelineFunnel stages={stageSummary} />
         )}
       </div>
 
