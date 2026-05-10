@@ -1,25 +1,49 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
   Calendar,
+  ChevronDown,
   ChevronRight,
   DollarSign,
   Kanban,
   List,
   Loader2,
   Minus,
+  Search,
   Target,
   TrendingUp,
   Trophy,
+  X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import PartitionBar, {
   PartitionBarSegment,
@@ -29,6 +53,7 @@ import PartitionBar, {
 import { EmptyState } from "@/components/empty-state";
 import { BoardView } from "@/components/deals/board-view";
 import { getDealsOverview } from "@/app/actions/deals";
+import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { cn } from "@/lib/utils";
 import type {
   DealWithCompany,
@@ -39,6 +64,7 @@ import type {
 
 type SortField = "title" | "value" | "company" | "stage" | "expectedCloseDate";
 type SortDir = "asc" | "desc";
+type StatusFilter = "ALL" | "OPEN" | "WON" | "LOST";
 
 
 function formatCurrency(value: number): string {
@@ -219,12 +245,94 @@ function sortDeals(deals: DealWithCompany[], field: SortField, dir: SortDir): De
   return dir === "desc" ? sorted.reverse() : sorted;
 }
 
+function StageMultiSelect({
+  stages,
+  selected,
+  onChange,
+}: {
+  stages: { id: string; name: string; isWon: boolean; isLost: boolean }[];
+  selected: Set<string>;
+  onChange: (selected: Set<string>) => void;
+}) {
+  const [open, setOpen] = useState(false);
+
+  function toggle(id: string) {
+    const next = new Set(selected);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    onChange(next);
+  }
+
+  const label =
+    selected.size === 0
+      ? "All stages"
+      : selected.size === 1
+        ? stages.find((s) => selected.has(s.id))?.name ?? "1 stage"
+        : `${selected.size} stages`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-7 gap-1 text-sm font-normal"
+        >
+          {label}
+          <ChevronDown className="size-3 text-muted-foreground" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-48 p-0" align="start">
+        <Command>
+          <CommandList>
+            <CommandGroup>
+              {stages.map((stage) => (
+                <CommandItem
+                  key={stage.id}
+                  value={stage.name}
+                  onSelect={() => toggle(stage.id)}
+                  data-checked={selected.has(stage.id)}
+                >
+                  <span className={cn(
+                    "size-2 rounded-full shrink-0",
+                    stage.isWon ? "bg-emerald-500" : stage.isLost ? "bg-red-400" : "bg-blue-500",
+                  )} />
+                  {stage.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+          {selected.size > 0 && (
+            <div className="border-t p-1">
+              <CommandItem
+                onSelect={() => onChange(new Set())}
+                className="justify-center text-xs text-muted-foreground"
+              >
+                Clear selection
+              </CommandItem>
+            </div>
+          )}
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 export default function DealsPage() {
   const [data, setData] = useState<DealsOverview | null>(null);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState(getInitialView);
   const [sortField, setSortField] = useState<SortField>("value");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 200);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL");
+  const [selectedStages, setSelectedStages] = useState<Set<string>>(new Set());
+  const [ownerFilter, setOwnerFilter] = useState("ALL");
 
   useEffect(() => {
     let cancelled = false;
@@ -243,6 +351,105 @@ export default function DealsPage() {
     load();
     return () => { cancelled = true; };
   }, []);
+
+  const allDeals = data?.deals ?? [];
+
+  const availableStages = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; position: number; isWon: boolean; isLost: boolean }>();
+    for (const d of allDeals) {
+      if (d.stage && !map.has(d.stage.id)) {
+        map.set(d.stage.id, {
+          id: d.stage.id,
+          name: d.stage.name,
+          position: d.stage.position,
+          isWon: d.stage.isWon,
+          isLost: d.stage.isLost,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.position - b.position);
+  }, [allDeals]);
+
+  const availableOwners = useMemo(() => {
+    const map = new Map<string, { id: string; label: string }>();
+    for (const d of allDeals) {
+      if (d.owner && !map.has(d.owner.id)) {
+        map.set(d.owner.id, {
+          id: d.owner.id,
+          label: d.owner.displayName || d.owner.email,
+        });
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.label.localeCompare(b.label));
+  }, [allDeals]);
+
+  const filteredDeals = useMemo(() => {
+    let result = allDeals;
+
+    if (statusFilter === "OPEN") {
+      result = result.filter((d) => !d.stage?.isWon && !d.stage?.isLost);
+    } else if (statusFilter === "WON") {
+      result = result.filter((d) => d.stage?.isWon);
+    } else if (statusFilter === "LOST") {
+      result = result.filter((d) => d.stage?.isLost);
+    }
+
+    if (selectedStages.size > 0) {
+      result = result.filter((d) => selectedStages.has(d.stageId));
+    }
+
+    if (ownerFilter !== "ALL") {
+      result = result.filter((d) => d.owner?.id === ownerFilter);
+    }
+
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase().trim();
+      result = result.filter(
+        (d) =>
+          d.title.toLowerCase().includes(q) ||
+          (d.company?.name?.toLowerCase().includes(q) ?? false),
+      );
+    }
+
+    return result;
+  }, [allDeals, statusFilter, selectedStages, ownerFilter, debouncedSearch]);
+
+  const filteredStageSummary = useMemo(() => {
+    const open = filteredDeals.filter((d) => !d.stage?.isWon && !d.stage?.isLost);
+    const stageMap = new Map<string, { stage: typeof open[0]["stage"]; value: number; count: number }>();
+    for (const d of open) {
+      const existing = stageMap.get(d.stageId);
+      if (existing) {
+        existing.value += d.value;
+        existing.count += 1;
+      } else {
+        stageMap.set(d.stageId, { stage: d.stage, value: d.value, count: 1 });
+      }
+    }
+    return Array.from(stageMap.values())
+      .sort((a, b) => (a.stage?.position ?? 0) - (b.stage?.position ?? 0))
+      .map((s) => ({
+        id: s.stage.id,
+        name: s.stage.name,
+        position: s.stage.position,
+        probability: s.stage.probability,
+        value: s.value,
+        count: s.count,
+      }));
+  }, [filteredDeals]);
+
+  const hasActiveFilters =
+    debouncedSearch.trim().length > 0 ||
+    statusFilter !== "ALL" ||
+    selectedStages.size > 0 ||
+    ownerFilter !== "ALL";
+
+  function clearFilters() {
+    setSearch("");
+    setStatusFilter("ALL");
+    setSelectedStages(new Set());
+    setOwnerFilter("ALL");
+  }
 
   function handleViewChange(v: string) {
     setView(v);
@@ -267,9 +474,7 @@ export default function DealsPage() {
   }
 
   const metrics = data?.metrics;
-  const deals = data?.deals ?? [];
-  const stageSummary = data?.stageSummary ?? [];
-  const sortedDeals = sortDeals(deals, sortField, sortDir);
+  const sortedDeals = sortDeals(filteredDeals, sortField, sortDir);
 
   const wonTrend = metrics
     ? metrics.wonLastMonth > 0
@@ -289,7 +494,11 @@ export default function DealsPage() {
         <div>
           <h1 className="text-lg font-semibold tracking-tight">Deals</h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            {metrics ? `${metrics.totalDeals} deals across your pipeline` : " "}
+            {metrics
+              ? hasActiveFilters
+                ? `${filteredDeals.length} of ${metrics.totalDeals} deals`
+                : `${metrics.totalDeals} deals across your pipeline`
+              : " "}
           </p>
         </div>
         <TabsList>
@@ -336,19 +545,94 @@ export default function DealsPage() {
           </div>
         )}
 
-        {stageSummary.length > 0 && (
-          <PipelineFunnel stages={stageSummary} />
+        {filteredStageSummary.length > 0 && (
+          <PipelineFunnel stages={filteredStageSummary} />
+        )}
+      </div>
+
+      {/* Filters */}
+      <div className="flex items-center gap-2 border-b px-6 py-2.5">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search deals..."
+            className="h-7 pl-8 text-sm"
+            aria-label="Search deals"
+          />
+        </div>
+        <Select
+          value={statusFilter}
+          onValueChange={(v) => setStatusFilter(v as StatusFilter)}
+        >
+          <SelectTrigger className="h-7 w-[7rem] text-sm" aria-label="Filter by status">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All deals</SelectItem>
+            <SelectItem value="OPEN">Open</SelectItem>
+            <SelectItem value="WON">Won</SelectItem>
+            <SelectItem value="LOST">Lost</SelectItem>
+          </SelectContent>
+        </Select>
+        {availableStages.length > 0 && (
+          <StageMultiSelect
+            stages={availableStages}
+            selected={selectedStages}
+            onChange={setSelectedStages}
+          />
+        )}
+        {availableOwners.length > 1 && (
+          <Select
+            value={ownerFilter}
+            onValueChange={setOwnerFilter}
+          >
+            <SelectTrigger className="h-7 w-[9rem] text-sm" aria-label="Filter by owner">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All owners</SelectItem>
+              {availableOwners.map((o) => (
+                <SelectItem key={o.id} value={o.id}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {hasActiveFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 text-xs text-muted-foreground hover:text-foreground"
+            onClick={clearFilters}
+          >
+            <X className="size-3" />
+            Clear
+          </Button>
         )}
       </div>
 
       {/* List View */}
       <TabsContent value="list" className="flex-1 overflow-auto mt-0">
-        {deals.length === 0 ? (
+        {filteredDeals.length === 0 ? (
           <div className="p-6">
             <EmptyState
               icon={TrendingUp}
-              title="No deals yet"
-              description="Create deals from the company detail page to start tracking your pipeline."
+              title={hasActiveFilters ? "No matching deals" : "No deals yet"}
+              description={
+                hasActiveFilters
+                  ? "Try adjusting your search or filters."
+                  : "Create deals from the company detail page to start tracking your pipeline."
+              }
+              action={
+                hasActiveFilters ? (
+                  <Button size="sm" variant="outline" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : null
+              }
             />
           </div>
         ) : (
@@ -424,17 +708,28 @@ export default function DealsPage() {
 
       {/* Board View */}
       <TabsContent value="board" className="flex-1 overflow-hidden mt-0 min-w-0">
-        {deals.length === 0 ? (
+        {filteredDeals.length === 0 ? (
           <div className="p-6">
             <EmptyState
               icon={TrendingUp}
-              title="No deals yet"
-              description="Create deals from the company detail page to start tracking your pipeline."
+              title={hasActiveFilters ? "No matching deals" : "No deals yet"}
+              description={
+                hasActiveFilters
+                  ? "Try adjusting your search or filters."
+                  : "Create deals from the company detail page to start tracking your pipeline."
+              }
+              action={
+                hasActiveFilters ? (
+                  <Button size="sm" variant="outline" onClick={clearFilters}>
+                    Clear filters
+                  </Button>
+                ) : null
+              }
             />
           </div>
         ) : (
           <div className="h-full overflow-x-auto p-6">
-            <BoardView deals={deals} />
+            <BoardView deals={filteredDeals} />
           </div>
         )}
       </TabsContent>
