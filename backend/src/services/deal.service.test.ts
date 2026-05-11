@@ -33,7 +33,7 @@ describe("deal.service", () => {
 
   describe("listDeals", () => {
     it("returns paginated results for a company", async () => {
-      const deals = [{ id: "d1", title: "Big Deal" }];
+      const deals = [{ id: "d1", title: "Big Deal", value: 5000 }];
       prismaMock.deal.findMany = mock.fn(() => Promise.resolve(deals));
       prismaMock.deal.count = mock.fn(() => Promise.resolve(1));
 
@@ -66,11 +66,11 @@ describe("deal.service", () => {
 
   describe("getDeal", () => {
     it("returns the deal when found", async () => {
-      const deal = { id: "d1", title: "Big Deal", companyId: "comp-1", stage: {} };
+      const deal = { id: "d1", title: "Big Deal", companyId: "comp-1", stage: {}, value: 5000 };
       prismaMock.deal.findFirst = mock.fn(() => Promise.resolve(deal));
 
       const result = await getDeal(makeOrgContext(), "comp-1", "d1");
-      assert.equal(result, deal);
+      assert.deepEqual(result, deal);
     });
 
     it("throws 404 when deal not found", async () => {
@@ -98,7 +98,7 @@ describe("deal.service", () => {
         stageId: "stage-1",
       } as any);
 
-      assert.equal(result, deal);
+      assert.deepEqual(result, deal);
       assert.equal(recordEventMock.mock.callCount(), 1);
       const eventCall = recordEventMock.mock.calls[0].arguments[0];
       assert.equal(eventCall.action, "CREATED");
