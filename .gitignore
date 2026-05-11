@@ -16,3 +16,8 @@ backend/prisma/.env
 
 # Docker
 pgdata/
+
+# Claude Code
+.agents/
+.claude/
+skills-lock.json
