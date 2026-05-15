@@ -33,7 +33,7 @@ async function request<T>(
   ctx: RequestContext,
   method: string,
   path: string,
-  opts?: { query?: Query; body?: unknown },
+  opts?: { query?: Query; body?: unknown; signal?: AbortSignal },
 ): Promise<T> {
   const token = await createDelegatedToken(ctx.uid, ctx.email, ctx.conversationId);
   const url = `${config.BACKEND_URL}/api${path}${buildQuery(opts?.query)}`;
@@ -48,6 +48,7 @@ async function request<T>(
     method,
     headers,
     body: opts?.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    signal: opts?.signal,
   });
 
   if (res.status === 204) return undefined as T;
@@ -76,20 +77,28 @@ export class BackendError extends Error {
   }
 }
 
-export function createBackendClient(ctx: RequestContext) {
+export function createBackendClient(ctx: RequestContext, signal?: AbortSignal) {
   const get = <T>(path: string, query?: Query) =>
-    request<T>(ctx, "GET", path, { query });
+    request<T>(ctx, "GET", path, { query, signal });
   const post = <T>(path: string, body?: unknown) =>
-    request<T>(ctx, "POST", path, { body });
+    request<T>(ctx, "POST", path, { body, signal });
   const patch = <T>(path: string, body?: unknown) =>
-    request<T>(ctx, "PATCH", path, { body });
+    request<T>(ctx, "PATCH", path, { body, signal });
   const put = <T>(path: string, body?: unknown) =>
-    request<T>(ctx, "PUT", path, { body });
+    request<T>(ctx, "PUT", path, { body, signal });
   const del = <T>(path: string) =>
-    request<T>(ctx, "DELETE", path);
+    request<T>(ctx, "DELETE", path, { signal });
 
   return {
     context: ctx,
+    /**
+     * Return a copy of this client whose outgoing requests carry the given
+     * AbortSignal. Used by the tool runner to cancel in-flight backend HTTP
+     * calls when the user disconnects mid-tool.
+     */
+    withSignal(s: AbortSignal | undefined) {
+      return createBackendClient(ctx, s);
+    },
 
     // Dashboard
     getDashboard: () => get("/dashboard"),

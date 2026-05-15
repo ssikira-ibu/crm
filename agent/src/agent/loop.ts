@@ -115,6 +115,12 @@ export async function runAgentLoop(
       tools,
       stream: true,
       max_iterations: params.maxTurns,
+      // Top-level cache_control auto-places a breakpoint on the last
+      // cacheable block and walks it forward as the transcript grows. With
+      // the explicit markers on `system` and the last tool, this gives us
+      // up to 3 cache breakpoints covering the static prefix + the growing
+      // conversation history. Tool results are picked up by lookback.
+      cache_control: { type: "ephemeral" },
     },
     params.abortSignal ? { signal: params.abortSignal } : undefined,
   );

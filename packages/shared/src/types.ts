@@ -453,6 +453,8 @@ export type AgentSSEEvent =
   | {
       type: "done";
       conversationId: string;
+      /** True if the loop paused awaiting user confirmation on a gated tool. */
+      paused?: boolean;
       messages?: AgentMessage[];
       providerMessages?: AgentProviderMessage[];
       tokenUsage?: { input: number; output: number };

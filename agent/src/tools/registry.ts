@@ -113,7 +113,7 @@ export function buildRunnableTools(backendClient: BackendClient): BetaRunnableTo
       input_schema: schema as never,
       ...(cache_control ? { cache_control } : {}),
       parse: (raw: unknown) => t.parameters.parse(raw),
-      run: async (args: Record<string, unknown>) => {
+      run: async (args: Record<string, unknown>, context) => {
         if (isGatedTool(t.name)) {
           // The loop should never let a gated tool reach `run`; if it does,
           // that's a bug — fail loudly instead of mutating data.
@@ -121,10 +121,15 @@ export function buildRunnableTools(backendClient: BackendClient): BetaRunnableTo
             `Gated tool ${t.name} reached run() — agent loop did not pause`,
           );
         }
+        // Cancel in-flight HTTP if the user disconnects: rebind the client
+        // to the runner-provided signal for this tool invocation.
+        const signal = context?.signal ?? undefined;
+        const scopedClient = signal ? backendClient.withSignal(signal) : backendClient;
         try {
-          const result = await t.execute(args, backendClient);
+          const result = await t.execute(args, scopedClient);
           return truncate(result);
         } catch (err) {
+          if (signal?.aborted) throw err;
           if (err instanceof BackendError) {
             logger.warn(
               { tool: t.name, status: err.status, code: err.code },

@@ -99,6 +99,7 @@ chatRouter.post("/chat", async (ctx) => {
       sendSSE(stream, {
         type: "done",
         conversationId,
+        paused: result.paused,
         tokenUsage: { input: result.inputTokens, output: result.outputTokens },
       });
     } catch (err) {
@@ -164,6 +165,7 @@ chatRouter.post("/resume", async (ctx) => {
       sendSSE(stream, {
         type: "done",
         conversationId,
+        paused: result.paused,
         tokenUsage: { input: result.inputTokens, output: result.outputTokens },
       });
     } catch (err) {
