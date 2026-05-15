@@ -36,6 +36,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
     command: >
       sh -c "cd /app/packages/shared && npx tsc && cd /app/backend && npx prisma generate && npx prisma migrate deploy && npx tsx watch src/index.ts"
 
@@ -65,7 +71,8 @@ services:
         bind:
           create_host_path: false
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   agent:
     build:
@@ -74,17 +81,26 @@ services:
       target: development
     expose:
       - "3002"
-    env_file:
-      - ./agent/.env
     environment:
       PORT: "3002"
       BACKEND_URL: http://backend:3000
       NODE_ENV: development
+      S2S_JWT_SECRET: ${S2S_JWT_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DEFAULT_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-4-6}
+      CORS_ORIGIN: ${AGENT_CORS_ORIGIN:-http://localhost:3001}
     volumes:
       - ./agent/src:/app/agent/src
       - ./packages/shared/src:/app/packages/shared/src
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3002/health || exit 1"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 30s
     command: >
       sh -c "cd /app/packages/shared && npx tsc && cd /app/agent && npx tsx watch src/index.ts"
 

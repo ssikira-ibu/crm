@@ -24,7 +24,7 @@ export async function POST(request: Request) {
 
   let agentRes: Response;
   try {
-    agentRes = await fetch(`${AGENT_URL}/chat`, {
+    agentRes = await fetch(`${AGENT_URL}/resume`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: await request.text(),

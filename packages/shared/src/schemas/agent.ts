@@ -2,13 +2,12 @@ import { z } from "zod";
 
 export const agentChatMessageSchema = z.object({
   message: z.string().min(1).max(2000),
-  conversationId: z.string().optional(),
+  conversationId: z.string().uuid().optional(),
 });
 
 export type AgentChatMessageInput = z.infer<typeof agentChatMessageSchema>;
 
 export const createAgentConversationSchema = z.object({
-  id: z.string().uuid().optional(),
   title: z.string().max(100).nullable().optional(),
 });
 
@@ -52,7 +51,7 @@ export const createAgentActionSchema = z.object({
   risk: z.enum(["write", "destructive", "external"]),
   summary: z.string().min(1).max(500),
   input: z.record(z.string(), z.unknown()),
-  expiresAt: z.string(),
+  expiresAt: z.string().datetime(),
 });
 
 export type CreateAgentConversationInput = z.infer<typeof createAgentConversationSchema>;

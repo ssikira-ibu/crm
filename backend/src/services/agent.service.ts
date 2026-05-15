@@ -1,6 +1,11 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import {
+  updateCompanySchema,
+  updateDealSchema,
+  updateTaskSchema,
+} from "@crm/shared";
 import type {
   AgentPendingAction,
   AgentProviderMessage,
@@ -12,12 +17,13 @@ import type {
   UpdateDealInput,
   UpdateTaskInput,
 } from "@crm/shared";
+import { z } from "zod";
 import * as companyService from "./company.service.js";
 import * as dealService from "./deal.service.js";
 import * as taskService from "./task.service.js";
 import * as tagService from "./tag.service.js";
 
-function agentWhere(ctx: OrgContext, id: string) {
+function whereForUser(ctx: OrgContext, id: string) {
   return {
     id,
     organizationId: ctx.organizationId,
@@ -51,10 +57,6 @@ function toPendingAction(action: {
   };
 }
 
-function toProviderMessage(payload: unknown): AgentProviderMessage {
-  return payload as AgentProviderMessage;
-}
-
 export async function listConversations(ctx: OrgContext) {
   const conversations = await prisma.agentConversation.findMany({
     where: { organizationId: ctx.organizationId, userId: ctx.userId },
@@ -62,10 +64,10 @@ export async function listConversations(ctx: OrgContext) {
     select: { id: true, title: true, createdAt: true, updatedAt: true },
   });
 
-  return conversations.map((conversation) => ({
-    ...conversation,
-    createdAt: conversation.createdAt.toISOString(),
-    updatedAt: conversation.updatedAt.toISOString(),
+  return conversations.map((c) => ({
+    ...c,
+    createdAt: c.createdAt.toISOString(),
+    updatedAt: c.updatedAt.toISOString(),
   }));
 }
 
@@ -75,7 +77,6 @@ export async function createConversation(
 ) {
   const conversation = await prisma.agentConversation.create({
     data: {
-      id: data.id,
       organizationId: ctx.organizationId,
       userId: ctx.userId,
       title: data.title ?? null,
@@ -92,7 +93,7 @@ export async function createConversation(
 
 export async function getConversation(ctx: OrgContext, id: string) {
   const conversation = await prisma.agentConversation.findFirst({
-    where: agentWhere(ctx, id),
+    where: whereForUser(ctx, id),
     include: {
       messages: { orderBy: { sequence: "asc" } },
       actions: {
@@ -106,8 +107,8 @@ export async function getConversation(ctx: OrgContext, id: string) {
     throw new AppError(404, "CONVERSATION_NOT_FOUND", "Conversation not found");
   }
 
-  const providerMessages = conversation.messages.map((message) =>
-    toProviderMessage(message.providerPayload),
+  const providerMessages = conversation.messages.map(
+    (m) => m.providerPayload as unknown as AgentProviderMessage,
   );
 
   return {
@@ -116,11 +117,11 @@ export async function getConversation(ctx: OrgContext, id: string) {
     createdAt: conversation.createdAt.toISOString(),
     updatedAt: conversation.updatedAt.toISOString(),
     messages: conversation.messages
-      .filter((message) => message.role !== "tool" && message.displayContent.length > 0)
-      .map((message) => ({
-        role: message.role as "user" | "assistant",
-        content: message.displayContent,
-        createdAt: message.createdAt.toISOString(),
+      .filter((m) => m.role !== "tool" && m.displayContent.length > 0)
+      .map((m) => ({
+        role: m.role as "user" | "assistant",
+        content: m.displayContent,
+        createdAt: m.createdAt.toISOString(),
       })),
     providerMessages,
     pendingActions: conversation.actions.map(toPendingAction),
@@ -133,7 +134,7 @@ export async function appendConversation(
   data: AppendAgentConversationInput,
 ) {
   const conversation = await prisma.agentConversation.findFirst({
-    where: agentWhere(ctx, id),
+    where: whereForUser(ctx, id),
     select: { id: true, title: true },
   });
 
@@ -141,41 +142,61 @@ export async function appendConversation(
     throw new AppError(404, "CONVERSATION_NOT_FOUND", "Conversation not found");
   }
 
-  const lastMessage = await prisma.agentMessage.findFirst({
-    where: { conversationId: id },
-    orderBy: { sequence: "desc" },
-    select: { sequence: true },
+  await appendMessagesAtomic(id, data.providerMessages);
+
+  await prisma.agentConversation.update({
+    where: { id },
+    data: {
+      tokenUsage: { increment: data.inputTokens + data.outputTokens },
+      title:
+        conversation.title ??
+        data.messages[0]?.content.slice(0, 100) ??
+        null,
+    },
   });
+}
 
-  const startSequence = (lastMessage?.sequence ?? 0) + 1;
-  const rows = data.providerMessages.map((message, index) => ({
-    conversationId: id,
-    role: message.role,
-    displayContent:
-      message.role === "tool"
-        ? ""
-        : message.content,
-    providerPayload: message as Prisma.InputJsonValue,
-    sequence: startSequence + index,
-  }));
+/**
+ * Append messages to a conversation, allocating sequence numbers atomically
+ * via a per-conversation Postgres advisory lock. Without the lock, two
+ * concurrent appends could read the same MAX(sequence) and collide on the
+ * (conversationId, sequence) unique constraint — possible when an
+ * approval-driven append races with an in-flight chat loop on the same
+ * conversation.
+ */
+async function appendMessagesAtomic(
+  conversationId: string,
+  providerMessages: AgentProviderMessage[],
+) {
+  if (providerMessages.length === 0) return;
 
-  await prisma.$transaction([
-    ...(rows.length
-      ? [prisma.agentMessage.createMany({ data: rows })]
-      : []),
-    prisma.agentConversation.update({
-      where: { id },
-      data: {
-        tokenUsage: { increment: data.inputTokens + data.outputTokens },
-        title: conversation.title ?? data.messages[0]?.content.slice(0, 100) ?? null,
-      },
-    }),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${
+      "agent_seq:" + conversationId
+    }))`;
+
+    const last = await tx.agentMessage.findFirst({
+      where: { conversationId },
+      orderBy: { sequence: "desc" },
+      select: { sequence: true },
+    });
+    const startSequence = (last?.sequence ?? 0) + 1;
+
+    const rows = providerMessages.map((message, index) => ({
+      conversationId,
+      role: message.role,
+      displayContent: message.role === "assistant" || message.role === "user" ? message.content : "",
+      providerPayload: message as Prisma.InputJsonValue,
+      sequence: startSequence + index,
+    }));
+
+    await tx.agentMessage.createMany({ data: rows });
+  });
 }
 
 export async function deleteConversation(ctx: OrgContext, id: string) {
   const conversation = await prisma.agentConversation.findFirst({
-    where: agentWhere(ctx, id),
+    where: whereForUser(ctx, id),
     select: { id: true },
   });
 
@@ -191,13 +212,18 @@ export async function createPendingAction(
   data: CreateAgentActionInput,
 ) {
   const conversation = await prisma.agentConversation.findFirst({
-    where: agentWhere(ctx, data.conversationId),
+    where: whereForUser(ctx, data.conversationId),
     select: { id: true },
   });
 
   if (!conversation) {
     throw new AppError(404, "CONVERSATION_NOT_FOUND", "Conversation not found");
   }
+
+  // Validate the input now so an LLM that produces malformed input fails
+  // before we ever ask the user. We also re-validate at approval time
+  // in case the row was tampered with between create and approve.
+  validateActionInput(data.toolName, data.input);
 
   const action = await prisma.agentAction.upsert({
     where: {
@@ -246,6 +272,12 @@ export async function approveAction(ctx: OrgContext, actionId: string) {
     throw new AppError(410, "ACTION_EXPIRED", "Agent action has expired");
   }
 
+  // Re-validate input against the shared schema before executing. This
+  // closes the window where the persisted JSON could be malformed or
+  // mutated after creation. The user is also shown the (validated) input
+  // on the approval card so what they confirm is what runs.
+  const validatedInput = validateActionInput(action.toolName, action.input);
+
   const actorCtx: OrgContext = {
     ...ctx,
     actor: {
@@ -260,7 +292,16 @@ export async function approveAction(ctx: OrgContext, actionId: string) {
     data: { status: "APPROVED", approvedAt: new Date() },
   });
 
-  const result = await executeApprovedAction(actorCtx, action.toolName, action.input);
+  let result: unknown;
+  let isError = false;
+  try {
+    result = await executeApprovedAction(actorCtx, action.toolName, validatedInput);
+  } catch (err) {
+    isError = true;
+    const message =
+      err instanceof AppError ? `${err.code}: ${err.message}` : "Action execution failed";
+    result = { error: message };
+  }
 
   await prisma.agentAction.update({
     where: { id: action.id },
@@ -271,12 +312,21 @@ export async function approveAction(ctx: OrgContext, actionId: string) {
     },
   });
 
-  await appendProviderOnlyMessage(
-    action.conversationId,
-    `User approved agent action ${action.toolName}. Result: ${JSON.stringify(result)}`,
-  );
+  // Append a real tool_result row so the next loop iteration resumes the
+  // Anthropic transcript coherently — never a synthetic user message.
+  await appendMessagesAtomic(action.conversationId, [
+    {
+      role: "tool",
+      toolUseId: action.toolCallId,
+      content: JSON.stringify(result),
+      isError,
+    },
+  ]);
 
-  return { action: { ...toPendingAction({ ...action, status: "EXECUTED" }), result }, result };
+  return {
+    action: { ...toPendingAction({ ...action, status: "EXECUTED" }), result },
+    result,
+  };
 }
 
 export async function rejectAction(ctx: OrgContext, actionId: string) {
@@ -300,42 +350,81 @@ export async function rejectAction(ctx: OrgContext, actionId: string) {
     data: { status: "REJECTED", rejectedAt: new Date() },
   });
 
-  await appendProviderOnlyMessage(
-    action.conversationId,
-    `User rejected agent action ${action.toolName}. The action was not executed.`,
-  );
+  await appendMessagesAtomic(action.conversationId, [
+    {
+      role: "tool",
+      toolUseId: action.toolCallId,
+      content: JSON.stringify({ rejected: true, reason: "User rejected this action." }),
+      isError: true,
+    },
+  ]);
 
   return toPendingAction(updated);
 }
 
-async function appendProviderOnlyMessage(conversationId: string, content: string) {
-  const lastMessage = await prisma.agentMessage.findFirst({
-    where: { conversationId },
-    orderBy: { sequence: "desc" },
-    select: { sequence: true },
-  });
+// ---------------------------------------------------------------------------
+// Action validation + execution
+// ---------------------------------------------------------------------------
 
-  await prisma.agentMessage.create({
-    data: {
-      conversationId,
-      role: "user",
-      displayContent: "",
-      providerPayload: { role: "user", content },
-      sequence: (lastMessage?.sequence ?? 0) + 1,
-    },
-  });
+const updateDealActionSchema = z.object({
+  companyId: z.string().uuid(),
+  dealId: z.string().uuid(),
+}).and(updateDealSchema);
+
+const updateTaskActionSchema = z.object({
+  taskId: z.string().uuid(),
+  companyId: z.string().uuid().optional(),
+}).and(updateTaskSchema);
+
+const updateCompanyActionSchema = z.object({
+  companyId: z.string().uuid(),
+}).and(updateCompanySchema);
+
+const tagActionSchema = z.object({
+  companyId: z.string().uuid(),
+  tagId: z.string().uuid(),
+});
+
+const ACTION_SCHEMAS: Record<string, z.ZodTypeAny> = {
+  update_deal: updateDealActionSchema,
+  update_task: updateTaskActionSchema,
+  update_company: updateCompanyActionSchema,
+  add_tag_to_company: tagActionSchema,
+  remove_tag_from_company: tagActionSchema,
+};
+
+function validateActionInput(
+  toolName: string,
+  input: unknown,
+): Record<string, unknown> {
+  const schema = ACTION_SCHEMAS[toolName];
+  if (!schema) {
+    throw new AppError(
+      400,
+      "UNSUPPORTED_AGENT_ACTION",
+      `Unsupported agent action: ${toolName}`,
+    );
+  }
+  const result = schema.safeParse(input);
+  if (!result.success) {
+    throw new AppError(
+      400,
+      "INVALID_AGENT_ACTION_INPUT",
+      "Agent action input failed validation",
+      result.error.issues,
+    );
+  }
+  return result.data as Record<string, unknown>;
 }
 
 async function executeApprovedAction(
   ctx: OrgContext,
   toolName: string,
-  input: unknown,
+  input: Record<string, unknown>,
 ) {
-  const params = input as Record<string, unknown>;
-
   switch (toolName) {
     case "update_deal": {
-      const { companyId, dealId, ...body } = params;
+      const { companyId, dealId, ...body } = input;
       return dealService.updateDeal(
         ctx,
         companyId as string,
@@ -344,7 +433,7 @@ async function executeApprovedAction(
       );
     }
     case "update_task": {
-      const { taskId, companyId, ...body } = params;
+      const { taskId, companyId, ...body } = input;
       return taskService.updateTask(
         ctx,
         taskId as string,
@@ -353,7 +442,7 @@ async function executeApprovedAction(
       );
     }
     case "update_company": {
-      const { companyId, ...body } = params;
+      const { companyId, ...body } = input;
       return companyService.updateCompany(
         ctx,
         companyId as string,
@@ -361,12 +450,24 @@ async function executeApprovedAction(
       );
     }
     case "add_tag_to_company":
-      await tagService.addTagToCompany(ctx, params.companyId as string, params.tagId as string);
+      await tagService.addTagToCompany(
+        ctx,
+        input.companyId as string,
+        input.tagId as string,
+      );
       return { ok: true };
     case "remove_tag_from_company":
-      await tagService.removeTagFromCompany(ctx, params.companyId as string, params.tagId as string);
+      await tagService.removeTagFromCompany(
+        ctx,
+        input.companyId as string,
+        input.tagId as string,
+      );
       return { ok: true };
     default:
-      throw new AppError(400, "UNSUPPORTED_AGENT_ACTION", `Unsupported agent action: ${toolName}`);
+      throw new AppError(
+        400,
+        "UNSUPPORTED_AGENT_ACTION",
+        `Unsupported agent action: ${toolName}`,
+      );
   }
 }

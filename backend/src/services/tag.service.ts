@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { assertHumanOrApprovedAgent } from "../lib/orgContext.js";
 import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, CreateTagInput, UpdateTagInput } from "@crm/shared";
@@ -46,6 +47,7 @@ export async function addTagToCompany(
   companyId: string,
   tagId: string,
 ) {
+  assertHumanOrApprovedAgent(ctx);
   await ensureCompanyAccess(ctx, companyId);
   const tag = await prisma.tag.findFirst({
     where: { id: tagId, organizationId: ctx.organizationId },
@@ -70,6 +72,7 @@ export async function removeTagFromCompany(
   companyId: string,
   tagId: string,
 ) {
+  assertHumanOrApprovedAgent(ctx);
   await ensureCompanyAccess(ctx, companyId);
   const tag = await prisma.tag.findFirst({
     where: { id: tagId, organizationId: ctx.organizationId },
