@@ -9,12 +9,20 @@ export interface ToolEvent {
   status: "running" | "done";
 }
 
+export type AgentPart =
+  | { type: "text"; text: string }
+  | { type: "reasoning"; text: string }
+  | { type: "tool"; tool: ToolEvent };
+
 /**
- * UI-only extension of AgentMessage that captures the tool calls fired
- * during this assistant turn. Stored on the message so the timeline
- * shows which tools were used, even after they finish.
+ * UI-only extension of AgentMessage. `parts` preserves the order in which
+ * text deltas and tool calls arrived from the agent — the model can emit
+ * text, then a tool call, then more text in a single turn, and the UI must
+ * render them in that order. `content` is kept as the concatenated text for
+ * back-compat with the AgentMessage type.
  */
 export interface UIAgentMessage extends AgentMessage {
+  parts?: AgentPart[];
   toolEvents?: ToolEvent[];
 }
 
@@ -101,13 +109,13 @@ export function useAgentChat(): UseAgentChatReturn {
     async (url: string, body: object) => {
       const controller = new AbortController();
       abortRef.current = controller;
-      let assistantText = "";
 
       // Reserve the assistant bubble before any deltas arrive.
       const assistantMsg: UIAgentMessage = {
         role: "assistant",
         content: "",
         createdAt: new Date().toISOString(),
+        parts: [],
       };
       setMessages((prev) => [...prev, assistantMsg]);
 
@@ -123,34 +131,78 @@ export function useAgentChat(): UseAgentChatReturn {
           (event) => {
             switch (event.type) {
               case "text_delta":
-                assistantText += event.delta;
-                updateLastAssistant((m) => ({ ...m, content: assistantText }));
+                updateLastAssistant((m) => {
+                  const parts = [...(m.parts ?? [])];
+                  const last = parts[parts.length - 1];
+                  if (last?.type === "text") {
+                    parts[parts.length - 1] = {
+                      type: "text",
+                      text: last.text + event.delta,
+                    };
+                  } else {
+                    parts.push({ type: "text", text: event.delta });
+                  }
+                  return {
+                    ...m,
+                    parts,
+                    content: m.content + event.delta,
+                  };
+                });
+                break;
+              case "thinking_delta":
+                updateLastAssistant((m) => {
+                  const parts = [...(m.parts ?? [])];
+                  const last = parts[parts.length - 1];
+                  if (last?.type === "reasoning") {
+                    parts[parts.length - 1] = {
+                      type: "reasoning",
+                      text: last.text + event.delta,
+                    };
+                  } else {
+                    parts.push({ type: "reasoning", text: event.delta });
+                  }
+                  return { ...m, parts };
+                });
                 break;
               case "tool_start":
-                updateLastAssistant((m) => ({
-                  ...m,
-                  toolEvents: [
-                    ...(m.toolEvents ?? []),
-                    {
-                      name: event.tool,
-                      description: event.description,
-                      status: "running",
-                    },
-                  ],
-                }));
+                updateLastAssistant((m) => {
+                  const tool: ToolEvent = {
+                    name: event.tool,
+                    description: event.description,
+                    status: "running",
+                  };
+                  return {
+                    ...m,
+                    parts: [...(m.parts ?? []), { type: "tool", tool }],
+                    toolEvents: [...(m.toolEvents ?? []), tool],
+                  };
+                });
                 break;
               case "tool_end":
                 updateLastAssistant((m) => {
-                  const events = m.toolEvents ?? [];
-                  // Mark the latest running event with this tool name as done.
-                  for (let i = events.length - 1; i >= 0; i--) {
-                    if (events[i].name === event.tool && events[i].status === "running") {
-                      const next = [...events];
-                      next[i] = { ...next[i], status: "done" };
-                      return { ...m, toolEvents: next };
+                  const parts = [...(m.parts ?? [])];
+                  for (let i = parts.length - 1; i >= 0; i--) {
+                    const p = parts[i];
+                    if (
+                      p.type === "tool" &&
+                      p.tool.name === event.tool &&
+                      p.tool.status === "running"
+                    ) {
+                      parts[i] = {
+                        type: "tool",
+                        tool: { ...p.tool, status: "done" },
+                      };
+                      break;
                     }
                   }
-                  return m;
+                  const events = (m.toolEvents ?? []).map((t, _, arr) => t);
+                  for (let i = events.length - 1; i >= 0; i--) {
+                    if (events[i].name === event.tool && events[i].status === "running") {
+                      events[i] = { ...events[i], status: "done" };
+                      break;
+                    }
+                  }
+                  return { ...m, parts, toolEvents: events };
                 });
                 break;
               case "confirmation_required":
@@ -161,10 +213,23 @@ export function useAgentChat(): UseAgentChatReturn {
               case "done":
                 setConversationId(event.conversationId);
                 break;
-              case "error":
-                assistantText += `\n\n*Error: ${event.message}*`;
-                updateLastAssistant((m) => ({ ...m, content: assistantText }));
+              case "error": {
+                const errorText = `\n\n*Error: ${event.message}*`;
+                updateLastAssistant((m) => {
+                  const parts = [...(m.parts ?? [])];
+                  const last = parts[parts.length - 1];
+                  if (last?.type === "text") {
+                    parts[parts.length - 1] = {
+                      type: "text",
+                      text: last.text + errorText,
+                    };
+                  } else {
+                    parts.push({ type: "text", text: errorText });
+                  }
+                  return { ...m, parts, content: m.content + errorText };
+                });
                 break;
+              }
             }
           },
         );

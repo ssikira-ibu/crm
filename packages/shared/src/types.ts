@@ -404,9 +404,23 @@ export type AgentMessage = {
   createdAt: string;
 };
 
+export type AgentThinkingBlock = { thinking: string; signature: string };
+export type AgentRedactedThinkingBlock = { data: string };
+
 export type AgentProviderMessage =
   | { role: "user"; content: string }
-  | { role: "assistant"; content: string; toolCalls?: AgentToolCall[] }
+  | {
+      role: "assistant";
+      content: string;
+      toolCalls?: AgentToolCall[];
+      /**
+       * Thinking blocks from this turn. Anthropic requires these to be sent
+       * back unchanged on subsequent turns whenever tool use is involved
+       * (the signature is verified server-side).
+       */
+      thinkingBlocks?: AgentThinkingBlock[];
+      redactedThinkingBlocks?: AgentRedactedThinkingBlock[];
+    }
   | {
       role: "tool";
       toolUseId: string;
@@ -446,6 +460,7 @@ export type AgentConversationDetail = AgentConversation & {
 
 export type AgentSSEEvent =
   | { type: "text_delta"; delta: string }
+  | { type: "thinking_delta"; delta: string }
   | { type: "tool_start"; tool: string; description: string }
   | { type: "tool_end"; tool: string }
   | { type: "confirmation_required"; action: AgentPendingAction }

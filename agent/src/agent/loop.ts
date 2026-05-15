@@ -8,7 +8,9 @@ import type {
 import type {
   AgentMessage,
   AgentProviderMessage,
+  AgentRedactedThinkingBlock,
   AgentSSEEvent,
+  AgentThinkingBlock,
   AgentToolCall,
 } from "@crm/shared";
 import type { BackendClient } from "../lib/backend-client.js";
@@ -115,6 +117,12 @@ export async function runAgentLoop(
       tools,
       stream: true,
       max_iterations: params.maxTurns,
+      // Adaptive thinking: let the model decide when to think. On Sonnet 4.6
+      // this also automatically enables interleaved thinking between tool
+      // calls. Thinking blocks must be preserved across turns when tool use
+      // is involved — see historyToApiMessages.
+      thinking: { type: "adaptive" },
+      output_config: { effort: "low" },
       // Top-level cache_control auto-places a breakpoint on the last
       // cacheable block and walks it forward as the transcript grows. With
       // the explicit markers on `system` and the last tool, this gives us
@@ -141,6 +149,11 @@ export async function runAgentLoop(
           tool: event.content_block.name,
           description: toolLabel(event.content_block.name),
         });
+      } else if (
+        event.type === "content_block_delta" &&
+        event.delta.type === "thinking_delta"
+      ) {
+        params.emit({ type: "thinking_delta", delta: event.delta.thinking });
       }
     });
 
@@ -150,6 +163,8 @@ export async function runAgentLoop(
 
     let assistantText = "";
     const toolUses: AgentToolCall[] = [];
+    const thinkingBlocks: AgentThinkingBlock[] = [];
+    const redactedThinkingBlocks: AgentRedactedThinkingBlock[] = [];
     for (const block of finalMessage.content) {
       if (block.type === "text") {
         assistantText += block.text;
@@ -159,6 +174,13 @@ export async function runAgentLoop(
           name: block.name,
           input: (block.input ?? {}) as Record<string, unknown>,
         });
+      } else if (block.type === "thinking") {
+        thinkingBlocks.push({
+          thinking: block.thinking,
+          signature: block.signature,
+        });
+      } else if (block.type === "redacted_thinking") {
+        redactedThinkingBlocks.push({ data: block.data });
       }
     }
 
@@ -166,6 +188,8 @@ export async function runAgentLoop(
       role: "assistant",
       content: assistantText,
       ...(toolUses.length ? { toolCalls: toolUses } : {}),
+      ...(thinkingBlocks.length ? { thinkingBlocks } : {}),
+      ...(redactedThinkingBlocks.length ? { redactedThinkingBlocks } : {}),
     };
     const assistantDisplayMessage: AgentMessage = {
       role: "assistant",
@@ -322,6 +346,15 @@ function historyToApiMessages(history: AgentProviderMessage[]): BetaMessageParam
       i++;
     } else if (msg.role === "assistant") {
       const content: BetaContentBlockParam[] = [];
+      // Thinking/redacted_thinking blocks must appear first in the assistant
+      // content array, and must be passed back unchanged when tool use is
+      // involved — the API verifies the signature.
+      for (const t of msg.thinkingBlocks ?? []) {
+        content.push({ type: "thinking", thinking: t.thinking, signature: t.signature });
+      }
+      for (const r of msg.redactedThinkingBlocks ?? []) {
+        content.push({ type: "redacted_thinking", data: r.data });
+      }
       if (msg.content) content.push({ type: "text", text: msg.content });
       for (const tc of msg.toolCalls ?? []) {
         content.push({ type: "tool_use", id: tc.id, name: tc.name, input: tc.input });
