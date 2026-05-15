@@ -27,6 +27,7 @@ import { useRecentCompanies } from "@/hooks/use-recent-companies";
 import { CommandPalette } from "./command-palette";
 import { CreateCustomerDialog } from "./customers/create-customer-dialog";
 import { UserMenu } from "./user-menu";
+import { ChatPanel } from "./agent/chat-panel";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
@@ -120,7 +121,10 @@ export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: 
           )}
         </SidebarContent>
         <SidebarFooter>
-          <UserMenu />
+          <div className="flex items-center gap-1 px-2">
+            <ChatPanel />
+            <UserMenu />
+          </div>
         </SidebarFooter>
         <SidebarRail />
       </Sidebar>
