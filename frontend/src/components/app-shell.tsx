@@ -3,7 +3,7 @@
 import { type ReactNode, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Building2, Home, Settings, TrendingUp, Users, Zap } from "lucide-react";
+import { Bot, Building2, Home, Settings, TrendingUp, Users, Zap } from "lucide-react";
 import { OrgContext, type OrgInfo } from "@/hooks/use-org";
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
 import { KeyboardShortcutHelp } from "./keyboard-shortcut-help";
@@ -27,10 +27,10 @@ import { useRecentCompanies } from "@/hooks/use-recent-companies";
 import { CommandPalette } from "./command-palette";
 import { CreateCustomerDialog } from "./customers/create-customer-dialog";
 import { UserMenu } from "./user-menu";
-import { ChatPanel } from "./agent/chat-panel";
 
 const NAV = [
   { href: "/home", label: "Home", icon: Home },
+  { href: "/agent", label: "Agent", icon: Bot },
   { href: "/customers", label: "Companies", icon: Users },
   { href: "/deals", label: "Deals", icon: TrendingUp },
   { href: "/timeline", label: "Timeline", icon: Zap },
@@ -121,8 +121,7 @@ export function AppShell({ children, orgInfo }: { children: ReactNode; orgInfo: 
           )}
         </SidebarContent>
         <SidebarFooter>
-          <div className="flex items-center gap-1 px-2">
-            <ChatPanel />
+          <div className="flex items-center justify-end px-2">
             <UserMenu />
           </div>
         </SidebarFooter>

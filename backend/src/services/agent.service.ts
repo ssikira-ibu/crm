@@ -7,6 +7,7 @@ import {
   updateTaskSchema,
 } from "@crm/shared";
 import type {
+  AgentActionContext,
   AgentPendingAction,
   AgentProviderMessage,
   AppendAgentConversationInput,
@@ -42,7 +43,7 @@ function toPendingAction(action: {
   status: string;
   createdAt: Date;
   expiresAt: Date;
-}): AgentPendingAction {
+}, context?: AgentActionContext): AgentPendingAction {
   return {
     id: action.id,
     conversationId: action.conversationId,
@@ -51,10 +52,114 @@ function toPendingAction(action: {
     risk: action.risk as AgentPendingAction["risk"],
     summary: action.summary,
     input: action.input as Record<string, unknown>,
+    context,
     status: action.status as AgentPendingAction["status"],
     createdAt: action.createdAt.toISOString(),
     expiresAt: action.expiresAt.toISOString(),
   };
+}
+
+function formatDate(value: Date | string | null | undefined) {
+  if (!value) return null;
+  return new Date(value).toISOString();
+}
+
+async function buildActionContext(
+  ctx: OrgContext,
+  action: { toolName: string; input: unknown },
+): Promise<AgentActionContext | undefined> {
+  const input = action.input as Record<string, unknown>;
+
+  try {
+    switch (action.toolName) {
+      case "update_task": {
+        const task = await taskService.getTask(
+          ctx,
+          input.taskId as string,
+          input.companyId as string | undefined,
+        );
+        return {
+          target: {
+            type: "task",
+            id: task.id,
+            label: task.title,
+            subtitle: task.company?.name ?? "Organization-level task",
+          },
+          related: task.company
+            ? [{ type: "company", id: task.company.id, label: task.company.name, subtitle: task.company.status }]
+            : [],
+          current: {
+            Status: task.status,
+            Priority: task.priority,
+            "Due date": formatDate(task.dueDate),
+          },
+        };
+      }
+      case "update_deal": {
+        const deal = await dealService.getDeal(
+          ctx,
+          input.companyId as string,
+          input.dealId as string,
+        );
+        const company = await companyService.getCompany(ctx, input.companyId as string);
+        return {
+          target: {
+            type: "deal",
+            id: deal.id,
+            label: deal.title,
+            subtitle: company.name,
+          },
+          related: [{ type: "company", id: company.id, label: company.name, subtitle: company.status }],
+          current: {
+            Stage: deal.stage.name,
+            Value: String(deal.value),
+            "Expected close": formatDate(deal.expectedCloseDate),
+          },
+        };
+      }
+      case "update_company": {
+        const company = await companyService.getCompany(ctx, input.companyId as string);
+        return {
+          target: {
+            type: "company",
+            id: company.id,
+            label: company.name,
+            subtitle: company.status,
+          },
+          current: {
+            Status: company.status,
+            Industry: company.industry,
+            Website: company.website,
+          },
+        };
+      }
+      case "add_tag_to_company":
+      case "remove_tag_from_company": {
+        const [company, tag] = await Promise.all([
+          companyService.getCompany(ctx, input.companyId as string),
+          prisma.tag.findFirst({
+            where: { id: input.tagId as string, organizationId: ctx.organizationId },
+            select: { id: true, name: true, color: true },
+          }),
+        ]);
+        return {
+          target: {
+            type: "company",
+            id: company.id,
+            label: company.name,
+            subtitle: company.status,
+          },
+          related: tag
+            ? [{ type: "tag", id: tag.id, label: tag.name, subtitle: tag.color }]
+            : [],
+        };
+      }
+      default:
+        return undefined;
+    }
+  } catch {
+    return undefined;
+  }
 }
 
 export async function listConversations(ctx: OrgContext) {
@@ -124,7 +229,11 @@ export async function getConversation(ctx: OrgContext, id: string) {
         createdAt: m.createdAt.toISOString(),
       })),
     providerMessages,
-    pendingActions: conversation.actions.map(toPendingAction),
+    pendingActions: await Promise.all(
+      conversation.actions.map(async (action) =>
+        toPendingAction(action, await buildActionContext(ctx, action)),
+      ),
+    ),
   };
 }
 
@@ -246,7 +355,7 @@ export async function createPendingAction(
     update: {},
   });
 
-  return toPendingAction(action);
+  return toPendingAction(action, await buildActionContext(ctx, action));
 }
 
 export async function approveAction(ctx: OrgContext, actionId: string) {
@@ -343,7 +452,13 @@ export async function approveAction(ctx: OrgContext, actionId: string) {
   ]);
 
   return {
-    action: { ...toPendingAction({ ...action, status: "EXECUTED" }), result },
+    action: {
+      ...toPendingAction(
+        { ...action, status: "EXECUTED" },
+        await buildActionContext(ctx, action),
+      ),
+      result,
+    },
     result,
   };
 }
@@ -396,7 +511,7 @@ export async function rejectAction(ctx: OrgContext, actionId: string) {
     },
   ]);
 
-  return toPendingAction(updated);
+  return toPendingAction(updated, await buildActionContext(ctx, updated));
 }
 
 // ---------------------------------------------------------------------------

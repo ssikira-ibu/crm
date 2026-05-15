@@ -432,6 +432,22 @@ export type AgentActionStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED"
 
 export type AgentActionRisk = "write" | "destructive" | "external";
 
+export type AgentActionContext = {
+  target?: {
+    type: "company" | "deal" | "task" | "tag";
+    id: string;
+    label: string;
+    subtitle?: string | null;
+  };
+  related?: {
+    type: "company" | "deal" | "task" | "tag";
+    id: string;
+    label: string;
+    subtitle?: string | null;
+  }[];
+  current?: Record<string, string | null>;
+};
+
 export type AgentPendingAction = {
   id: string;
   conversationId: string;
@@ -440,6 +456,7 @@ export type AgentPendingAction = {
   risk: AgentActionRisk;
   summary: string;
   input: Record<string, unknown>;
+  context?: AgentActionContext;
   status: AgentActionStatus;
   createdAt: string;
   expiresAt: string;

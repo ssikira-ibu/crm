@@ -34,6 +34,7 @@ interface UseAgentChatReturn {
   sendMessage: (message: string) => void;
   approveAction: (actionId: string) => void;
   rejectAction: (actionId: string) => void;
+  stopStreaming: () => void;
   clearChat: () => void;
 }
 
@@ -195,7 +196,7 @@ export function useAgentChat(): UseAgentChatReturn {
                       break;
                     }
                   }
-                  const events = (m.toolEvents ?? []).map((t, _, arr) => t);
+                  const events = [...(m.toolEvents ?? [])];
                   for (let i = events.length - 1; i >= 0; i--) {
                     if (events[i].name === event.tool && events[i].status === "running") {
                       events[i] = { ...events[i], status: "done" };
@@ -276,6 +277,13 @@ export function useAgentChat(): UseAgentChatReturn {
     setPendingActions([]);
   }, []);
 
+  const stopStreaming = useCallback(() => {
+    if (!abortRef.current) return;
+    abortRef.current.abort();
+    abortRef.current = null;
+    setIsStreaming(false);
+  }, []);
+
   const settleAction = useCallback(
     async (actionId: string, decision: "approve" | "reject") => {
       const res = await fetch(`/api/agent/actions/${actionId}/${decision}`, {
@@ -322,6 +330,7 @@ export function useAgentChat(): UseAgentChatReturn {
     sendMessage,
     approveAction,
     rejectAction,
+    stopStreaming,
     clearChat,
   };
 }
