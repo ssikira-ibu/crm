@@ -271,6 +271,11 @@ export async function approveAction(ctx: OrgContext, actionId: string) {
     },
   });
 
+  await appendProviderOnlyMessage(
+    action.conversationId,
+    `User approved agent action ${action.toolName}. Result: ${JSON.stringify(result)}`,
+  );
+
   return { action: { ...toPendingAction({ ...action, status: "EXECUTED" }), result }, result };
 }
 
@@ -295,7 +300,30 @@ export async function rejectAction(ctx: OrgContext, actionId: string) {
     data: { status: "REJECTED", rejectedAt: new Date() },
   });
 
+  await appendProviderOnlyMessage(
+    action.conversationId,
+    `User rejected agent action ${action.toolName}. The action was not executed.`,
+  );
+
   return toPendingAction(updated);
+}
+
+async function appendProviderOnlyMessage(conversationId: string, content: string) {
+  const lastMessage = await prisma.agentMessage.findFirst({
+    where: { conversationId },
+    orderBy: { sequence: "desc" },
+    select: { sequence: true },
+  });
+
+  await prisma.agentMessage.create({
+    data: {
+      conversationId,
+      role: "user",
+      displayContent: "",
+      providerPayload: { role: "user", content },
+      sequence: (lastMessage?.sequence ?? 0) + 1,
+    },
+  });
 }
 
 async function executeApprovedAction(
