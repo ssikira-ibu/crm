@@ -13,7 +13,7 @@ mock.module("./company.service.js", {
   },
 });
 
-const { listDeals, getDeal, createDeal, updateDeal, deleteDeal } =
+const { listDeals, getDeal, createDeal, updateDeal, deleteDeal, getDealDetail } =
   await import("./deal.service.ts");
 
 describe("deal.service", () => {
@@ -84,6 +84,22 @@ describe("deal.service", () => {
           return true;
         },
       );
+    });
+  });
+
+  describe("getDealDetail", () => {
+    it("restricts salesperson detail lookup to owned companies", async () => {
+      const deal = { id: "d1", title: "Big Deal", value: 5000, companyId: "comp-1", stage: {} };
+      prismaMock.deal.findFirst = mock.fn(() => Promise.resolve(deal));
+
+      await getDealDetail(makeOrgContext({ role: "SALESPERSON" }), "d1");
+
+      const call = (prismaMock.deal.findFirst as ReturnType<typeof mock.fn>).mock.calls[0];
+      assert.deepEqual(call.arguments[0].where, {
+        id: "d1",
+        organizationId: "org-1",
+        company: { ownerId: "user-1" },
+      });
     });
   });
 
