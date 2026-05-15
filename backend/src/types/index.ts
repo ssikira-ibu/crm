@@ -1,8 +1,14 @@
 import type { OrgRole } from "@crm/shared";
 
+export interface ActorInfo {
+  type: "agent";
+  conversationId?: string;
+}
+
 export interface AuthUser {
   uid: string;
   email: string;
+  actor?: ActorInfo | null;
 }
 
 export interface OrgUser extends AuthUser {
