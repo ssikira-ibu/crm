@@ -42,6 +42,14 @@ router.get("/agent/conversations/:conversationId", async (ctx) => {
   ctx.body = { data };
 });
 
+router.delete("/agent/conversations/:conversationId", async (ctx) => {
+  await agentService.deleteConversation(
+    getOrgContext(ctx.state.user),
+    ctx.params.conversationId,
+  );
+  ctx.status = 204;
+});
+
 router.post(
   "/agent/conversations/:conversationId/messages",
   validate(appendAgentConversationSchema, "body"),

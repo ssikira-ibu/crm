@@ -11,7 +11,6 @@ RUN npm install --workspace=packages/shared --workspace=agent --include-workspac
 COPY packages/shared ./packages/shared/
 RUN npm run --workspace=packages/shared build
 COPY agent ./agent/
-RUN mkdir -p /app/agent/data
 WORKDIR /app/agent
 CMD ["npx", "tsx", "watch", "src/index.ts"]
 
@@ -32,7 +31,6 @@ COPY --from=build /app/agent/node_modules ./node_modules
 COPY --from=build /app/node_modules /app/node_modules
 COPY --from=build /app/packages/shared ../packages/shared
 COPY --from=build /app/agent/package.json ./
-RUN mkdir -p /app/agent/data && chown app:app /app/agent/data
 USER app
 EXPOSE 3002
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

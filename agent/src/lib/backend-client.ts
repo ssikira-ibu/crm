@@ -1,6 +1,14 @@
 import { config } from "../config.js";
 import { createDelegatedToken } from "./auth.js";
 import { logger } from "./logger.js";
+import type {
+  AgentConversation,
+  AgentConversationDetail,
+  AgentPendingAction,
+  AppendAgentConversationInput,
+  CreateAgentActionInput,
+  Single,
+} from "@crm/shared";
 
 export interface RequestContext {
   uid: string;
@@ -81,6 +89,8 @@ export function createBackendClient(ctx: RequestContext) {
     request<T>(ctx, "DELETE", path);
 
   return {
+    context: ctx,
+
     // Dashboard
     getDashboard: () => get("/dashboard"),
 
@@ -160,6 +170,24 @@ export function createBackendClient(ctx: RequestContext) {
 
     // User
     getMe: () => get("/me"),
+
+    // Agent workflow
+    listAgentConversations: () =>
+      get<{ data: AgentConversation[] }>("/agent/conversations"),
+    createAgentConversation: (body: { id?: string; title?: string | null }) =>
+      post<Single<AgentConversation>>("/agent/conversations", body),
+    getAgentConversation: (id: string) =>
+      get<Single<AgentConversationDetail>>(`/agent/conversations/${id}`),
+    appendAgentConversation: (id: string, body: AppendAgentConversationInput) =>
+      post<void>(`/agent/conversations/${id}/messages`, body),
+    deleteAgentConversation: (id: string) =>
+      del<void>(`/agent/conversations/${id}`),
+    createAgentAction: (body: CreateAgentActionInput) =>
+      post<Single<AgentPendingAction>>("/agent/actions", body),
+    approveAgentAction: (id: string) =>
+      post<Single<{ action: AgentPendingAction; result: unknown }>>(`/agent/actions/${id}/approve`),
+    rejectAgentAction: (id: string) =>
+      post<Single<AgentPendingAction>>(`/agent/actions/${id}/reject`),
   };
 }
 

@@ -173,6 +173,19 @@ export async function appendConversation(
   ]);
 }
 
+export async function deleteConversation(ctx: OrgContext, id: string) {
+  const conversation = await prisma.agentConversation.findFirst({
+    where: agentWhere(ctx, id),
+    select: { id: true },
+  });
+
+  if (!conversation) {
+    throw new AppError(404, "CONVERSATION_NOT_FOUND", "Conversation not found");
+  }
+
+  await prisma.agentConversation.delete({ where: { id } });
+}
+
 export async function createPendingAction(
   ctx: OrgContext,
   data: CreateAgentActionInput,

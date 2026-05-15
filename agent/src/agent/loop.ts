@@ -1,7 +1,7 @@
 import type { Provider, ProviderMessage, ToolCall } from "../providers/types.js";
 import { executeTool, getAnthropicTools, getOpenAITools } from "../tools/registry.js";
 import type { BackendClient } from "../lib/backend-client.js";
-import type { AgentSSEEvent, AgentMessage } from "@crm/shared";
+import type { AgentSSEEvent, AgentMessage, AgentProviderMessage } from "@crm/shared";
 import { logger } from "../lib/logger.js";
 
 const TOOL_DESCRIPTIONS: Record<string, string> = {
@@ -31,7 +31,7 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
 
 export interface AgentLoopParams {
   userMessage: string;
-  history: AgentMessage[];
+  history: AgentProviderMessage[];
   systemPrompt: string;
   provider: Provider;
   providerType: "anthropic" | "openai";
@@ -44,6 +44,7 @@ export interface AgentLoopParams {
 
 export interface AgentLoopResult {
   messages: AgentMessage[];
+  providerMessages: AgentProviderMessage[];
   inputTokens: number;
   outputTokens: number;
 }
@@ -59,6 +60,9 @@ export async function runAgentLoop(
 
   const newMessages: AgentMessage[] = [
     { role: "user", content: params.userMessage, createdAt: new Date().toISOString() },
+  ];
+  const newProviderMessages: AgentProviderMessage[] = [
+    { role: "user", content: params.userMessage },
   ];
 
   let totalInputTokens = 0;
@@ -104,6 +108,7 @@ export async function runAgentLoop(
         content: result.text,
         createdAt: new Date().toISOString(),
       });
+      newProviderMessages.push({ role: "assistant", content: result.text });
       providerMessages.push({ role: "assistant", content: result.text });
       break;
     }
@@ -119,6 +124,15 @@ export async function runAgentLoop(
       createdAt: new Date().toISOString(),
     };
     newMessages.push(assistantMsg);
+    newProviderMessages.push({
+      role: "assistant",
+      content: result.text,
+      toolCalls: result.toolCalls.map((tc) => ({
+        id: tc.id,
+        name: tc.name,
+        input: tc.input,
+      })),
+    });
 
     providerMessages.push({
       role: "assistant",
@@ -141,13 +155,28 @@ export async function runAgentLoop(
         break;
       }
 
-      const toolResult = await executeTool(toolCall.name, toolCall.input, params.backendClient);
+      const toolResult = await executeTool(
+        toolCall.name,
+        toolCall.input,
+        params.backendClient,
+        toolCall.id,
+      );
       emit({ type: "tool_end", tool: toolCall.name });
+
+      if (toolResult.requiresConfirmation && toolResult.action) {
+        emit({ type: "confirmation_required", action: toolResult.action });
+      }
 
       toolResults.push({
         toolUseId: toolCall.id,
         content: JSON.stringify(toolResult),
-        isError: !toolResult.success,
+        isError: !toolResult.success && !toolResult.requiresConfirmation,
+      });
+      newProviderMessages.push({
+        role: "tool",
+        toolUseId: toolCall.id,
+        content: JSON.stringify(toolResult),
+        isError: !toolResult.success && !toolResult.requiresConfirmation,
       });
     }
 
@@ -162,17 +191,28 @@ export async function runAgentLoop(
 
   return {
     messages: newMessages,
+    providerMessages: newProviderMessages,
     inputTokens: totalInputTokens,
     outputTokens: totalOutputTokens,
   };
 }
 
-function historyToProviderMessages(history: AgentMessage[]): ProviderMessage[] {
+function historyToProviderMessages(history: AgentProviderMessage[]): ProviderMessage[] {
   const messages: ProviderMessage[] = [];
 
   for (const msg of history) {
     if (msg.role === "user") {
       messages.push({ role: "user", content: msg.content });
+    } else if (msg.role === "tool") {
+      messages.push({
+        role: "user",
+        content: "",
+        toolResults: [{
+          toolUseId: msg.toolUseId,
+          content: msg.content,
+          isError: msg.isError,
+        }],
+      });
     } else if (msg.role === "assistant") {
       if (msg.toolCalls?.length) {
         messages.push({

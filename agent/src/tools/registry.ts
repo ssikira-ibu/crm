@@ -4,11 +4,14 @@ import { toolDefinitions, type ToolDefinition } from "./definitions.js";
 import type { BackendClient } from "../lib/backend-client.js";
 import { BackendError } from "../lib/backend-client.js";
 import { logger } from "../lib/logger.js";
+import type { AgentPendingAction } from "@crm/shared";
 
 export interface ToolResult {
   success: boolean;
   data?: unknown;
   error?: string;
+  requiresConfirmation?: boolean;
+  action?: AgentPendingAction;
 }
 
 const MAX_RESULT_LENGTH = 8000;
@@ -36,6 +39,31 @@ function truncateResult(data: unknown): unknown {
 const toolMap = new Map<string, ToolDefinition>(
   toolDefinitions.map((t) => [t.name, t]),
 );
+
+const CONFIRMATION_REQUIRED_TOOLS = new Set([
+  "update_deal",
+  "update_task",
+  "update_company",
+  "add_tag_to_company",
+  "remove_tag_from_company",
+]);
+
+function summarizeAction(name: string, params: Record<string, unknown>): string {
+  switch (name) {
+    case "update_deal":
+      return `Update deal ${String(params.dealId)}`;
+    case "update_task":
+      return `Update task ${String(params.taskId)}`;
+    case "update_company":
+      return `Update company ${String(params.companyId)}`;
+    case "add_tag_to_company":
+      return `Add tag ${String(params.tagId)} to company ${String(params.companyId)}`;
+    case "remove_tag_from_company":
+      return `Remove tag ${String(params.tagId)} from company ${String(params.companyId)}`;
+    default:
+      return `Run ${name}`;
+  }
+}
 
 export function getAnthropicTools(): Anthropic.Messages.Tool[] {
   return toolDefinitions.map((t) => ({
@@ -67,6 +95,7 @@ export async function executeTool(
   name: string,
   params: Record<string, unknown>,
   client: BackendClient,
+  toolCallId?: string,
 ): Promise<ToolResult> {
   const tool = toolMap.get(name);
   if (!tool) {
@@ -74,6 +103,33 @@ export async function executeTool(
   }
 
   try {
+    if (CONFIRMATION_REQUIRED_TOOLS.has(name)) {
+      if (!toolCallId) {
+        return { success: false, error: "Tool call id is required for confirmation-gated actions" };
+      }
+      const conversationId = client.context.conversationId;
+      if (!conversationId) {
+        return { success: false, error: "Conversation id is required for confirmation-gated actions" };
+      }
+
+      const action = await client.createAgentAction({
+        conversationId,
+        toolCallId,
+        toolName: name,
+        risk: "destructive",
+        summary: summarizeAction(name, params),
+        input: params,
+        expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
+      });
+
+      return {
+        success: false,
+        requiresConfirmation: true,
+        action: action.data,
+        error: "This action requires explicit user confirmation before it can run.",
+      };
+    }
+
     const result = await tool.execute(params, client);
     return { success: true, data: truncateResult(result) };
   } catch (err) {

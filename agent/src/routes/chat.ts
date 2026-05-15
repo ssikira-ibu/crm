@@ -1,10 +1,8 @@
 import Router from "@koa/router";
 import { randomUUID } from "node:crypto";
 import { PassThrough } from "node:stream";
-import { agentChatMessageSchema, type AgentSSEEvent } from "@crm/shared";
+import { agentChatMessageSchema, type AgentProviderMessage, type AgentSSEEvent } from "@crm/shared";
 import { config } from "../config.js";
-import { db } from "../db/client.js";
-import type { ConversationRecord } from "../db/schema.js";
 import { createBackendClient } from "../lib/backend-client.js";
 import { buildAgentContext } from "../agent/context.js";
 import { buildSystemPrompt } from "../agent/system-prompt.js";
@@ -22,7 +20,7 @@ function getProvider(): { provider: Provider; providerType: "anthropic" | "opena
     }
     return { provider: new OpenAIProvider(config.OPENAI_API_KEY), providerType: "openai" };
   }
-  return { provider: new AnthropicProvider(config.ANTHROPIC_API_KEY), providerType: "anthropic" };
+  return { provider: new AnthropicProvider(config.ANTHROPIC_API_KEY!), providerType: "anthropic" };
 }
 
 function sendSSE(stream: PassThrough, event: AgentSSEEvent): void {
@@ -51,30 +49,27 @@ chatRouter.post("/chat", async (ctx) => {
     throw new AppError(500, "CONTEXT_ERROR", "Failed to initialize agent context");
   }
 
-  let conversation: ConversationRecord;
+  let conversationId: string;
+  let history: AgentProviderMessage[] = [];
   if (existingConversationId) {
-    const existing = db.getConversation(existingConversationId);
-    if (!existing || existing.userId !== uid) {
+    const existing = await backendClient.getAgentConversation(existingConversationId);
+    if (!existing.data) {
       throw new AppError(404, "NOT_FOUND", "Conversation not found");
     }
-    conversation = existing;
+    conversationId = existing.data.id;
+    history = existing.data.providerMessages;
   } else {
-    conversation = {
-      id: randomUUID(),
-      userId: uid,
-      organizationId: agentContext.organizationId,
-      title: null,
-      messages: [],
-      tokenUsage: 0,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+    conversationId = randomUUID();
+    await backendClient.createAgentConversation({
+      id: conversationId,
+      title: message.slice(0, 100),
+    });
   }
 
   const conversationClient = createBackendClient({
     uid,
     email,
-    conversationId: conversation.id,
+    conversationId,
   });
 
   const systemPrompt = buildSystemPrompt(agentContext);
@@ -95,7 +90,7 @@ chatRouter.post("/chat", async (ctx) => {
       const result = await runAgentLoop(
         {
           userMessage: message,
-          history: conversation.messages,
+          history,
           systemPrompt,
           provider,
           providerType,
@@ -108,20 +103,23 @@ chatRouter.post("/chat", async (ctx) => {
         (event) => sendSSE(stream, event),
       );
 
-      conversation.messages = [...conversation.messages, ...result.messages];
-      conversation.tokenUsage += result.inputTokens + result.outputTokens;
-      conversation.updatedAt = new Date().toISOString();
+      await conversationClient.appendAgentConversation(conversationId, {
+        messages: result.messages,
+        providerMessages: result.providerMessages,
+        inputTokens: result.inputTokens,
+        outputTokens: result.outputTokens,
+      });
 
-      if (!conversation.title && result.messages.length > 0) {
-        conversation.title = message.slice(0, 100);
-      }
-
-      db.upsertConversation(conversation);
-
-      sendSSE(stream, { type: "done", conversationId: conversation.id });
+      sendSSE(stream, {
+        type: "done",
+        conversationId,
+        messages: result.messages,
+        providerMessages: result.providerMessages,
+        tokenUsage: { input: result.inputTokens, output: result.outputTokens },
+      });
     } catch (err) {
       if (abortController.signal.aborted) return;
-      logger.error({ err, conversationId: conversation.id }, "Agent loop error");
+      logger.error({ err, conversationId }, "Agent loop error");
       sendSSE(stream, { type: "error", message: "An error occurred while processing your request." });
     } finally {
       stream.end();
@@ -130,55 +128,20 @@ chatRouter.post("/chat", async (ctx) => {
 });
 
 conversationRouter.get("/conversations", async (ctx) => {
-  const { uid } = ctx.state.user;
-
-  const backendClient = createBackendClient({ uid, email: ctx.state.user.email });
-  let orgId: string;
-  try {
-    const agentCtx = await buildAgentContext(uid, ctx.state.user.email, backendClient);
-    orgId = agentCtx.organizationId;
-  } catch {
-    throw new AppError(500, "CONTEXT_ERROR", "Failed to resolve organization");
-  }
-
-  const conversations = db.listConversations(uid, orgId);
-  ctx.body = {
-    data: conversations.map((c) => ({
-      id: c.id,
-      title: c.title,
-      createdAt: c.createdAt,
-      updatedAt: c.updatedAt,
-    })),
-  };
+  const { uid, email } = ctx.state.user;
+  const backendClient = createBackendClient({ uid, email });
+  ctx.body = await backendClient.listAgentConversations();
 });
 
 conversationRouter.get("/conversations/:id", async (ctx) => {
-  const { uid } = ctx.state.user;
-  const conversation = db.getConversation(ctx.params.id);
-
-  if (!conversation || conversation.userId !== uid) {
-    throw new AppError(404, "NOT_FOUND", "Conversation not found");
-  }
-
-  ctx.body = {
-    data: {
-      id: conversation.id,
-      title: conversation.title,
-      messages: conversation.messages,
-      createdAt: conversation.createdAt,
-      updatedAt: conversation.updatedAt,
-    },
-  };
+  const { uid, email } = ctx.state.user;
+  const backendClient = createBackendClient({ uid, email });
+  ctx.body = await backendClient.getAgentConversation(ctx.params.id);
 });
 
 conversationRouter.delete("/conversations/:id", async (ctx) => {
-  const { uid } = ctx.state.user;
-  const conversation = db.getConversation(ctx.params.id);
-
-  if (!conversation || conversation.userId !== uid) {
-    throw new AppError(404, "NOT_FOUND", "Conversation not found");
-  }
-
-  db.deleteConversation(ctx.params.id);
+  const { uid, email } = ctx.state.user;
+  const backendClient = createBackendClient({ uid, email });
+  await backendClient.deleteAgentConversation(ctx.params.id);
   ctx.status = 204;
 });

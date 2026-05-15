@@ -8,11 +8,15 @@ export async function createDelegatedToken(
   email: string,
   conversationId?: string,
 ): Promise<string> {
-  return new SignJWT({
+  const payload: Record<string, unknown> = {
     uid,
     email,
-    actor: { type: "agent" as const, conversationId },
-  })
+  };
+  if (conversationId) {
+    payload.actor = { type: "agent", conversationId };
+  }
+
+  return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("60s")
