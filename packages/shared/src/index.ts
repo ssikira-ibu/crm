@@ -15,3 +15,4 @@ export * from "./schemas/search.js";
 export * from "./schemas/organization.js";
 export * from "./schemas/pipeline.js";
 export * from "./schemas/customField.js";
+export * from "./schemas/agent.js";

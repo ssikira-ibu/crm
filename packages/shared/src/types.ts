@@ -382,6 +382,41 @@ export type ApiErrorBody = {
   error: { code: string; message: string; details?: unknown };
 };
 
+// ---------------------------------------------------------------------------
+// Agent
+// ---------------------------------------------------------------------------
+
+export type AgentToolCall = {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+};
+
+export type AgentMessage = {
+  role: "user" | "assistant";
+  content: string;
+  toolCalls?: AgentToolCall[];
+  createdAt: string;
+};
+
+export type AgentConversation = {
+  id: string;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AgentConversationDetail = AgentConversation & {
+  messages: AgentMessage[];
+};
+
+export type AgentSSEEvent =
+  | { type: "text_delta"; delta: string }
+  | { type: "tool_start"; tool: string; description: string }
+  | { type: "tool_end"; tool: string }
+  | { type: "error"; message: string }
+  | { type: "done"; conversationId: string };
+
 export type SearchResultItem = {
   id: string;
   type: "company" | "contact" | "deal" | "note" | "activity" | "task";
