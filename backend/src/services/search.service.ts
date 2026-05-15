@@ -31,6 +31,7 @@ export async function search(
         ) AS similarity
       FROM companies c
       WHERE c.organization_id = ${ctx.organizationId}::uuid
+        AND c.deleted_at IS NULL
         ${ownerFilter}
         AND (c.name % ${q} OR c.industry % ${q})
 
@@ -52,6 +53,8 @@ export async function search(
       FROM contacts ct
       JOIN companies comp ON comp.id = ct.company_id
       WHERE comp.organization_id = ${ctx.organizationId}::uuid
+        AND comp.deleted_at IS NULL
+        AND ct.deleted_at IS NULL
         ${compOwnerFilter}
         AND (
           ct.first_name % ${q}
@@ -73,6 +76,8 @@ export async function search(
       FROM deals d
       JOIN companies comp ON comp.id = d.company_id
       WHERE comp.organization_id = ${ctx.organizationId}::uuid
+        AND comp.deleted_at IS NULL
+        AND d.deleted_at IS NULL
         ${compOwnerFilter}
         AND d.title % ${q}
 
@@ -92,6 +97,8 @@ export async function search(
       FROM notes n
       JOIN companies comp ON comp.id = n.company_id
       WHERE comp.organization_id = ${ctx.organizationId}::uuid
+        AND comp.deleted_at IS NULL
+        AND n.deleted_at IS NULL
         ${compOwnerFilter}
         AND (n.title % ${q} OR n.body % ${q})
 
@@ -108,6 +115,8 @@ export async function search(
       FROM activities a
       JOIN companies comp ON comp.id = a.company_id
       WHERE comp.organization_id = ${ctx.organizationId}::uuid
+        AND comp.deleted_at IS NULL
+        AND a.deleted_at IS NULL
         ${compOwnerFilter}
         AND a.title % ${q}
 
@@ -124,9 +133,10 @@ export async function search(
       FROM tasks t
       LEFT JOIN companies comp ON comp.id = t.company_id
       WHERE t.organization_id = ${ctx.organizationId}::uuid
+        AND t.deleted_at IS NULL
         AND (
           comp.id IS NULL
-          OR (1=1 ${compOwnerFilter})
+          OR (comp.deleted_at IS NULL ${compOwnerFilter})
         )
         AND t.title % ${q}
     ) AS combined

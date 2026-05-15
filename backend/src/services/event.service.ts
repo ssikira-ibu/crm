@@ -54,8 +54,8 @@ export async function listGlobalEvents(
     where: {
       organizationId: ctx.organizationId,
       ...(ctx.role === "SALESPERSON"
-        ? { company: { ownerId: ctx.userId } }
-        : {}),
+        ? { company: { ownerId: ctx.userId, deletedAt: null } }
+        : { OR: [{ companyId: null }, { company: { deletedAt: null } }] }),
       ...(cursor ? { sequence: { lt: Number(cursor) } } : {}),
     },
     include: {
@@ -76,6 +76,7 @@ export async function listCompanyEvents(
     where: {
       companyId,
       organizationId: ctx.organizationId,
+      company: { deletedAt: null },
       ...(cursor ? { sequence: { lt: Number(cursor) } } : {}),
     },
     include: {

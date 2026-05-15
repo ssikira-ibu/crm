@@ -22,12 +22,20 @@ export async function getDashboard(ctx: OrgContext) {
         where: {
           organizationId: ctx.organizationId,
           status: { not: "DONE" },
+          OR: [
+            { companyId: { in: ids } },
+            { companyId: null },
+          ],
           ...(ctx.role === "SALESPERSON"
             ? {
-                OR: [
-                  { companyId: { in: ids } },
-                  { companyId: null, assigneeId: ctx.userId },
-                  { companyId: null, createdById: ctx.userId },
+                AND: [
+                  {
+                    OR: [
+                      { companyId: { in: ids } },
+                      { companyId: null, assigneeId: ctx.userId },
+                      { companyId: null, createdById: ctx.userId },
+                    ],
+                  },
                 ],
               }
             : {}),
