@@ -29,7 +29,7 @@ export async function listDeals(
     where.stageId = stageId;
   }
 
-  const [data, total] = await Promise.all([
+  const [data, total] = await prisma.$transaction([
     prisma.deal.findMany({
       where,
       skip: (page - 1) * limit,

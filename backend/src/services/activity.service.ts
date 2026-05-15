@@ -37,7 +37,7 @@ export async function listActivities(
     where.type = type;
   }
 
-  const [data, total] = await Promise.all([
+  const [data, total] = await prisma.$transaction([
     prisma.activity.findMany({
       where,
       skip: (page - 1) * limit,

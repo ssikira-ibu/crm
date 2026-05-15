@@ -75,7 +75,7 @@ export async function listTasks(
     where.dueDate = { lte: dueBefore };
   }
 
-  const [data, total] = await Promise.all([
+  const [data, total] = await prisma.$transaction([
     prisma.task.findMany({
       where,
       skip: (page - 1) * limit,
