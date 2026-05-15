@@ -43,6 +43,15 @@ describe("contact.service", () => {
       const call = (prismaMock.contact.findMany as ReturnType<typeof mock.fn>).mock.calls[0];
       assert.equal(call.arguments[0].where.companyId, "comp-1");
     });
+
+    it("filters soft-deleted nested phone numbers", async () => {
+      prismaMock.contact.findMany = mock.fn(() => Promise.resolve([]));
+
+      await listContacts(makeOrgContext(), "comp-1");
+
+      const call = (prismaMock.contact.findMany as ReturnType<typeof mock.fn>).mock.calls[0];
+      assert.deepEqual(call.arguments[0].include.phoneNumbers.where, { deletedAt: null });
+    });
   });
 
   describe("getContact", () => {

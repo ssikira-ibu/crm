@@ -98,8 +98,22 @@ describe("deal.service", () => {
       assert.deepEqual(call.arguments[0].where, {
         id: "d1",
         organizationId: "org-1",
-        company: { ownerId: "user-1" },
+        company: { ownerId: "user-1", deletedAt: null },
       });
+    });
+
+    it("filters soft-deleted nested deal detail records", async () => {
+      const deal = { id: "d1", title: "Big Deal", value: 5000, companyId: "comp-1", stage: {} };
+      prismaMock.deal.findFirst = mock.fn(() => Promise.resolve(deal));
+
+      await getDealDetail(makeOrgContext(), "d1");
+
+      const call = (prismaMock.deal.findFirst as ReturnType<typeof mock.fn>).mock.calls[0];
+      const include = call.arguments[0].include;
+      assert.deepEqual(include.pipeline.include.stages.where, { deletedAt: null });
+      assert.deepEqual(include.activities.where, { deletedAt: null });
+      assert.deepEqual(include.notes.where, { deletedAt: null });
+      assert.deepEqual(include.tasks.where, { deletedAt: null });
     });
   });
 

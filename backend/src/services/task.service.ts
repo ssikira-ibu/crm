@@ -6,13 +6,18 @@ import { recordEvent } from "./event.service.js";
 import type { OrgContext, TaskQueryParams, CreateTaskInput, UpdateTaskInput } from "@crm/shared";
 
 function taskWhere(ctx: OrgContext): Prisma.TaskWhereInput {
-  const where: Prisma.TaskWhereInput = { organizationId: ctx.organizationId };
+  const where: Prisma.TaskWhereInput = {
+    organizationId: ctx.organizationId,
+    OR: [{ companyId: null }, { company: { deletedAt: null } }],
+  };
   if (ctx.role === "SALESPERSON") {
-    where.OR = [
-      { company: { ownerId: ctx.userId } },
-      { companyId: null, assigneeId: ctx.userId },
-      { companyId: null, createdById: ctx.userId },
-    ];
+    where.AND = [{
+      OR: [
+        { company: { ownerId: ctx.userId, deletedAt: null } },
+        { companyId: null, assigneeId: ctx.userId },
+        { companyId: null, createdById: ctx.userId },
+      ],
+    }];
   }
   return where;
 }
@@ -31,7 +36,7 @@ async function ensureDealAccess(
     where.companyId = companyId;
   }
   if (ctx.role === "SALESPERSON") {
-    where.company = { ownerId: ctx.userId };
+    where.company = { ownerId: ctx.userId, deletedAt: null };
   }
 
   const deal = await prisma.deal.findFirst({ where, select: { id: true } });

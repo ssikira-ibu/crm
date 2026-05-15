@@ -118,6 +118,7 @@ model Company {
   status         CompanyStatus @default(LEAD)
   createdAt      DateTime      @default(now()) @map("created_at")
   updatedAt      DateTime      @updatedAt @map("updated_at")
+  deletedAt      DateTime?     @map("deleted_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   owner        User         @relation("companyOwner", fields: [ownerId], references: [id])
@@ -132,6 +133,7 @@ model Company {
   events     Event[]
 
   @@index([organizationId])
+  @@index([organizationId, deletedAt])
   @@index([ownerId])
   @@map("companies")
 }
@@ -147,6 +149,7 @@ model Contact {
   isPrimary Boolean  @default(false) @map("is_primary")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   owner        User?         @relation("contactOwner", fields: [ownerId], references: [id])
@@ -157,6 +160,7 @@ model Contact {
   tasks        Task[]
 
   @@index([companyId])
+  @@index([companyId, deletedAt])
   @@map("contacts")
 }
 
@@ -172,10 +176,12 @@ model Address {
   country   String       @default("US")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
+  deletedAt DateTime?    @map("deleted_at")
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
+  @@index([companyId, deletedAt])
   @@map("addresses")
 }
 
@@ -195,10 +201,12 @@ model PhoneNumber {
   isPrimary Boolean    @default(false) @map("is_primary")
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
+  deletedAt DateTime?  @map("deleted_at")
 
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
 
   @@index([contactId])
+  @@index([contactId, deletedAt])
   @@map("phone_numbers")
 }
 
@@ -222,12 +230,14 @@ model Pipeline {
   position       Int      @default(0)
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   stages       PipelineStage[]
   deals        Deal[]
 
   @@index([organizationId])
+  @@index([organizationId, deletedAt])
   @@map("pipelines")
 }
 
@@ -241,11 +251,13 @@ model PipelineStage {
   isLost      Boolean  @default(false) @map("is_lost")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
 
   pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
   deals    Deal[]
 
   @@index([pipelineId])
+  @@index([pipelineId, deletedAt])
   @@map("pipeline_stages")
 }
 
@@ -264,6 +276,7 @@ model Deal {
   closedAt          DateTime? @map("closed_at")
   createdAt         DateTime  @default(now()) @map("created_at")
   updatedAt         DateTime  @updatedAt @map("updated_at")
+  deletedAt         DateTime? @map("deleted_at")
 
   organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -276,7 +289,9 @@ model Deal {
   tasks        Task[]
 
   @@index([organizationId])
+  @@index([organizationId, deletedAt])
   @@index([companyId])
+  @@index([companyId, deletedAt])
   @@index([contactId])
   @@index([stageId])
   @@map("deals")
@@ -304,12 +319,14 @@ model Activity {
   date        DateTime
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
+  deletedAt   DateTime?    @map("deleted_at")
 
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
+  @@index([companyId, deletedAt])
   @@index([contactId])
   @@index([dealId])
   @@index([date])
@@ -325,12 +342,14 @@ model Note {
   body      String   @db.Text
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
 
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
+  @@index([companyId, deletedAt])
   @@index([contactId])
   @@index([dealId])
   @@map("notes")
@@ -365,6 +384,7 @@ model Task {
   completedAt    DateTime?    @map("completed_at")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
+  deletedAt      DateTime?    @map("deleted_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   company      Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -374,8 +394,10 @@ model Task {
   createdBy    User         @relation("taskCreator", fields: [createdById], references: [id])
 
   @@index([organizationId])
+  @@index([organizationId, deletedAt])
   @@index([assigneeId])
   @@index([companyId])
+  @@index([companyId, deletedAt])
   @@index([dealId])
   @@index([dueDate])
   @@map("tasks")
@@ -392,12 +414,13 @@ model Tag {
   color          String?
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   companies    CompanyTag[]
 
-  @@unique([organizationId, name])
   @@index([organizationId])
+  @@index([organizationId, deletedAt])
   @@map("tags")
 }
 
@@ -469,12 +492,13 @@ model CustomFieldDefinition {
   position       Int               @default(0)
   createdAt      DateTime          @default(now()) @map("created_at")
   updatedAt      DateTime          @updatedAt @map("updated_at")
+  deletedAt      DateTime?         @map("deleted_at")
 
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   values       CustomFieldValue[]
 
-  @@unique([organizationId, entityType, fieldKey])
   @@index([organizationId, entityType])
+  @@index([organizationId, entityType, deletedAt])
   @@map("custom_field_definitions")
 }
 
@@ -485,10 +509,11 @@ model CustomFieldValue {
   value        String
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+  deletedAt    DateTime? @map("deleted_at")
 
   definition CustomFieldDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
 
-  @@unique([definitionId, entityId])
   @@index([entityId])
+  @@index([entityId, deletedAt])
   @@map("custom_field_values")
 }
