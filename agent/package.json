@@ -9,8 +9,8 @@
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
     "@crm/shared": "*",
-    "@anthropic-ai/sdk": "^0.52.0",
     "@koa/cors": "^5.0.0",
     "@koa/router": "^15.0.0",
     "jose": "^6.2.2",

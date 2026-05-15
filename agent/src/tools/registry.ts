@@ -1,45 +1,36 @@
-import type Anthropic from "@anthropic-ai/sdk";
+import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.js";
 import { z } from "zod";
-import { toolDefinitions, type ToolDefinition } from "./definitions.js";
+import { toolDefinitions } from "./definitions.js";
 import type { BackendClient } from "../lib/backend-client.js";
 import { BackendError } from "../lib/backend-client.js";
 import { logger } from "../lib/logger.js";
 import type { AgentPendingAction } from "@crm/shared";
 
-export interface ToolExecutionResult {
-  success: boolean;
-  data?: unknown;
-  error?: string;
-}
-
-export interface ToolPendingResult {
-  pending: true;
-  action: AgentPendingAction;
-}
-
-export type ToolResult = ToolExecutionResult | ToolPendingResult;
-
 const MAX_RESULT_LENGTH = 8000;
 
-function truncate(data: unknown): unknown {
-  const json = JSON.stringify(data);
-  if (json.length <= MAX_RESULT_LENGTH) return data;
+function truncate(data: unknown): string {
+  let json = JSON.stringify(data);
+  if (json.length <= MAX_RESULT_LENGTH) return json;
 
   if (Array.isArray(data)) {
-    return { items: data.slice(0, 5), truncated: true, totalAvailable: data.length };
+    return JSON.stringify({
+      items: data.slice(0, 5),
+      truncated: true,
+      totalAvailable: data.length,
+    });
   }
   if (typeof data === "object" && data !== null && "data" in data) {
     const inner = (data as Record<string, unknown>).data;
     if (Array.isArray(inner)) {
-      return { ...(data as Record<string, unknown>), data: inner.slice(0, 5), truncated: true };
+      return JSON.stringify({
+        ...(data as Record<string, unknown>),
+        data: inner.slice(0, 5),
+        truncated: true,
+      });
     }
   }
-  return JSON.parse(json.slice(0, MAX_RESULT_LENGTH));
+  return json.slice(0, MAX_RESULT_LENGTH);
 }
-
-const toolMap = new Map<string, ToolDefinition>(
-  toolDefinitions.map((t) => [t.name, t]),
-);
 
 const GATED_TOOLS = new Set([
   "update_deal",
@@ -51,10 +42,6 @@ const GATED_TOOLS = new Set([
 
 export function isGatedTool(name: string): boolean {
   return GATED_TOOLS.has(name);
-}
-
-export function getToolDefinition(name: string): ToolDefinition | undefined {
-  return toolMap.get(name);
 }
 
 function summarizeAction(name: string, params: Record<string, unknown>): string {
@@ -72,37 +59,6 @@ function summarizeAction(name: string, params: Record<string, unknown>): string 
     default:
       return `Run ${name}`;
   }
-}
-
-// Build the Anthropic tool list once. The final tool carries a cache_control marker
-// so Anthropic caches both the tool definitions and the system prompt (which is
-// applied separately).
-let cachedAnthropicTools: Anthropic.Messages.Tool[] | null = null;
-
-export function getAnthropicTools(): Anthropic.Messages.Tool[] {
-  if (cachedAnthropicTools) return cachedAnthropicTools;
-  const tools = toolDefinitions.map((t) => {
-    // Zod 4 ships a built-in JSON Schema converter; the legacy
-    // `zod-to-json-schema` package returns `{}` for Zod 4 schemas, which
-    // Anthropic rejects with `input_schema.type: Field required`.
-    const schema = z.toJSONSchema(t.parameters, { target: "draft-7" }) as Record<string, unknown>;
-    // Anthropic doesn't want `$schema` in the tool definition.
-    delete schema.$schema;
-    return {
-      name: t.name,
-      description: t.description,
-      input_schema: schema as Anthropic.Messages.Tool.InputSchema,
-    };
-  });
-  // Mark the last tool for prompt caching — the cache breakpoint covers all
-  // preceding tool definitions plus the system prompt above it.
-  if (tools.length > 0) {
-    (tools[tools.length - 1] as Anthropic.Messages.Tool & {
-      cache_control?: { type: "ephemeral" };
-    }).cache_control = { type: "ephemeral" };
-  }
-  cachedAnthropicTools = tools;
-  return tools;
 }
 
 export async function createPendingAction(
@@ -127,30 +83,60 @@ export async function createPendingAction(
   return response.data;
 }
 
-export async function executeReadOrCreateTool(
-  name: string,
-  params: Record<string, unknown>,
-  client: BackendClient,
-): Promise<ToolExecutionResult> {
-  const tool = toolMap.get(name);
-  if (!tool) {
-    return { success: false, error: `Unknown tool: ${name}` };
-  }
-  if (isGatedTool(name)) {
+/**
+ * Build the tool list the SDK's `toolRunner` consumes. Each tool carries:
+ *  - `input_schema` derived from its Zod schema (sent to Anthropic),
+ *  - `parse` so the runner validates LLM-produced args against Zod,
+ *  - `run` to execute the tool against our backend.
+ *
+ * Gated tools (destructive mutations) ship with a `run` that throws. The
+ * agent loop short-circuits before tools run when a gated tool_use is
+ * detected, so `run` is unreachable in normal flow; if the loop's gating
+ * logic ever regressed, this throw would surface that bug loudly rather
+ * than silently executing the destructive action.
+ */
+export function buildRunnableTools(backendClient: BackendClient): BetaRunnableTool[] {
+  const tools = toolDefinitions.map((t, i): BetaRunnableTool => {
+    const schema = z.toJSONSchema(t.parameters, { target: "draft-7" }) as Record<string, unknown>;
+    delete schema.$schema;
+    // Cache the system prompt + tool definitions; the marker on the last
+    // tool covers everything above it.
+    const cache_control =
+      i === toolDefinitions.length - 1
+        ? ({ type: "ephemeral" as const })
+        : undefined;
+
     return {
-      success: false,
-      error: "Internal error: gated tools must go through createPendingAction",
+      type: "custom",
+      name: t.name,
+      description: t.description,
+      input_schema: schema as never,
+      ...(cache_control ? { cache_control } : {}),
+      parse: (raw: unknown) => t.parameters.parse(raw),
+      run: async (args: Record<string, unknown>) => {
+        if (isGatedTool(t.name)) {
+          // The loop should never let a gated tool reach `run`; if it does,
+          // that's a bug — fail loudly instead of mutating data.
+          throw new Error(
+            `Gated tool ${t.name} reached run() — agent loop did not pause`,
+          );
+        }
+        try {
+          const result = await t.execute(args, backendClient);
+          return truncate(result);
+        } catch (err) {
+          if (err instanceof BackendError) {
+            logger.warn(
+              { tool: t.name, status: err.status, code: err.code },
+              `Tool error: ${err.message}`,
+            );
+            return JSON.stringify({ error: `${err.code}: ${err.message}` });
+          }
+          logger.error({ tool: t.name, err }, "Unexpected tool execution error");
+          return JSON.stringify({ error: "An unexpected error occurred" });
+        }
+      },
     };
-  }
-  try {
-    const result = await tool.execute(params, client);
-    return { success: true, data: truncate(result) };
-  } catch (err) {
-    if (err instanceof BackendError) {
-      logger.warn({ tool: name, status: err.status, code: err.code }, `Tool error: ${err.message}`);
-      return { success: false, error: `${err.code}: ${err.message}` };
-    }
-    logger.error({ tool: name, err }, "Unexpected tool execution error");
-    return { success: false, error: "An unexpected error occurred" };
-  }
+  });
+  return tools;
 }

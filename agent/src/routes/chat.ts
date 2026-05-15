@@ -92,7 +92,6 @@ chatRouter.post("/chat", async (ctx) => {
         conversationId,
         backendClient: conversationClient,
         maxTurns: config.MAX_TURNS,
-        maxToolCalls: config.MAX_TOOL_CALLS,
         abortSignal: abortController.signal,
         emit: (event) => sendSSE(stream, event),
       });
@@ -158,7 +157,6 @@ chatRouter.post("/resume", async (ctx) => {
         conversationId,
         backendClient: conversationClient,
         maxTurns: config.MAX_TURNS,
-        maxToolCalls: config.MAX_TOOL_CALLS,
         abortSignal: abortController.signal,
         emit: (event) => sendSSE(stream, event),
       });

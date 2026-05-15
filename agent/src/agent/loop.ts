@@ -1,10 +1,10 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type {
-  MessageParam,
-  ContentBlockParam,
-  TextBlockParam,
-  ToolResultBlockParam,
-} from "@anthropic-ai/sdk/resources/messages/messages.js";
+  BetaMessageParam,
+  BetaContentBlockParam,
+  BetaTextBlockParam,
+  BetaToolResultBlockParam,
+} from "@anthropic-ai/sdk/resources/beta.js";
 import type {
   AgentMessage,
   AgentProviderMessage,
@@ -13,12 +13,7 @@ import type {
 } from "@crm/shared";
 import type { BackendClient } from "../lib/backend-client.js";
 import { logger } from "../lib/logger.js";
-import {
-  createPendingAction,
-  executeReadOrCreateTool,
-  getAnthropicTools,
-  isGatedTool,
-} from "../tools/registry.js";
+import { buildRunnableTools, createPendingAction, isGatedTool } from "../tools/registry.js";
 
 const TOOL_PRESENT_TENSE: Record<string, string> = {
   search: "Searching CRM",
@@ -59,7 +54,6 @@ export interface RunAgentLoopParams {
   conversationId: string;
   backendClient: BackendClient;
   maxTurns: number;
-  maxToolCalls: number;
   abortSignal?: AbortSignal;
   emit: (event: AgentSSEEvent) => void;
 }
@@ -72,19 +66,18 @@ export interface RunAgentLoopResult {
 }
 
 /**
- * Run the agent loop against Anthropic.
+ * Run the agent loop against Anthropic's `toolRunner` helper.
  *
  * Persistence is incremental: after every assistant turn we append the new
  * provider messages to the backend. If the model calls a confirmation-gated
  * tool, we persist the assistant turn (with the tool_use block) but do NOT
- * persist a tool_result. The loop pauses; the approval endpoint will later
- * append the real tool_result. The next call to runAgentLoop (with no new
- * user message) will pick up the completed history.
+ * persist a tool_result. The loop pauses before tools run; the approval
+ * endpoint will later append the real tool_result. The next call to
+ * runAgentLoop (with no new user message) picks up the completed history.
  */
 export async function runAgentLoop(
   params: RunAgentLoopParams,
 ): Promise<RunAgentLoopResult> {
-  const tools = getAnthropicTools();
   const apiMessages = historyToApiMessages(params.history);
 
   if (params.userMessage) {
@@ -103,7 +96,7 @@ export async function runAgentLoop(
     });
   }
 
-  const systemBlocks: TextBlockParam[] = [
+  const system: BetaTextBlockParam[] = [
     {
       type: "text",
       text: params.systemPrompt,
@@ -111,25 +104,26 @@ export async function runAgentLoop(
     },
   ];
 
-  let totalInputTokens = 0;
-  let totalOutputTokens = 0;
-  let totalToolCalls = 0;
+  const tools = buildRunnableTools(params.backendClient);
 
-  for (let turn = 0; turn < params.maxTurns; turn++) {
-    if (params.abortSignal?.aborted) break;
-
-    const stream = params.client.messages.stream({
+  const runner = params.client.beta.messages.toolRunner(
+    {
       model: params.model,
-      system: systemBlocks,
+      max_tokens: params.maxOutputTokens,
+      system,
       messages: apiMessages,
       tools,
-      max_tokens: params.maxOutputTokens,
-    });
+      stream: true,
+      max_iterations: params.maxTurns,
+    },
+    params.abortSignal ? { signal: params.abortSignal } : undefined,
+  );
 
-    if (params.abortSignal) {
-      params.abortSignal.addEventListener("abort", () => stream.abort(), { once: true });
-    }
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+  let paused = false;
 
+  for await (const stream of runner) {
     stream.on("text", (delta) => params.emit({ type: "text_delta", delta }));
     stream.on("streamEvent", (event) => {
       if (
@@ -148,7 +142,6 @@ export async function runAgentLoop(
     totalInputTokens += finalMessage.usage.input_tokens;
     totalOutputTokens += finalMessage.usage.output_tokens;
 
-    // Extract text + tool_use blocks from the final message.
     let assistantText = "";
     const toolUses: AgentToolCall[] = [];
     for (const block of finalMessage.content) {
@@ -163,12 +156,6 @@ export async function runAgentLoop(
       }
     }
 
-    // Append the assistant turn to the running API conversation.
-    apiMessages.push({
-      role: "assistant",
-      content: finalMessage.content as ContentBlockParam[],
-    });
-
     const assistantProviderMessage: AgentProviderMessage = {
       role: "assistant",
       content: assistantText,
@@ -181,139 +168,137 @@ export async function runAgentLoop(
       createdAt: new Date().toISOString(),
     };
 
-    // No tools → done.
-    if (finalMessage.stop_reason !== "tool_use" || toolUses.length === 0) {
-      await params.backendClient.appendAgentConversation(params.conversationId, {
-        messages: [assistantDisplayMessage],
-        providerMessages: [assistantProviderMessage],
-        inputTokens: finalMessage.usage.input_tokens,
-        outputTokens: finalMessage.usage.output_tokens,
-      });
-      return { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, paused: false };
-    }
+    // Check for gated tools before the runner advances to execute them.
+    const gatedToolUse = toolUses.find((t) => isGatedTool(t.name));
+    const hasMixedGated =
+      gatedToolUse && toolUses.length > 1;
 
-    // Resolve every tool_use in this turn.
-    const hasGated = toolUses.some((t) => isGatedTool(t.name));
-    const onlyOneGated = toolUses.length === 1 && hasGated;
-    const toolResultBlocks: ToolResultBlockParam[] = [];
-    const toolProviderMessages: AgentProviderMessage[] = [];
-    let pausedForConfirmation = false;
-
-    for (const toolUse of toolUses) {
-      if (params.abortSignal?.aborted) break;
-      totalToolCalls++;
-
-      if (totalToolCalls > params.maxToolCalls) {
-        logger.warn({ conversationId: params.conversationId }, "max tool calls reached");
-        const errorContent = "Maximum number of tool calls reached. Respond with what you have.";
-        toolResultBlocks.push({
-          type: "tool_result",
-          tool_use_id: toolUse.id,
-          content: errorContent,
-          is_error: true,
-        });
-        toolProviderMessages.push({
-          role: "tool",
-          toolUseId: toolUse.id,
-          content: errorContent,
-          isError: true,
-        });
-        continue;
-      }
-
-      // Gated tool combined with others → refuse and ask the model to retry alone.
-      if (isGatedTool(toolUse.name) && !onlyOneGated) {
-        const msg =
-          "Confirmation-gated actions must be called alone. Please retry this tool call in a separate turn.";
-        toolResultBlocks.push({
-          type: "tool_result",
-          tool_use_id: toolUse.id,
-          content: msg,
-          is_error: true,
-        });
-        toolProviderMessages.push({
-          role: "tool",
-          toolUseId: toolUse.id,
-          content: msg,
-          isError: true,
-        });
-        params.emit({ type: "tool_end", tool: toolUse.name });
-        continue;
-      }
-
-      // Single gated tool → create pending action, persist assistant turn, pause.
-      if (isGatedTool(toolUse.name) && onlyOneGated) {
-        try {
-          const action = await createPendingAction(
-            params.backendClient,
-            toolUse.name,
-            toolUse.id,
-            toolUse.input,
-          );
-          params.emit({ type: "tool_end", tool: toolUse.name });
-          params.emit({ type: "confirmation_required", action });
-        } catch (err) {
-          logger.error({ err, tool: toolUse.name }, "failed to create pending action");
-          params.emit({ type: "tool_end", tool: toolUse.name });
-          params.emit({
-            type: "error",
-            message: "Failed to register confirmation prompt.",
-          });
-        }
-        pausedForConfirmation = true;
-        break;
-      }
-
-      // Non-gated tool → execute now.
-      const result = await executeReadOrCreateTool(
-        toolUse.name,
-        toolUse.input,
-        params.backendClient,
-      );
-      params.emit({ type: "tool_end", tool: toolUse.name });
-
-      const content = result.success
-        ? JSON.stringify(result.data)
-        : JSON.stringify({ error: result.error });
-
-      toolResultBlocks.push({
+    // Case 1: turn calls multiple tools and at least one is gated.
+    // We can't pause cleanly because the API requires tool_results for every
+    // tool_use. Refuse the gated one(s) with an error tool_result and let
+    // the runner execute the non-gated ones. The model retries the gated
+    // call alone on the next turn.
+    if (hasMixedGated) {
+      // Patch the runner: append assistant turn + push error tool_results for
+      // gated tools. We let `toolRunner` run the non-gated tools — but since
+      // tool_results must come in a single user message per turn, we have to
+      // bypass the runner's auto-execution. Easiest path: emit error
+      // tool_results for ALL tools in this turn (gated and non-gated) and
+      // tell the model to retry separately.
+      const errorBlocks: BetaToolResultBlockParam[] = toolUses.map((t) => ({
         type: "tool_result",
-        tool_use_id: toolUse.id,
-        content,
-        is_error: !result.success,
+        tool_use_id: t.id,
+        content: isGatedTool(t.name)
+          ? "Confirmation-gated actions must be called alone. Please retry this tool call in a separate turn."
+          : "Skipped because this turn also contained a confirmation-gated tool. Please retry in a separate turn.",
+        is_error: true,
+      }));
+      const toolProviderMessages: AgentProviderMessage[] = toolUses.map(
+        (t, i) => ({
+          role: "tool",
+          toolUseId: t.id,
+          content: errorBlocks[i].content as string,
+          isError: true,
+        }),
+      );
+      for (const t of toolUses) params.emit({ type: "tool_end", tool: t.name });
+
+      await params.backendClient.appendAgentConversation(params.conversationId, {
+        messages: [assistantDisplayMessage],
+        providerMessages: [assistantProviderMessage, ...toolProviderMessages],
+        inputTokens: finalMessage.usage.input_tokens,
+        outputTokens: finalMessage.usage.output_tokens,
       });
-      toolProviderMessages.push({
-        role: "tool",
-        toolUseId: toolUse.id,
-        content,
-        isError: !result.success,
-      });
+
+      // Feed the error tool_results back into the runner and continue.
+      runner.pushMessages({ role: "user", content: errorBlocks });
+      continue;
     }
 
-    if (pausedForConfirmation) {
+    // Case 2: single gated tool. Persist assistant turn, register pending
+    // action, emit confirmation_required, break BEFORE the runner advances
+    // to tool execution.
+    if (gatedToolUse) {
+      try {
+        const action = await createPendingAction(
+          params.backendClient,
+          gatedToolUse.name,
+          gatedToolUse.id,
+          gatedToolUse.input,
+        );
+        params.emit({ type: "tool_end", tool: gatedToolUse.name });
+        params.emit({ type: "confirmation_required", action });
+      } catch (err) {
+        logger.error({ err, tool: gatedToolUse.name }, "failed to create pending action");
+        params.emit({ type: "tool_end", tool: gatedToolUse.name });
+        params.emit({
+          type: "error",
+          message: "Failed to register confirmation prompt.",
+        });
+      }
+
       await params.backendClient.appendAgentConversation(params.conversationId, {
         messages: [assistantDisplayMessage],
         providerMessages: [assistantProviderMessage],
         inputTokens: finalMessage.usage.input_tokens,
         outputTokens: finalMessage.usage.output_tokens,
       });
-      return { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, paused: true };
+      paused = true;
+      break;
     }
 
-    // Persist the assistant turn + every tool result for it as one batch.
-    await params.backendClient.appendAgentConversation(params.conversationId, {
-      messages: [assistantDisplayMessage],
-      providerMessages: [assistantProviderMessage, ...toolProviderMessages],
-      inputTokens: finalMessage.usage.input_tokens,
-      outputTokens: finalMessage.usage.output_tokens,
-    });
+    // Case 3: no tools — model is done.
+    if (toolUses.length === 0) {
+      await params.backendClient.appendAgentConversation(params.conversationId, {
+        messages: [assistantDisplayMessage],
+        providerMessages: [assistantProviderMessage],
+        inputTokens: finalMessage.usage.input_tokens,
+        outputTokens: finalMessage.usage.output_tokens,
+      });
+      break;
+    }
 
-    apiMessages.push({ role: "user", content: toolResultBlocks });
+    // Case 4: non-gated tools. Let the runner execute them on its next
+    // iteration. We need the tool_results in our persistence too, so wait
+    // for the runner to produce them, then persist.
+    for (const t of toolUses) params.emit({ type: "tool_end", tool: t.name });
 
-    if (totalToolCalls >= params.maxToolCalls) break;
+    const toolResponse = await runner.generateToolResponse();
+    if (toolResponse) {
+      const toolProviderMessages: AgentProviderMessage[] = [];
+      if (Array.isArray(toolResponse.content)) {
+        for (const block of toolResponse.content) {
+          if (block.type === "tool_result") {
+            toolProviderMessages.push({
+              role: "tool",
+              toolUseId: block.tool_use_id,
+              content: typeof block.content === "string"
+                ? block.content
+                : JSON.stringify(block.content),
+              isError: block.is_error ?? false,
+            });
+          }
+        }
+      }
+      await params.backendClient.appendAgentConversation(params.conversationId, {
+        messages: [assistantDisplayMessage],
+        providerMessages: [assistantProviderMessage, ...toolProviderMessages],
+        inputTokens: finalMessage.usage.input_tokens,
+        outputTokens: finalMessage.usage.output_tokens,
+      });
+    } else {
+      // No tool response generated (shouldn't happen if we have tool_uses,
+      // but persist defensively).
+      await params.backendClient.appendAgentConversation(params.conversationId, {
+        messages: [assistantDisplayMessage],
+        providerMessages: [assistantProviderMessage],
+        inputTokens: finalMessage.usage.input_tokens,
+        outputTokens: finalMessage.usage.output_tokens,
+      });
+    }
   }
 
-  return { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, paused: false };
+  return { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, paused };
 }
 
 /**
@@ -321,8 +306,8 @@ export async function runAgentLoop(
  * consecutive `tool` rows into a single user message of tool_result blocks
  * (required by the Anthropic API after an assistant turn that emitted tool_use).
  */
-function historyToApiMessages(history: AgentProviderMessage[]): MessageParam[] {
-  const out: MessageParam[] = [];
+function historyToApiMessages(history: AgentProviderMessage[]): BetaMessageParam[] {
+  const out: BetaMessageParam[] = [];
   let i = 0;
   while (i < history.length) {
     const msg = history[i];
@@ -330,7 +315,7 @@ function historyToApiMessages(history: AgentProviderMessage[]): MessageParam[] {
       out.push({ role: "user", content: msg.content });
       i++;
     } else if (msg.role === "assistant") {
-      const content: ContentBlockParam[] = [];
+      const content: BetaContentBlockParam[] = [];
       if (msg.content) content.push({ type: "text", text: msg.content });
       for (const tc of msg.toolCalls ?? []) {
         content.push({ type: "tool_use", id: tc.id, name: tc.name, input: tc.input });
@@ -338,8 +323,7 @@ function historyToApiMessages(history: AgentProviderMessage[]): MessageParam[] {
       out.push({ role: "assistant", content });
       i++;
     } else {
-      // Coalesce a run of `tool` rows into one user message of tool_results.
-      const blocks: ToolResultBlockParam[] = [];
+      const blocks: BetaToolResultBlockParam[] = [];
       while (i < history.length && history[i].role === "tool") {
         const t = history[i] as Extract<AgentProviderMessage, { role: "tool" }>;
         blocks.push({
