@@ -18,6 +18,7 @@ import orgAdminRoutes from "./orgAdmin.js";
 import meRoutes from "./me.js";
 import organizationRoutes from "./organizations.js";
 import inviteRoutes from "./invites.js";
+import agentRoutes from "./agent.js";
 
 // Auth-only routes (user authenticated but no org membership required)
 const authOnlyRouter = new Router({ prefix: "/api" });
@@ -87,6 +88,10 @@ apiRouter.use(
 apiRouter.use(
   orgAdminRoutes.routes(),
   orgAdminRoutes.allowedMethods(),
+);
+apiRouter.use(
+  agentRoutes.routes(),
+  agentRoutes.allowedMethods(),
 );
 
 export { healthRouter, apiRouter, authOnlyRouter };
