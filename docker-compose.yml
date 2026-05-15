@@ -51,6 +51,7 @@ services:
     environment:
       NODE_ENV: development
       API_URL: http://backend:3000
+      AGENT_URL: http://agent:3002
       GOOGLE_APPLICATION_CREDENTIALS: /app/firebase-service-account.json
     volumes:
       - ./frontend/src:/app/frontend/src
@@ -66,5 +67,28 @@ services:
     depends_on:
       - backend
 
+  agent:
+    build:
+      context: .
+      dockerfile: agent/Dockerfile
+      target: development
+    expose:
+      - "3002"
+    env_file:
+      - ./agent/.env
+    environment:
+      PORT: "3002"
+      BACKEND_URL: http://backend:3000
+      NODE_ENV: development
+    volumes:
+      - ./agent/src:/app/agent/src
+      - ./packages/shared/src:/app/packages/shared/src
+      - agent-data:/app/agent/data
+    depends_on:
+      - backend
+    command: >
+      sh -c "cd /app/packages/shared && npx tsc && cd /app/agent && npx tsx watch src/index.ts"
+
 volumes:
   pgdata:
+  agent-data:

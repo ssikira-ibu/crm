@@ -17,6 +17,9 @@ backend/prisma/.env
 # Docker
 pgdata/
 
+# Agent
+agent/data/
+
 # Claude Code
 .agents/
 .claude/

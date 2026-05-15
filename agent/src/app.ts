@@ -1,4 +1,5 @@
 import Koa from "koa";
+import Router from "@koa/router";
 import cors from "@koa/cors";
 import { koaBody } from "koa-body";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -10,6 +11,13 @@ const app = new Koa();
 app.use(errorHandler);
 app.use(cors({ origin: "*", credentials: true }));
 app.use(koaBody({ jsonLimit: "256kb" }));
+
+const healthRouter = new Router();
+healthRouter.get("/health", (ctx) => {
+  ctx.body = { status: "ok" };
+});
+app.use(healthRouter.routes());
+app.use(healthRouter.allowedMethods());
 
 app.use(authMiddleware);
 app.use(chatRouter.routes());
