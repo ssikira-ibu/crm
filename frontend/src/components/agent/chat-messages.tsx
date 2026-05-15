@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { AgentMessage, AgentPendingAction } from "@crm/shared";
+import type { AgentPendingAction } from "@crm/shared";
 import { cn } from "@/lib/utils";
-import { Bot, Check, ShieldAlert, User, X } from "lucide-react";
+import { Bot, Check, Loader2, ShieldAlert, User, Wrench, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { UIAgentMessage } from "@/hooks/use-agent-chat";
 
 interface ChatMessagesProps {
-  messages: AgentMessage[];
-  activeTools: string[];
+  messages: UIAgentMessage[];
   pendingActions: AgentPendingAction[];
   onApproveAction: (actionId: string) => void;
   onRejectAction: (actionId: string) => void;
@@ -16,7 +16,6 @@ interface ChatMessagesProps {
 
 export function ChatMessages({
   messages,
-  activeTools,
   pendingActions,
   onApproveAction,
   onRejectAction,
@@ -25,7 +24,7 @@ export function ChatMessages({
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeTools, pendingActions]);
+  }, [messages, pendingActions]);
 
   if (messages.length === 0) {
     return (
@@ -43,44 +42,55 @@ export function ChatMessages({
 
   return (
     <div className="flex-1 overflow-y-auto p-3 space-y-3">
-      {messages.map((msg, i) => (
-        <div
-          key={i}
-          className={cn(
-            "flex gap-2",
-            msg.role === "user" ? "justify-end" : "justify-start",
-          )}
-        >
-          {msg.role === "assistant" && (
+      {messages.map((msg, i) => {
+        if (msg.role === "user") {
+          return (
+            <div key={i} className="flex gap-2 justify-end">
+              <div className="rounded-lg px-3 py-2 text-sm max-w-[85%] whitespace-pre-wrap bg-primary text-primary-foreground">
+                {msg.content}
+              </div>
+              <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted mt-0.5">
+                <User className="size-3.5" />
+              </div>
+            </div>
+          );
+        }
+
+        const hasTools = (msg.toolEvents?.length ?? 0) > 0;
+        const hasText = msg.content.length > 0;
+        return (
+          <div key={i} className="flex gap-2 justify-start">
             <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10 mt-0.5">
               <Bot className="size-3.5 text-primary" />
             </div>
-          )}
-          <div
-            className={cn(
-              "rounded-lg px-3 py-2 text-sm max-w-[85%] whitespace-pre-wrap",
-              msg.role === "user"
-                ? "bg-primary text-primary-foreground"
-                : "bg-muted",
-            )}
-          >
-            {msg.content || (msg.role === "assistant" ? "..." : "")}
-          </div>
-          {msg.role === "user" && (
-            <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted mt-0.5">
-              <User className="size-3.5" />
+            <div className="flex flex-col gap-1.5 max-w-[85%]">
+              {msg.toolEvents?.map((evt, j) => (
+                <div
+                  key={j}
+                  className={cn(
+                    "flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border bg-muted/40 w-fit",
+                    evt.status === "running" && "text-muted-foreground",
+                  )}
+                >
+                  {evt.status === "running" ? (
+                    <Loader2 className="size-3 animate-spin" />
+                  ) : (
+                    <Wrench className="size-3 text-muted-foreground" />
+                  )}
+                  <span>{evt.description}</span>
+                </div>
+              ))}
+              {/* Show text bubble when we have text, or as a placeholder while
+                  tools are running and no text has streamed yet. */}
+              {(hasText || !hasTools) && (
+                <div className="rounded-lg px-3 py-2 text-sm whitespace-pre-wrap bg-muted">
+                  {msg.content || "…"}
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      ))}
-      {activeTools.length > 0 && (
-        <div className="flex gap-2 items-center text-xs text-muted-foreground animate-pulse">
-          <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary/10">
-            <Bot className="size-3.5 text-primary" />
           </div>
-          {activeTools[0]}
-        </div>
-      )}
+        );
+      })}
       {pendingActions.map((action) => (
         <div key={action.id} className="flex gap-2 justify-start">
           <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 mt-0.5">

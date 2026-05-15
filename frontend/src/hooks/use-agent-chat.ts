@@ -3,11 +3,25 @@
 import { useState, useCallback, useRef } from "react";
 import type { AgentMessage, AgentPendingAction, AgentSSEEvent } from "@crm/shared";
 
+export interface ToolEvent {
+  name: string;
+  description: string;
+  status: "running" | "done";
+}
+
+/**
+ * UI-only extension of AgentMessage that captures the tool calls fired
+ * during this assistant turn. Stored on the message so the timeline
+ * shows which tools were used, even after they finish.
+ */
+export interface UIAgentMessage extends AgentMessage {
+  toolEvents?: ToolEvent[];
+}
+
 interface UseAgentChatReturn {
-  messages: AgentMessage[];
+  messages: UIAgentMessage[];
   isStreaming: boolean;
   conversationId: string | null;
-  activeTools: string[];
   pendingActions: AgentPendingAction[];
   sendMessage: (message: string) => void;
   approveAction: (actionId: string) => void;
@@ -18,8 +32,7 @@ interface UseAgentChatReturn {
 /**
  * Open an SSE stream against `url` and dispatch each event. Implements proper
  * SSE framing: events are separated by blank lines (`\n\n`); within each event
- * we read the `data:` field and parse it as JSON. The previous implementation
- * split on `\n` and broke if any payload contained a literal newline.
+ * we read the `data:` field and parse it as JSON.
  */
 async function streamSSE(
   url: string,
@@ -40,9 +53,6 @@ async function streamSSE(
     if (done) break;
 
     buffer += decoder.decode(value, { stream: true });
-
-    // SSE event boundary is a blank line. Split on \n\n, the last fragment is
-    // an incomplete event we keep buffered.
     const frames = buffer.split("\n\n");
     buffer = frames.pop() ?? "";
 
@@ -63,16 +73,29 @@ async function streamSSE(
 }
 
 export function useAgentChat(): UseAgentChatReturn {
-  const [messages, setMessages] = useState<AgentMessage[]>([]);
+  const [messages, setMessages] = useState<UIAgentMessage[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [pendingActions, setPendingActions] = useState<AgentPendingAction[]>([]);
-  // activeTools keyed by tool_use id (when the agent provides one), so
-  // parallel tool calls don't clobber each other's labels.
-  const [activeToolMap, setActiveToolMap] = useState<Map<string, string>>(new Map());
   const abortRef = useRef<AbortController | null>(null);
 
-  const activeTools = Array.from(activeToolMap.values());
+  // Updates to the last assistant message in `messages`. All SSE events
+  // affecting the in-flight assistant turn flow through this helper so we
+  // don't open-code the same array slice everywhere.
+  const updateLastAssistant = useCallback(
+    (mutator: (msg: UIAgentMessage) => UIAgentMessage) => {
+      setMessages((prev) => {
+        const updated = [...prev];
+        const idx = updated.length - 1;
+        const last = updated[idx];
+        if (last?.role === "assistant") {
+          updated[idx] = mutator(last);
+        }
+        return updated;
+      });
+    },
+    [],
+  );
 
   const consumeStream = useCallback(
     async (url: string, body: object) => {
@@ -80,7 +103,8 @@ export function useAgentChat(): UseAgentChatReturn {
       abortRef.current = controller;
       let assistantText = "";
 
-      const assistantMsg: AgentMessage = {
+      // Reserve the assistant bubble before any deltas arrive.
+      const assistantMsg: UIAgentMessage = {
         role: "assistant",
         content: "",
         createdAt: new Date().toISOString(),
@@ -100,30 +124,33 @@ export function useAgentChat(): UseAgentChatReturn {
             switch (event.type) {
               case "text_delta":
                 assistantText += event.delta;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  if (last?.role === "assistant") {
-                    updated[updated.length - 1] = { ...last, content: assistantText };
-                  }
-                  return updated;
-                });
+                updateLastAssistant((m) => ({ ...m, content: assistantText }));
                 break;
               case "tool_start":
-                setActiveToolMap((prev) => {
-                  const next = new Map(prev);
-                  // No tool_use id is exposed today; key on tool name so the
-                  // matching tool_end clears it.
-                  next.set(event.tool, event.description);
-                  return next;
-                });
+                updateLastAssistant((m) => ({
+                  ...m,
+                  toolEvents: [
+                    ...(m.toolEvents ?? []),
+                    {
+                      name: event.tool,
+                      description: event.description,
+                      status: "running",
+                    },
+                  ],
+                }));
                 break;
               case "tool_end":
-                setActiveToolMap((prev) => {
-                  if (!prev.has(event.tool)) return prev;
-                  const next = new Map(prev);
-                  next.delete(event.tool);
-                  return next;
+                updateLastAssistant((m) => {
+                  const events = m.toolEvents ?? [];
+                  // Mark the latest running event with this tool name as done.
+                  for (let i = events.length - 1; i >= 0; i--) {
+                    if (events[i].name === event.tool && events[i].status === "running") {
+                      const next = [...events];
+                      next[i] = { ...next[i], status: "done" };
+                      return { ...m, toolEvents: next };
+                    }
+                  }
+                  return m;
                 });
                 break;
               case "confirmation_required":
@@ -136,37 +163,22 @@ export function useAgentChat(): UseAgentChatReturn {
                 break;
               case "error":
                 assistantText += `\n\n*Error: ${event.message}*`;
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  const last = updated[updated.length - 1];
-                  if (last?.role === "assistant") {
-                    updated[updated.length - 1] = { ...last, content: assistantText };
-                  }
-                  return updated;
-                });
+                updateLastAssistant((m) => ({ ...m, content: assistantText }));
                 break;
             }
           },
         );
       } catch (err) {
         if ((err as Error).name === "AbortError") return;
-        setMessages((prev) => {
-          const updated = [...prev];
-          const last = updated[updated.length - 1];
-          if (last?.role === "assistant") {
-            updated[updated.length - 1] = {
-              ...last,
-              content: "Sorry, I encountered an error. Please try again.",
-            };
-          }
-          return updated;
-        });
+        updateLastAssistant((m) => ({
+          ...m,
+          content: "Sorry, I encountered an error. Please try again.",
+        }));
       } finally {
-        setActiveToolMap(new Map());
         abortRef.current = null;
       }
     },
-    [],
+    [updateLastAssistant],
   );
 
   const sendMessage = useCallback(
@@ -180,7 +192,10 @@ export function useAgentChat(): UseAgentChatReturn {
       setIsStreaming(true);
 
       try {
-        await consumeStream("/api/agent/chat", { message, conversationId });
+        await consumeStream(
+          "/api/agent/chat",
+          conversationId ? { message, conversationId } : { message },
+        );
       } finally {
         setIsStreaming(false);
       }
@@ -193,7 +208,6 @@ export function useAgentChat(): UseAgentChatReturn {
     setMessages([]);
     setConversationId(null);
     setIsStreaming(false);
-    setActiveToolMap(new Map());
     setPendingActions([]);
   }, []);
 
@@ -239,7 +253,6 @@ export function useAgentChat(): UseAgentChatReturn {
     messages,
     isStreaming,
     conversationId,
-    activeTools,
     pendingActions,
     sendMessage,
     approveAction,

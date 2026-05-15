@@ -20,14 +20,12 @@ export function ChatPanel() {
   const {
     messages,
     isStreaming,
-    activeTools,
     pendingActions,
     sendMessage,
     approveAction,
     rejectAction,
     clearChat,
-  } =
-    useAgentChat();
+  } = useAgentChat();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -69,7 +67,6 @@ export function ChatPanel() {
         </SheetHeader>
         <ChatMessages
           messages={messages}
-          activeTools={activeTools}
           pendingActions={pendingActions}
           onApproveAction={approveAction}
           onRejectAction={rejectAction}
