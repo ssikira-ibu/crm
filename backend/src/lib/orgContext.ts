@@ -23,7 +23,8 @@ export function getOrgContext(user: OrgUser): OrgContext {
  * S2S token.
  */
 export function assertHumanOrApprovedAgent(ctx: OrgContext): void {
-  if (ctx.actor.type === "agent" && !ctx.actor.toolCallId) {
+  const actor = ctx.actor ?? { type: "user" };
+  if (actor.type === "agent" && !actor.toolCallId) {
     throw new AppError(
       403,
       "AGENT_APPROVAL_REQUIRED",

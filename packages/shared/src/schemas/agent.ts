@@ -32,6 +32,13 @@ export const appendAgentConversationSchema = z.object({
         name: z.string(),
         input: z.record(z.string(), z.unknown()),
       })).optional(),
+      thinkingBlocks: z.array(z.object({
+        thinking: z.string(),
+        signature: z.string(),
+      })).optional(),
+      redactedThinkingBlocks: z.array(z.object({
+        data: z.string(),
+      })).optional(),
     }),
     z.object({
       role: z.literal("tool"),

@@ -250,6 +250,40 @@ export async function createPendingAction(
 }
 
 export async function approveAction(ctx: OrgContext, actionId: string) {
+  const now = new Date();
+  const claimed = await prisma.agentAction.updateMany({
+    where: {
+      id: actionId,
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      status: "PENDING",
+      expiresAt: { gt: now },
+    },
+    data: { status: "APPROVED", approvedAt: now },
+  });
+
+  if (claimed.count !== 1) {
+    const existing = await prisma.agentAction.findFirst({
+      where: {
+        id: actionId,
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+      },
+    });
+
+    if (!existing) {
+      throw new AppError(404, "ACTION_NOT_FOUND", "Agent action not found");
+    }
+    if (existing.status !== "PENDING") {
+      throw new AppError(409, "ACTION_NOT_PENDING", "Agent action is no longer pending");
+    }
+    await prisma.agentAction.update({
+      where: { id: existing.id },
+      data: { status: "EXPIRED" },
+    });
+    throw new AppError(410, "ACTION_EXPIRED", "Agent action has expired");
+  }
+
   const action = await prisma.agentAction.findFirst({
     where: {
       id: actionId,
@@ -260,16 +294,6 @@ export async function approveAction(ctx: OrgContext, actionId: string) {
 
   if (!action) {
     throw new AppError(404, "ACTION_NOT_FOUND", "Agent action not found");
-  }
-  if (action.status !== "PENDING") {
-    throw new AppError(409, "ACTION_NOT_PENDING", "Agent action is no longer pending");
-  }
-  if (action.expiresAt <= new Date()) {
-    await prisma.agentAction.update({
-      where: { id: action.id },
-      data: { status: "EXPIRED" },
-    });
-    throw new AppError(410, "ACTION_EXPIRED", "Agent action has expired");
   }
 
   // Re-validate input against the shared schema before executing. This
@@ -286,11 +310,6 @@ export async function approveAction(ctx: OrgContext, actionId: string) {
       toolCallId: action.toolCallId,
     },
   };
-
-  await prisma.agentAction.update({
-    where: { id: action.id },
-    data: { status: "APPROVED", approvedAt: new Date() },
-  });
 
   let result: unknown;
   let isError = false;
@@ -330,7 +349,33 @@ export async function approveAction(ctx: OrgContext, actionId: string) {
 }
 
 export async function rejectAction(ctx: OrgContext, actionId: string) {
-  const action = await prisma.agentAction.findFirst({
+  const now = new Date();
+  const claimed = await prisma.agentAction.updateMany({
+    where: {
+      id: actionId,
+      organizationId: ctx.organizationId,
+      userId: ctx.userId,
+      status: "PENDING",
+    },
+    data: { status: "REJECTED", rejectedAt: now },
+  });
+
+  if (claimed.count !== 1) {
+    const existing = await prisma.agentAction.findFirst({
+      where: {
+        id: actionId,
+        organizationId: ctx.organizationId,
+        userId: ctx.userId,
+      },
+    });
+
+    if (!existing) {
+      throw new AppError(404, "ACTION_NOT_FOUND", "Agent action not found");
+    }
+    throw new AppError(409, "ACTION_NOT_PENDING", "Agent action is no longer pending");
+  }
+
+  const updated = await prisma.agentAction.findFirst({
     where: {
       id: actionId,
       organizationId: ctx.organizationId,
@@ -338,22 +383,14 @@ export async function rejectAction(ctx: OrgContext, actionId: string) {
     },
   });
 
-  if (!action) {
+  if (!updated) {
     throw new AppError(404, "ACTION_NOT_FOUND", "Agent action not found");
   }
-  if (action.status !== "PENDING") {
-    throw new AppError(409, "ACTION_NOT_PENDING", "Agent action is no longer pending");
-  }
 
-  const updated = await prisma.agentAction.update({
-    where: { id: action.id },
-    data: { status: "REJECTED", rejectedAt: new Date() },
-  });
-
-  await appendMessagesAtomic(action.conversationId, [
+  await appendMessagesAtomic(updated.conversationId, [
     {
       role: "tool",
-      toolUseId: action.toolCallId,
+      toolUseId: updated.toolCallId,
       content: JSON.stringify({ rejected: true, reason: "User rejected this action." }),
       isError: true,
     },

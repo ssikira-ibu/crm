@@ -1,4 +1,4 @@
-import type { BetaRunnableTool } from "@anthropic-ai/sdk/lib/tools/BetaRunnableTool.js";
+import type { BetaToolUnion } from "@anthropic-ai/sdk/resources/beta/messages/messages.js";
 import { z } from "zod";
 import { toolDefinitions } from "./definitions.js";
 import type { BackendClient } from "../lib/backend-client.js";
@@ -44,6 +44,77 @@ export function isGatedTool(name: string): boolean {
   return GATED_TOOLS.has(name);
 }
 
+export function buildAnthropicTools(): BetaToolUnion[] {
+  return toolDefinitions.map((t, i): BetaToolUnion => {
+    const schema = z.toJSONSchema(t.parameters, { target: "draft-7" }) as Record<string, unknown>;
+    delete schema.$schema;
+    const cache_control =
+      i === toolDefinitions.length - 1
+        ? ({ type: "ephemeral" as const })
+        : undefined;
+
+    return {
+      type: "custom",
+      name: t.name,
+      description: t.description,
+      input_schema: schema as never,
+      ...(cache_control ? { cache_control } : {}),
+    };
+  });
+}
+
+export async function executeTool(
+  backendClient: BackendClient,
+  name: string,
+  input: Record<string, unknown>,
+  signal?: AbortSignal,
+): Promise<{ content: string; isError: boolean }> {
+  const tool = toolDefinitions.find((t) => t.name === name);
+  if (!tool) {
+    return {
+      content: JSON.stringify({ error: `Unknown tool: ${name}` }),
+      isError: true,
+    };
+  }
+
+  if (isGatedTool(name)) {
+    return {
+      content: JSON.stringify({ error: "Tool execution requires user approval." }),
+      isError: true,
+    };
+  }
+
+  const scopedClient = signal ? backendClient.withSignal(signal) : backendClient;
+  try {
+    const parsed = tool.parameters.parse(input) as Record<string, unknown>;
+    const result = await tool.execute(parsed, scopedClient);
+    return { content: truncate(result), isError: false };
+  } catch (err) {
+    if (signal?.aborted) throw err;
+    if (err instanceof BackendError) {
+      logger.warn(
+        { tool: name, status: err.status, code: err.code },
+        `Tool error: ${err.message}`,
+      );
+      return {
+        content: JSON.stringify({ error: `${err.code}: ${err.message}` }),
+        isError: true,
+      };
+    }
+    if (err instanceof z.ZodError) {
+      return {
+        content: JSON.stringify({ error: "Tool input failed validation", details: err.issues }),
+        isError: true,
+      };
+    }
+    logger.error({ tool: name, err }, "Unexpected tool execution error");
+    return {
+      content: JSON.stringify({ error: "An unexpected error occurred" }),
+      isError: true,
+    };
+  }
+}
+
 function summarizeAction(name: string, params: Record<string, unknown>): string {
   switch (name) {
     case "update_deal":
@@ -81,67 +152,4 @@ export async function createPendingAction(
     expiresAt: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
   });
   return response.data;
-}
-
-/**
- * Build the tool list the SDK's `toolRunner` consumes. Each tool carries:
- *  - `input_schema` derived from its Zod schema (sent to Anthropic),
- *  - `parse` so the runner validates LLM-produced args against Zod,
- *  - `run` to execute the tool against our backend.
- *
- * Gated tools (destructive mutations) ship with a `run` that throws. The
- * agent loop short-circuits before tools run when a gated tool_use is
- * detected, so `run` is unreachable in normal flow; if the loop's gating
- * logic ever regressed, this throw would surface that bug loudly rather
- * than silently executing the destructive action.
- */
-export function buildRunnableTools(backendClient: BackendClient): BetaRunnableTool[] {
-  const tools = toolDefinitions.map((t, i): BetaRunnableTool => {
-    const schema = z.toJSONSchema(t.parameters, { target: "draft-7" }) as Record<string, unknown>;
-    delete schema.$schema;
-    // Cache the system prompt + tool definitions; the marker on the last
-    // tool covers everything above it.
-    const cache_control =
-      i === toolDefinitions.length - 1
-        ? ({ type: "ephemeral" as const })
-        : undefined;
-
-    return {
-      type: "custom",
-      name: t.name,
-      description: t.description,
-      input_schema: schema as never,
-      ...(cache_control ? { cache_control } : {}),
-      parse: (raw: unknown) => t.parameters.parse(raw),
-      run: async (args: Record<string, unknown>, context) => {
-        if (isGatedTool(t.name)) {
-          // The loop should never let a gated tool reach `run`; if it does,
-          // that's a bug — fail loudly instead of mutating data.
-          throw new Error(
-            `Gated tool ${t.name} reached run() — agent loop did not pause`,
-          );
-        }
-        // Cancel in-flight HTTP if the user disconnects: rebind the client
-        // to the runner-provided signal for this tool invocation.
-        const signal = context?.signal ?? undefined;
-        const scopedClient = signal ? backendClient.withSignal(signal) : backendClient;
-        try {
-          const result = await t.execute(args, scopedClient);
-          return truncate(result);
-        } catch (err) {
-          if (signal?.aborted) throw err;
-          if (err instanceof BackendError) {
-            logger.warn(
-              { tool: t.name, status: err.status, code: err.code },
-              `Tool error: ${err.message}`,
-            );
-            return JSON.stringify({ error: `${err.code}: ${err.message}` });
-          }
-          logger.error({ tool: t.name, err }, "Unexpected tool execution error");
-          return JSON.stringify({ error: "An unexpected error occurred" });
-        }
-      },
-    };
-  });
-  return tools;
 }

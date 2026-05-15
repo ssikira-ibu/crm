@@ -15,7 +15,12 @@ import type {
 } from "@crm/shared";
 import type { BackendClient } from "../lib/backend-client.js";
 import { logger } from "../lib/logger.js";
-import { buildRunnableTools, createPendingAction, isGatedTool } from "../tools/registry.js";
+import {
+  buildAnthropicTools,
+  createPendingAction,
+  executeTool,
+  isGatedTool,
+} from "../tools/registry.js";
 
 const TOOL_PRESENT_TENSE: Record<string, string> = {
   search: "Searching CRM",
@@ -68,14 +73,14 @@ export interface RunAgentLoopResult {
 }
 
 /**
- * Run the agent loop against Anthropic's `toolRunner` helper.
+ * Run the agent loop with explicit ownership of the Anthropic transcript.
  *
  * Persistence is incremental: after every assistant turn we append the new
- * provider messages to the backend. If the model calls a confirmation-gated
- * tool, we persist the assistant turn (with the tool_use block) but do NOT
- * persist a tool_result. The loop pauses before tools run; the approval
- * endpoint will later append the real tool_result. The next call to
- * runAgentLoop (with no new user message) picks up the completed history.
+ * provider messages to the backend. If the model calls a tool that app policy
+ * requires a user to approve, we persist the assistant turn (including the
+ * tool_use and thinking blocks) but do not create a tool_result yet. The
+ * approval endpoint later appends the real tool_result, and resume continues
+ * from that exact Anthropic message history.
  */
 export async function runAgentLoop(
   params: RunAgentLoopParams,
@@ -106,38 +111,30 @@ export async function runAgentLoop(
     },
   ];
 
-  const tools = buildRunnableTools(params.backendClient);
-
-  const runner = params.client.beta.messages.toolRunner(
-    {
-      model: params.model,
-      max_tokens: params.maxOutputTokens,
-      system,
-      messages: apiMessages,
-      tools,
-      stream: true,
-      max_iterations: params.maxTurns,
-      // Adaptive thinking: let the model decide when to think. On Sonnet 4.6
-      // this also automatically enables interleaved thinking between tool
-      // calls. Thinking blocks must be preserved across turns when tool use
-      // is involved — see historyToApiMessages.
-      thinking: { type: "adaptive" },
-      output_config: { effort: "low" },
-      // Top-level cache_control auto-places a breakpoint on the last
-      // cacheable block and walks it forward as the transcript grows. With
-      // the explicit markers on `system` and the last tool, this gives us
-      // up to 3 cache breakpoints covering the static prefix + the growing
-      // conversation history. Tool results are picked up by lookback.
-      cache_control: { type: "ephemeral" },
-    },
-    params.abortSignal ? { signal: params.abortSignal } : undefined,
-  );
+  const tools = buildAnthropicTools();
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
   let paused = false;
 
-  for await (const stream of runner) {
+  for (let turn = 0; turn < params.maxTurns; turn++) {
+    const stream = params.client.beta.messages.stream(
+      {
+        model: params.model,
+        max_tokens: params.maxOutputTokens,
+        system,
+        messages: apiMessages,
+        tools,
+        // Adaptive thinking lets the model decide when to think. Thinking
+        // blocks must be preserved across tool-use turns; historyToApiMessages
+        // reconstructs them from providerPayload.
+        thinking: { type: "adaptive" },
+        output_config: { effort: "low" },
+        cache_control: { type: "ephemeral" },
+      },
+      params.abortSignal ? { signal: params.abortSignal } : undefined,
+    );
+
     stream.on("text", (delta) => params.emit({ type: "text_delta", delta }));
     stream.on("streamEvent", (event) => {
       if (
@@ -197,30 +194,30 @@ export async function runAgentLoop(
       ...(toolUses.length ? { toolCalls: toolUses } : {}),
       createdAt: new Date().toISOString(),
     };
+    const assistantApiMessage = historyToApiMessages([assistantProviderMessage])[0];
 
-    // Check for gated tools before the runner advances to execute them.
-    const gatedToolUse = toolUses.find((t) => isGatedTool(t.name));
-    const hasMixedGated =
-      gatedToolUse && toolUses.length > 1;
+    if (toolUses.length === 0) {
+      await params.backendClient.appendAgentConversation(params.conversationId, {
+        messages: [assistantDisplayMessage],
+        providerMessages: [assistantProviderMessage],
+        inputTokens: finalMessage.usage.input_tokens,
+        outputTokens: finalMessage.usage.output_tokens,
+      });
+      break;
+    }
 
-    // Case 1: turn calls multiple tools and at least one is gated.
-    // We can't pause cleanly because the API requires tool_results for every
-    // tool_use. Refuse the gated one(s) with an error tool_result and let
-    // the runner execute the non-gated ones. The model retries the gated
-    // call alone on the next turn.
-    if (hasMixedGated) {
-      // Patch the runner: append assistant turn + push error tool_results for
-      // gated tools. We let `toolRunner` run the non-gated tools — but since
-      // tool_results must come in a single user message per turn, we have to
-      // bypass the runner's auto-execution. Easiest path: emit error
-      // tool_results for ALL tools in this turn (gated and non-gated) and
-      // tell the model to retry separately.
+    const gatedToolUses = toolUses.filter((t) => isGatedTool(t.name));
+
+    // A paused Anthropic transcript can only resume cleanly once every
+    // tool_use from this assistant message has a corresponding tool_result.
+    // The current approval UI/API is single-action oriented, so keep the
+    // transcript valid by rejecting multi-tool batches and letting the model
+    // retry as separate tool requests.
+    if (gatedToolUses.length > 0 && toolUses.length > 1) {
       const errorBlocks: BetaToolResultBlockParam[] = toolUses.map((t) => ({
         type: "tool_result",
         tool_use_id: t.id,
-        content: isGatedTool(t.name)
-          ? "Confirmation-gated actions must be called alone. Please retry this tool call in a separate turn."
-          : "Skipped because this turn also contained a confirmation-gated tool. Please retry in a separate turn.",
+        content: "This multi-tool request was not executed. Please retry the requested actions one at a time.",
         is_error: true,
       }));
       const toolProviderMessages: AgentProviderMessage[] = toolUses.map(
@@ -240,14 +237,11 @@ export async function runAgentLoop(
         outputTokens: finalMessage.usage.output_tokens,
       });
 
-      // Feed the error tool_results back into the runner and continue.
-      runner.pushMessages({ role: "user", content: errorBlocks });
+      apiMessages.push(assistantApiMessage, { role: "user", content: errorBlocks });
       continue;
     }
 
-    // Case 2: single gated tool. Persist assistant turn, register pending
-    // action, emit confirmation_required, break BEFORE the runner advances
-    // to tool execution.
+    const gatedToolUse = gatedToolUses[0];
     if (gatedToolUse) {
       try {
         const action = await createPendingAction(
@@ -258,74 +252,81 @@ export async function runAgentLoop(
         );
         params.emit({ type: "tool_end", tool: gatedToolUse.name });
         params.emit({ type: "confirmation_required", action });
+        await params.backendClient.appendAgentConversation(params.conversationId, {
+          messages: [assistantDisplayMessage],
+          providerMessages: [assistantProviderMessage],
+          inputTokens: finalMessage.usage.input_tokens,
+          outputTokens: finalMessage.usage.output_tokens,
+        });
+        paused = true;
+        break;
       } catch (err) {
         logger.error({ err, tool: gatedToolUse.name }, "failed to create pending action");
         params.emit({ type: "tool_end", tool: gatedToolUse.name });
-        params.emit({
-          type: "error",
-          message: "Failed to register confirmation prompt.",
+        const toolProviderMessage: AgentProviderMessage = {
+          role: "tool",
+          toolUseId: gatedToolUse.id,
+          content: JSON.stringify({ error: "Failed to register approval request." }),
+          isError: true,
+        };
+        const toolResultBlock: BetaToolResultBlockParam = {
+          type: "tool_result",
+          tool_use_id: gatedToolUse.id,
+          content: toolProviderMessage.content,
+          is_error: true,
+        };
+
+        await params.backendClient.appendAgentConversation(params.conversationId, {
+          messages: [assistantDisplayMessage],
+          providerMessages: [assistantProviderMessage, toolProviderMessage],
+          inputTokens: finalMessage.usage.input_tokens,
+          outputTokens: finalMessage.usage.output_tokens,
         });
+        apiMessages.push(assistantApiMessage, { role: "user", content: [toolResultBlock] });
+        continue;
       }
-
-      await params.backendClient.appendAgentConversation(params.conversationId, {
-        messages: [assistantDisplayMessage],
-        providerMessages: [assistantProviderMessage],
-        inputTokens: finalMessage.usage.input_tokens,
-        outputTokens: finalMessage.usage.output_tokens,
-      });
-      paused = true;
-      break;
     }
 
-    // Case 3: no tools — model is done.
-    if (toolUses.length === 0) {
-      await params.backendClient.appendAgentConversation(params.conversationId, {
-        messages: [assistantDisplayMessage],
-        providerMessages: [assistantProviderMessage],
-        inputTokens: finalMessage.usage.input_tokens,
-        outputTokens: finalMessage.usage.output_tokens,
-      });
-      break;
-    }
+    const toolResults = await Promise.all(
+      toolUses.map(async (toolUse) => {
+        const result = await executeTool(
+          params.backendClient,
+          toolUse.name,
+          toolUse.input,
+          params.abortSignal,
+        );
+        params.emit({ type: "tool_end", tool: toolUse.name });
+        return {
+          providerMessage: {
+            role: "tool" as const,
+            toolUseId: toolUse.id,
+            content: result.content,
+            isError: result.isError,
+          },
+          block: {
+            type: "tool_result" as const,
+            tool_use_id: toolUse.id,
+            content: result.content,
+            is_error: result.isError,
+          },
+        };
+      }),
+    );
 
-    // Case 4: non-gated tools. Let the runner execute them on its next
-    // iteration. We need the tool_results in our persistence too, so wait
-    // for the runner to produce them, then persist.
-    for (const t of toolUses) params.emit({ type: "tool_end", tool: t.name });
+    await params.backendClient.appendAgentConversation(params.conversationId, {
+      messages: [assistantDisplayMessage],
+      providerMessages: [
+        assistantProviderMessage,
+        ...toolResults.map((r) => r.providerMessage),
+      ],
+      inputTokens: finalMessage.usage.input_tokens,
+      outputTokens: finalMessage.usage.output_tokens,
+    });
 
-    const toolResponse = await runner.generateToolResponse();
-    if (toolResponse) {
-      const toolProviderMessages: AgentProviderMessage[] = [];
-      if (Array.isArray(toolResponse.content)) {
-        for (const block of toolResponse.content) {
-          if (block.type === "tool_result") {
-            toolProviderMessages.push({
-              role: "tool",
-              toolUseId: block.tool_use_id,
-              content: typeof block.content === "string"
-                ? block.content
-                : JSON.stringify(block.content),
-              isError: block.is_error ?? false,
-            });
-          }
-        }
-      }
-      await params.backendClient.appendAgentConversation(params.conversationId, {
-        messages: [assistantDisplayMessage],
-        providerMessages: [assistantProviderMessage, ...toolProviderMessages],
-        inputTokens: finalMessage.usage.input_tokens,
-        outputTokens: finalMessage.usage.output_tokens,
-      });
-    } else {
-      // No tool response generated (shouldn't happen if we have tool_uses,
-      // but persist defensively).
-      await params.backendClient.appendAgentConversation(params.conversationId, {
-        messages: [assistantDisplayMessage],
-        providerMessages: [assistantProviderMessage],
-        inputTokens: finalMessage.usage.input_tokens,
-        outputTokens: finalMessage.usage.output_tokens,
-      });
-    }
+    apiMessages.push(assistantApiMessage, {
+      role: "user",
+      content: toolResults.map((r) => r.block),
+    });
   }
 
   return { inputTokens: totalInputTokens, outputTokens: totalOutputTokens, paused };
