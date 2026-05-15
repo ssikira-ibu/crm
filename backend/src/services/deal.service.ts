@@ -211,8 +211,16 @@ export async function deleteDeal(
 }
 
 export async function getDealDetail(ctx: OrgContext, dealId: string) {
+  const where: Prisma.DealWhereInput = {
+    id: dealId,
+    organizationId: ctx.organizationId,
+  };
+  if (ctx.role === "SALESPERSON") {
+    where.company = { ownerId: ctx.userId };
+  }
+
   const deal = await prisma.deal.findFirst({
-    where: { id: dealId, organizationId: ctx.organizationId },
+    where,
     include: {
       stage: true,
       pipeline: { include: { stages: { orderBy: { position: "asc" } } } },

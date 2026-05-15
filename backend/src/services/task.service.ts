@@ -17,6 +17,29 @@ function taskWhere(ctx: OrgContext): Prisma.TaskWhereInput {
   return where;
 }
 
+async function ensureDealAccess(
+  ctx: OrgContext,
+  dealId?: string | null,
+  companyId?: string,
+) {
+  if (!dealId) return;
+  const where: Prisma.DealWhereInput = {
+    id: dealId,
+    organizationId: ctx.organizationId,
+  };
+  if (companyId) {
+    where.companyId = companyId;
+  }
+  if (ctx.role === "SALESPERSON") {
+    where.company = { ownerId: ctx.userId };
+  }
+
+  const deal = await prisma.deal.findFirst({ where, select: { id: true } });
+  if (!deal) {
+    throw new AppError(400, "INVALID_DEAL", "Deal is not accessible for this task");
+  }
+}
+
 export async function listTasks(
   ctx: OrgContext,
   params: TaskQueryParams,
@@ -99,6 +122,7 @@ export async function createTask(
   if (companyId) {
     await ensureCompanyAccess(ctx, companyId);
   }
+  await ensureDealAccess(ctx, data.dealId, companyId);
 
   const task = await prisma.task.create({
     data: {
@@ -129,6 +153,7 @@ export async function updateTask(
   if (companyId) {
     await ensureCompanyAccess(ctx, companyId);
   }
+  await ensureDealAccess(ctx, data.dealId, companyId);
 
   const where: Prisma.TaskWhereInput = companyId
     ? { id: taskId, companyId, organizationId: ctx.organizationId }

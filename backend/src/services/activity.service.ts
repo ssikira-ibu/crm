@@ -5,6 +5,25 @@ import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, ActivityQueryParams, CreateActivityInput, UpdateActivityInput } from "@crm/shared";
 
+async function ensureDealBelongsToCompany(
+  ctx: OrgContext,
+  companyId: string,
+  dealId?: string | null,
+) {
+  if (!dealId) return;
+  const deal = await prisma.deal.findFirst({
+    where: {
+      id: dealId,
+      companyId,
+      organizationId: ctx.organizationId,
+    },
+    select: { id: true },
+  });
+  if (!deal) {
+    throw new AppError(400, "INVALID_DEAL", "Deal does not belong to the specified company");
+  }
+}
+
 export async function listActivities(
   ctx: OrgContext,
   companyId: string,
@@ -55,6 +74,7 @@ export async function createActivity(
   data: CreateActivityInput,
 ) {
   await ensureCompanyAccess(ctx, companyId);
+  await ensureDealBelongsToCompany(ctx, companyId, data.dealId);
   const activity = await prisma.activity.create({
     data: { ...data, companyId },
   });
@@ -73,6 +93,7 @@ export async function updateActivity(
   data: UpdateActivityInput,
 ) {
   await ensureCompanyAccess(ctx, companyId);
+  await ensureDealBelongsToCompany(ctx, companyId, data.dealId);
   const activity = await prisma.activity.findFirst({
     where: { id: activityId, companyId },
   });
