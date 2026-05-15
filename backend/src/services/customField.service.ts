@@ -97,21 +97,13 @@ export async function setValue(
     }
   }
 
-  const existing = await prisma.customFieldValue.findFirst({
-    where: { definitionId, entityId },
-    select: { id: true },
-  });
-
-  if (existing) {
-    return prisma.customFieldValue.update({
-      where: { id: existing.id },
-      data: { value },
-      include: { definition: true },
-    });
-  }
-
-  return prisma.customFieldValue.create({
-    data: { definitionId, entityId, value },
+  return prisma.customFieldValue.upsert({
+    where: {
+      definitionId_entityId: { definitionId, entityId },
+      deletedAt: null,
+    },
+    update: { value },
+    create: { definitionId, entityId, value },
     include: { definition: true },
   });
 }
