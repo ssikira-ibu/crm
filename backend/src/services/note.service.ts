@@ -4,6 +4,25 @@ import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, CreateNoteInput, UpdateNoteInput } from "@crm/shared";
 
+async function ensureDealBelongsToCompany(
+  ctx: OrgContext,
+  companyId: string,
+  dealId?: string | null,
+) {
+  if (!dealId) return;
+  const deal = await prisma.deal.findFirst({
+    where: {
+      id: dealId,
+      companyId,
+      organizationId: ctx.organizationId,
+    },
+    select: { id: true },
+  });
+  if (!deal) {
+    throw new AppError(400, "INVALID_DEAL", "Deal does not belong to the specified company");
+  }
+}
+
 export async function listNotes(ctx: OrgContext, companyId: string) {
   await ensureCompanyAccess(ctx, companyId);
   return prisma.note.findMany({
@@ -33,6 +52,7 @@ export async function createNote(
   data: CreateNoteInput,
 ) {
   await ensureCompanyAccess(ctx, companyId);
+  await ensureDealBelongsToCompany(ctx, companyId, data.dealId);
   const note = await prisma.note.create({
     data: { ...data, companyId },
   });
@@ -51,6 +71,7 @@ export async function updateNote(
   data: UpdateNoteInput,
 ) {
   await ensureCompanyAccess(ctx, companyId);
+  await ensureDealBelongsToCompany(ctx, companyId, data.dealId);
   const note = await prisma.note.findFirst({
     where: { id: noteId, companyId },
   });
