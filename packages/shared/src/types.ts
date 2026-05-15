@@ -56,7 +56,12 @@ export type OrgContext = {
   organizationId: string;
   userId: string;
   role: OrgRole;
+  actor: RequestActor;
 };
+
+export type RequestActor =
+  | { type: "user" }
+  | { type: "agent"; conversationId: string; toolCallId?: string };
 
 export type MeResponse = {
   uid: string;
@@ -399,6 +404,33 @@ export type AgentMessage = {
   createdAt: string;
 };
 
+export type AgentProviderMessage =
+  | { role: "user"; content: string }
+  | { role: "assistant"; content: string; toolCalls?: AgentToolCall[] }
+  | {
+      role: "tool";
+      toolUseId: string;
+      content: string;
+      isError: boolean;
+    };
+
+export type AgentActionStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED" | "EXPIRED";
+
+export type AgentActionRisk = "write" | "destructive" | "external";
+
+export type AgentPendingAction = {
+  id: string;
+  conversationId: string;
+  toolCallId: string;
+  toolName: string;
+  risk: AgentActionRisk;
+  summary: string;
+  input: Record<string, unknown>;
+  status: AgentActionStatus;
+  createdAt: string;
+  expiresAt: string;
+};
+
 export type AgentConversation = {
   id: string;
   title: string | null;
@@ -408,14 +440,23 @@ export type AgentConversation = {
 
 export type AgentConversationDetail = AgentConversation & {
   messages: AgentMessage[];
+  providerMessages: AgentProviderMessage[];
+  pendingActions: AgentPendingAction[];
 };
 
 export type AgentSSEEvent =
   | { type: "text_delta"; delta: string }
   | { type: "tool_start"; tool: string; description: string }
   | { type: "tool_end"; tool: string }
+  | { type: "confirmation_required"; action: AgentPendingAction }
   | { type: "error"; message: string }
-  | { type: "done"; conversationId: string };
+  | {
+      type: "done";
+      conversationId: string;
+      messages?: AgentMessage[];
+      providerMessages?: AgentProviderMessage[];
+      tokenUsage?: { input: number; output: number };
+    };
 
 export type SearchResultItem = {
   id: string;

@@ -1,9 +1,6 @@
-import type { OrgRole } from "@crm/shared";
+import type { OrgRole, RequestActor } from "@crm/shared";
 
-export interface ActorInfo {
-  type: "agent";
-  conversationId?: string;
-}
+export type ActorInfo = Extract<RequestActor, { type: "agent" }>;
 
 export interface AuthUser {
   uid: string;

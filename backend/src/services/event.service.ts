@@ -31,6 +31,14 @@ export async function recordEvent(params: {
   source?: string;
   metadata?: Record<string, unknown>;
 }) {
+  const agentMetadata =
+    params.ctx.actor.type === "agent"
+      ? {
+          agentConversationId: params.ctx.actor.conversationId,
+          agentToolCallId: params.ctx.actor.toolCallId,
+        }
+      : {};
+
   await prisma.event.create({
     data: {
       organizationId: params.ctx.organizationId,
@@ -39,8 +47,8 @@ export async function recordEvent(params: {
       entityType: params.entityType,
       entityId: params.entityId,
       action: params.action,
-      source: params.source ?? "user",
-      metadata: params.metadata as Prisma.InputJsonValue | undefined,
+      source: params.source ?? (params.ctx.actor.type === "agent" ? "agent" : "user"),
+      metadata: { ...params.metadata, ...agentMetadata } as Prisma.InputJsonValue,
     },
   });
 }

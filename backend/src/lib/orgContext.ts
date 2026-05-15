@@ -6,5 +6,6 @@ export function getOrgContext(user: OrgUser): OrgContext {
     organizationId: user.organizationId,
     userId: user.uid,
     role: user.role,
+    actor: user.actor ?? { type: "user" },
   };
 }
