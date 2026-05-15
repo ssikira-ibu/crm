@@ -17,7 +17,16 @@ import { ChatInput } from "./chat-input";
 
 export function ChatPanel() {
   const [open, setOpen] = useState(false);
-  const { messages, isStreaming, activeTools, sendMessage, clearChat } =
+  const {
+    messages,
+    isStreaming,
+    activeTools,
+    pendingActions,
+    sendMessage,
+    approveAction,
+    rejectAction,
+    clearChat,
+  } =
     useAgentChat();
 
   return (
@@ -58,7 +67,13 @@ export function ChatPanel() {
             </Tooltip>
           )}
         </SheetHeader>
-        <ChatMessages messages={messages} activeTools={activeTools} />
+        <ChatMessages
+          messages={messages}
+          activeTools={activeTools}
+          pendingActions={pendingActions}
+          onApproveAction={approveAction}
+          onRejectAction={rejectAction}
+        />
         <ChatInput onSend={sendMessage} disabled={isStreaming} />
       </SheetContent>
     </Sheet>

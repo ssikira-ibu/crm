@@ -1,21 +1,31 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import type { AgentMessage } from "@crm/shared";
+import type { AgentMessage, AgentPendingAction } from "@crm/shared";
 import { cn } from "@/lib/utils";
-import { Bot, User } from "lucide-react";
+import { Bot, Check, ShieldAlert, User, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ChatMessagesProps {
   messages: AgentMessage[];
   activeTools: string[];
+  pendingActions: AgentPendingAction[];
+  onApproveAction: (actionId: string) => void;
+  onRejectAction: (actionId: string) => void;
 }
 
-export function ChatMessages({ messages, activeTools }: ChatMessagesProps) {
+export function ChatMessages({
+  messages,
+  activeTools,
+  pendingActions,
+  onApproveAction,
+  onRejectAction,
+}: ChatMessagesProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, activeTools]);
+  }, [messages, activeTools, pendingActions]);
 
   if (messages.length === 0) {
     return (
@@ -71,6 +81,31 @@ export function ChatMessages({ messages, activeTools }: ChatMessagesProps) {
           {activeTools[0]}
         </div>
       )}
+      {pendingActions.map((action) => (
+        <div key={action.id} className="flex gap-2 justify-start">
+          <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-500/10 mt-0.5">
+            <ShieldAlert className="size-3.5 text-amber-600" />
+          </div>
+          <div className="w-[85%] rounded-lg border bg-background p-3 text-sm">
+            <div className="font-medium">Confirm agent action</div>
+            <div className="mt-1 text-muted-foreground">{action.summary}</div>
+            <div className="mt-3 flex gap-2">
+              <Button size="sm" onClick={() => onApproveAction(action.id)}>
+                <Check className="size-4" />
+                Approve
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onRejectAction(action.id)}
+              >
+                <X className="size-4" />
+                Reject
+              </Button>
+            </div>
+          </div>
+        </div>
+      ))}
       <div ref={bottomRef} />
     </div>
   );

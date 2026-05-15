@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import type { AgentMessage, AgentSSEEvent } from "@crm/shared";
+import type { AgentMessage, AgentPendingAction, AgentSSEEvent } from "@crm/shared";
 
 interface UseAgentChatReturn {
   messages: AgentMessage[];
   isStreaming: boolean;
   conversationId: string | null;
   activeTools: string[];
+  pendingActions: AgentPendingAction[];
   sendMessage: (message: string) => void;
+  approveAction: (actionId: string) => void;
+  rejectAction: (actionId: string) => void;
   clearChat: () => void;
 }
 
@@ -17,6 +20,7 @@ export function useAgentChat(): UseAgentChatReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [activeTools, setActiveTools] = useState<string[]>([]);
+  const [pendingActions, setPendingActions] = useState<AgentPendingAction[]>([]);
   const abortRef = useRef<AbortController | null>(null);
 
   const sendMessage = useCallback(
@@ -90,6 +94,12 @@ export function useAgentChat(): UseAgentChatReturn {
                   case "tool_end":
                     setActiveTools((prev) => prev.slice(1));
                     break;
+                  case "confirmation_required":
+                    setPendingActions((prev) => {
+                      if (prev.some((action) => action.id === event.action.id)) return prev;
+                      return [...prev, event.action];
+                    });
+                    break;
                   case "done":
                     setConversationId(event.conversationId);
                     break;
@@ -139,7 +149,54 @@ export function useAgentChat(): UseAgentChatReturn {
     setConversationId(null);
     setIsStreaming(false);
     setActiveTools([]);
+    setPendingActions([]);
   }, []);
 
-  return { messages, isStreaming, conversationId, activeTools, sendMessage, clearChat };
+  const settleAction = useCallback(
+    async (actionId: string, decision: "approve" | "reject") => {
+      const res = await fetch(`/api/agent/actions/${actionId}/${decision}`, {
+        method: "POST",
+      });
+      if (!res.ok) {
+        throw new Error(`Failed to ${decision} action`);
+      }
+
+      setPendingActions((prev) => prev.filter((action) => action.id !== actionId));
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: decision === "approve" ? "Action approved and executed." : "Action rejected.",
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+    },
+    [],
+  );
+
+  const approveAction = useCallback(
+    (actionId: string) => {
+      void settleAction(actionId, "approve");
+    },
+    [settleAction],
+  );
+
+  const rejectAction = useCallback(
+    (actionId: string) => {
+      void settleAction(actionId, "reject");
+    },
+    [settleAction],
+  );
+
+  return {
+    messages,
+    isStreaming,
+    conversationId,
+    activeTools,
+    pendingActions,
+    sendMessage,
+    approveAction,
+    rejectAction,
+    clearChat,
+  };
 }

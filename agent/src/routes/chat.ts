@@ -145,3 +145,15 @@ conversationRouter.delete("/conversations/:id", async (ctx) => {
   await backendClient.deleteAgentConversation(ctx.params.id);
   ctx.status = 204;
 });
+
+conversationRouter.post("/actions/:id/approve", async (ctx) => {
+  const { uid, email } = ctx.state.user;
+  const backendClient = createBackendClient({ uid, email });
+  ctx.body = await backendClient.approveAgentAction(ctx.params.id);
+});
+
+conversationRouter.post("/actions/:id/reject", async (ctx) => {
+  const { uid, email } = ctx.state.user;
+  const backendClient = createBackendClient({ uid, email });
+  ctx.body = await backendClient.rejectAgentAction(ctx.params.id);
+});
