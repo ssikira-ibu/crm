@@ -28,7 +28,7 @@ export async function listCompanies(ctx: OrgContext, params: CompanyQueryParams)
     ];
   }
 
-  const [data, total] = await Promise.all([
+  const [data, total] = await prisma.$transaction([
     prisma.company.findMany({
       where,
       skip: (page - 1) * limit,

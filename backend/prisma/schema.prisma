@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider        = "prisma-client"
+  output          = "../src/generated/prisma"
+  previewFeatures = ["partialIndexes"]
 }
 
 datasource db {
@@ -18,13 +19,13 @@ model User {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  memberships        OrganizationMember[]
-  ownedCompanies     Company[]            @relation("companyOwner")
-  ownedContacts      Contact[]            @relation("contactOwner")
-  ownedDeals         Deal[]               @relation("dealOwner")
-  assignedTasks      Task[]               @relation("taskAssignee")
-  createdTasks       Task[]               @relation("taskCreator")
-  events             Event[]
+  memberships    OrganizationMember[]
+  ownedCompanies Company[]            @relation("companyOwner")
+  ownedContacts  Contact[]            @relation("contactOwner")
+  ownedDeals     Deal[]               @relation("dealOwner")
+  assignedTasks  Task[]               @relation("taskAssignee")
+  createdTasks   Task[]               @relation("taskCreator")
+  events         Event[]
 
   @@map("users")
 }
@@ -48,15 +49,15 @@ model Organization {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  members              OrganizationMember[]
-  invites              Invite[]
-  companies            Company[]
-  tags                 Tag[]
-  events               Event[]
-  pipelines            Pipeline[]
-  deals                Deal[]
+  members                OrganizationMember[]
+  invites                Invite[]
+  companies              Company[]
+  tags                   Tag[]
+  events                 Event[]
+  pipelines              Pipeline[]
+  deals                  Deal[]
   customFieldDefinitions CustomFieldDefinition[]
-  tasks                Task[]
+  tasks                  Task[]
 
   @@map("organizations")
 }
@@ -139,16 +140,16 @@ model Company {
 }
 
 model Contact {
-  id        String   @id @default(uuid()) @db.Uuid
-  companyId String   @map("company_id") @db.Uuid
-  ownerId   String?  @map("owner_id")
-  firstName String   @map("first_name")
-  lastName  String   @map("last_name")
+  id        String    @id @default(uuid()) @db.Uuid
+  companyId String    @map("company_id") @db.Uuid
+  ownerId   String?   @map("owner_id")
+  firstName String    @map("first_name")
+  lastName  String    @map("last_name")
   email     String?
-  jobTitle  String?  @map("job_title")
-  isPrimary Boolean  @default(false) @map("is_primary")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  jobTitle  String?   @map("job_title")
+  isPrimary Boolean   @default(false) @map("is_primary")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
   company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
@@ -223,13 +224,13 @@ enum PhoneLabel {
 // ---------------------------------------------------------------------------
 
 model Pipeline {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
   name           String
-  isDefault      Boolean  @default(false) @map("is_default")
-  position       Int      @default(0)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  isDefault      Boolean   @default(false) @map("is_default")
+  position       Int       @default(0)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
   organization Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -242,20 +243,21 @@ model Pipeline {
 }
 
 model PipelineStage {
-  id          String   @id @default(uuid()) @db.Uuid
-  pipelineId  String   @map("pipeline_id") @db.Uuid
+  id          String    @id @default(uuid()) @db.Uuid
+  pipelineId  String    @map("pipeline_id") @db.Uuid
   name        String
-  position    Int      @default(0)
-  probability Int      @default(0)
-  isWon       Boolean  @default(false) @map("is_won")
-  isLost      Boolean  @default(false) @map("is_lost")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  position    Int       @default(0)
+  probability Int       @default(0)
+  isWon       Boolean   @default(false) @map("is_won")
+  isLost      Boolean   @default(false) @map("is_lost")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
   deletedAt   DateTime? @map("deleted_at")
 
   pipeline Pipeline @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
   deals    Deal[]
 
+  @@unique([id, pipelineId], map: "pipeline_stages_id_pipeline_id_key")
   @@index([pipelineId])
   @@index([pipelineId, deletedAt])
   @@map("pipeline_stages")
@@ -283,7 +285,7 @@ model Deal {
   contact      Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
   owner        User          @relation("dealOwner", fields: [ownerId], references: [id])
   pipeline     Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
-  stage        PipelineStage @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  stage        PipelineStage @relation(fields: [stageId, pipelineId], references: [id, pipelineId], onDelete: Restrict)
   activities   Activity[]
   notes        Note[]
   tasks        Task[]
@@ -321,9 +323,9 @@ model Activity {
   updatedAt   DateTime     @updatedAt @map("updated_at")
   deletedAt   DateTime?    @map("deleted_at")
 
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
   @@index([companyId, deletedAt])
@@ -334,19 +336,19 @@ model Activity {
 }
 
 model Note {
-  id        String   @id @default(uuid()) @db.Uuid
-  companyId String   @map("company_id") @db.Uuid
-  contactId String?  @map("contact_id") @db.Uuid
-  dealId    String?  @map("deal_id") @db.Uuid
+  id        String    @id @default(uuid()) @db.Uuid
+  companyId String    @map("company_id") @db.Uuid
+  contactId String?   @map("contact_id") @db.Uuid
+  dealId    String?   @map("deal_id") @db.Uuid
   title     String
-  body      String   @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  body      String    @db.Text
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
   deletedAt DateTime? @map("deleted_at")
 
-  company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  contact  Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  deal     Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
 
   @@index([companyId])
   @@index([companyId, deletedAt])
@@ -408,17 +410,18 @@ model Task {
 // ---------------------------------------------------------------------------
 
 model Tag {
-  id             String   @id @default(uuid()) @db.Uuid
-  organizationId String   @map("organization_id") @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
   name           String
   color          String?
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
   deletedAt      DateTime? @map("deleted_at")
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   companies    CompanyTag[]
 
+  @@unique([organizationId, name], map: "tags_organization_id_name_active_key", where: { deletedAt: null })
   @@index([organizationId])
   @@index([organizationId, deletedAt])
   @@map("tags")
@@ -497,22 +500,24 @@ model CustomFieldDefinition {
   organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   values       CustomFieldValue[]
 
+  @@unique([organizationId, entityType, fieldKey], map: "custom_field_definitions_org_entity_field_active_key", where: { deletedAt: null })
   @@index([organizationId, entityType])
   @@index([organizationId, entityType, deletedAt])
   @@map("custom_field_definitions")
 }
 
 model CustomFieldValue {
-  id           String   @id @default(uuid()) @db.Uuid
-  definitionId String   @map("definition_id") @db.Uuid
-  entityId     String   @map("entity_id") @db.Uuid
+  id           String    @id @default(uuid()) @db.Uuid
+  definitionId String    @map("definition_id") @db.Uuid
+  entityId     String    @map("entity_id") @db.Uuid
   value        String
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
   deletedAt    DateTime? @map("deleted_at")
 
   definition CustomFieldDefinition @relation(fields: [definitionId], references: [id], onDelete: Cascade)
 
+  @@unique([definitionId, entityId], map: "custom_field_values_definition_entity_active_key", where: { deletedAt: null })
   @@index([entityId])
   @@index([entityId, deletedAt])
   @@map("custom_field_values")
