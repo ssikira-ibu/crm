@@ -71,7 +71,9 @@ export async function removeTagFromCompany(
   tagId: string,
 ) {
   await ensureCompanyAccess(ctx, companyId);
-  const tag = await prisma.tag.findFirst({ where: { id: tagId, organizationId: ctx.organizationId } });
+  const tag = await prisma.tag.findFirst({
+    where: { id: tagId, organizationId: ctx.organizationId },
+  });
   await prisma.companyTag.deleteMany({
     where: { companyId, tagId },
   });

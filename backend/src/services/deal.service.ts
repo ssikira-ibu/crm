@@ -214,22 +214,27 @@ export async function getDealDetail(ctx: OrgContext, dealId: string) {
   const where: Prisma.DealWhereInput = {
     id: dealId,
     organizationId: ctx.organizationId,
+    company: { deletedAt: null },
   };
   if (ctx.role === "SALESPERSON") {
-    where.company = { ownerId: ctx.userId };
+    where.company = { ownerId: ctx.userId, deletedAt: null };
   }
 
   const deal = await prisma.deal.findFirst({
     where,
     include: {
       stage: true,
-      pipeline: { include: { stages: { orderBy: { position: "asc" } } } },
+      pipeline: {
+        include: {
+          stages: { where: { deletedAt: null }, orderBy: { position: "asc" } },
+        },
+      },
       company: { select: { id: true, name: true, status: true } },
       contact: { select: { id: true, firstName: true, lastName: true, email: true, jobTitle: true } },
       owner: { select: { id: true, displayName: true, email: true } },
-      activities: { orderBy: { date: "desc" } },
-      notes: { orderBy: { createdAt: "desc" } },
-      tasks: { orderBy: { createdAt: "desc" } },
+      activities: { where: { deletedAt: null }, orderBy: { date: "desc" } },
+      notes: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
+      tasks: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
     },
   });
   if (!deal) {

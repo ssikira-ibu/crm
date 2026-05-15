@@ -12,7 +12,7 @@ export async function listPipelines(ctx: OrgContext) {
   return prisma.pipeline.findMany({
     where: { organizationId: ctx.organizationId },
     include: {
-      stages: { orderBy: { position: "asc" } },
+      stages: { where: { deletedAt: null }, orderBy: { position: "asc" } },
     },
     orderBy: { position: "asc" },
   });
@@ -22,7 +22,7 @@ export async function getPipeline(ctx: OrgContext, id: string) {
   const pipeline = await prisma.pipeline.findFirst({
     where: { id, organizationId: ctx.organizationId },
     include: {
-      stages: { orderBy: { position: "asc" } },
+      stages: { where: { deletedAt: null }, orderBy: { position: "asc" } },
     },
   });
   if (!pipeline) {
@@ -44,7 +44,7 @@ export async function createPipeline(ctx: OrgContext, data: CreatePipelineInput)
       organizationId: ctx.organizationId,
     },
     include: {
-      stages: { orderBy: { position: "asc" } },
+      stages: { where: { deletedAt: null }, orderBy: { position: "asc" } },
     },
   });
 }
@@ -72,7 +72,7 @@ export async function updatePipeline(
     where: { id },
     data,
     include: {
-      stages: { orderBy: { position: "asc" } },
+      stages: { where: { deletedAt: null }, orderBy: { position: "asc" } },
     },
   });
 }

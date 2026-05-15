@@ -8,7 +8,7 @@ export async function listContacts(ctx: OrgContext, companyId: string) {
   await ensureCompanyAccess(ctx, companyId);
   return prisma.contact.findMany({
     where: { companyId },
-    include: { phoneNumbers: true },
+    include: { phoneNumbers: { where: { deletedAt: null } } },
     orderBy: { createdAt: "desc" },
   });
 }
@@ -21,7 +21,7 @@ export async function getContact(
   await ensureCompanyAccess(ctx, companyId);
   const contact = await prisma.contact.findFirst({
     where: { id: contactId, companyId },
-    include: { phoneNumbers: true },
+    include: { phoneNumbers: { where: { deletedAt: null } } },
   });
   if (!contact) {
     throw new AppError(404, "CONTACT_NOT_FOUND", "Contact not found");

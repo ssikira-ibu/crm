@@ -129,6 +129,35 @@ describe("company.service", () => {
       assert.equal((result as any).contacts, company.contacts);
     });
 
+    it("filters soft-deleted nested records from detail includes", async () => {
+      prismaMock.company.findFirst = mock.fn(() =>
+        Promise.resolve({
+          id: "c1",
+          name: "Acme",
+          contacts: [],
+          addresses: [],
+          deals: [],
+          activities: [],
+          notes: [],
+          tasks: [],
+          tags: [],
+        }),
+      );
+
+      await getCompany(makeOrgContext(), "c1");
+
+      const call = (prismaMock.company.findFirst as ReturnType<typeof mock.fn>).mock.calls[0];
+      const include = call.arguments[0].include;
+      assert.deepEqual(include.contacts.where, { deletedAt: null });
+      assert.deepEqual(include.contacts.include.phoneNumbers.where, { deletedAt: null });
+      assert.deepEqual(include.addresses.where, { deletedAt: null });
+      assert.deepEqual(include.deals.where, { deletedAt: null });
+      assert.deepEqual(include.activities.where, { deletedAt: null });
+      assert.deepEqual(include.notes.where, { deletedAt: null });
+      assert.deepEqual(include.tasks.where, { deletedAt: null });
+      assert.deepEqual(include.tags.where, { tag: { deletedAt: null } });
+    });
+
     it("throws 404 when company not found", async () => {
       prismaMock.company.findFirst = mock.fn(() => Promise.resolve(null));
 

@@ -5,7 +5,9 @@ import { recordEvent } from "./event.service.js";
 import type { OrgContext, CompanyQueryParams, CreateCompanyInput, UpdateCompanyInput } from "@crm/shared";
 
 function companyWhere(ctx: OrgContext): Prisma.CompanyWhereInput {
-  const where: Prisma.CompanyWhereInput = { organizationId: ctx.organizationId };
+  const where: Prisma.CompanyWhereInput = {
+    organizationId: ctx.organizationId,
+  };
   if (ctx.role === "SALESPERSON") {
     where.ownerId = ctx.userId;
   }
@@ -35,11 +37,11 @@ export async function listCompanies(ctx: OrgContext, params: CompanyQueryParams)
       include: {
         _count: {
           select: {
-            contacts: true,
-            tasks: true,
-            notes: true,
-            deals: true,
-            activities: true,
+            contacts: { where: { deletedAt: null } },
+            tasks: { where: { deletedAt: null } },
+            notes: { where: { deletedAt: null } },
+            deals: { where: { deletedAt: null } },
+            activities: { where: { deletedAt: null } },
           },
         },
       },
@@ -57,13 +59,20 @@ export async function getCompany(ctx: OrgContext, companyId: string) {
   const company = await prisma.company.findFirst({
     where: { id: companyId, ...companyWhere(ctx) },
     include: {
-      contacts: { include: { phoneNumbers: true } },
-      addresses: true,
-      deals: { orderBy: { createdAt: "desc" }, include: { stage: true } },
-      activities: { orderBy: { date: "desc" } },
-      notes: { orderBy: { createdAt: "desc" } },
-      tasks: { orderBy: { dueDate: "asc" } },
-      tags: { include: { tag: true } },
+      contacts: {
+        where: { deletedAt: null },
+        include: { phoneNumbers: { where: { deletedAt: null } } },
+      },
+      addresses: { where: { deletedAt: null } },
+      deals: {
+        where: { deletedAt: null },
+        orderBy: { createdAt: "desc" },
+        include: { stage: true },
+      },
+      activities: { where: { deletedAt: null }, orderBy: { date: "desc" } },
+      notes: { where: { deletedAt: null }, orderBy: { createdAt: "desc" } },
+      tasks: { where: { deletedAt: null }, orderBy: { dueDate: "asc" } },
+      tags: { where: { tag: { deletedAt: null } }, include: { tag: true } },
     },
   });
   if (!company) {

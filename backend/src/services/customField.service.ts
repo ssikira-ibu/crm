@@ -67,6 +67,7 @@ export async function getValues(
       definition: {
         organizationId: ctx.organizationId,
         entityType,
+        deletedAt: null,
       },
     },
     include: {
@@ -96,12 +97,21 @@ export async function setValue(
     }
   }
 
-  return prisma.customFieldValue.upsert({
-    where: {
-      definitionId_entityId: { definitionId, entityId },
-    },
-    create: { definitionId, entityId, value },
-    update: { value },
+  const existing = await prisma.customFieldValue.findFirst({
+    where: { definitionId, entityId },
+    select: { id: true },
+  });
+
+  if (existing) {
+    return prisma.customFieldValue.update({
+      where: { id: existing.id },
+      data: { value },
+      include: { definition: true },
+    });
+  }
+
+  return prisma.customFieldValue.create({
+    data: { definitionId, entityId, value },
     include: { definition: true },
   });
 }
