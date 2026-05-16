@@ -19,17 +19,40 @@ router.post("/organizations", validate(createOrganizationSchema, "body"), async 
     return;
   }
 
-  const org = await prisma.organization.create({
-    data: {
-      name,
-      members: {
-        create: {
-          userId: uid,
-          role: "ADMIN",
+  const org = await prisma.$transaction(async (tx) => {
+    const org = await tx.organization.create({
+      data: {
+        name,
+        members: {
+          create: {
+            userId: uid,
+            role: "ADMIN",
+          },
         },
       },
-    },
-    include: { _count: { select: { members: true } } },
+      include: { _count: { select: { members: true } } },
+    });
+
+    await tx.pipeline.create({
+      data: {
+        organizationId: org.id,
+        name: "Sales Pipeline",
+        isDefault: true,
+        position: 0,
+        stages: {
+          create: [
+            { name: "Lead In", position: 0, probability: 10 },
+            { name: "Qualified", position: 1, probability: 25 },
+            { name: "Proposal", position: 2, probability: 50 },
+            { name: "Negotiation", position: 3, probability: 75 },
+            { name: "Won", position: 4, probability: 100, isWon: true },
+            { name: "Lost", position: 5, probability: 0, isLost: true },
+          ],
+        },
+      },
+    });
+
+    return org;
   });
 
   ctx.status = 201;
