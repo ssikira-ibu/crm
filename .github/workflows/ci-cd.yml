@@ -173,9 +173,9 @@ jobs:
               # Scale to 2 — new container starts alongside old
               docker compose -f docker-compose.prod.yml up -d --no-recreate --scale "${service}=2" "${service}"
 
-              # Wait for the new container to become healthy (up to 60s)
+              # Wait for the new container to become healthy (up to 120s)
               echo "Waiting for new ${service} container to be healthy..."
-              for i in $(seq 1 30); do
+              for i in $(seq 1 60); do
                 NEW_CONTAINER=$(docker compose -f docker-compose.prod.yml ps -q "${service}" | grep -v "${OLD_CONTAINER}" | head -1)
                 if [ -n "${NEW_CONTAINER}" ]; then
                   HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "${NEW_CONTAINER}" 2>/dev/null || echo "starting")
