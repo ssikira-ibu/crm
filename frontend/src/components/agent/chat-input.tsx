@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, type KeyboardEvent } from "react";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ArrowUp, Square } from "lucide-react";
@@ -16,6 +16,8 @@ interface ChatInputProps {
   large?: boolean;
 }
 
+const MAX_TEXTAREA_HEIGHT = 160;
+
 export function ChatInput({
   onSend,
   onStop,
@@ -28,6 +30,21 @@ export function ChatInput({
   const [value, setValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const canSend = value.trim().length > 0 && !disabled;
+
+  function resizeTextarea() {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    textarea.style.height = "auto";
+    const nextHeight = Math.min(textarea.scrollHeight, MAX_TEXTAREA_HEIGHT);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > MAX_TEXTAREA_HEIGHT ? "auto" : "hidden";
+  }
+
+  useLayoutEffect(() => {
+    resizeTextarea();
+  }, [value]);
 
   function handleSubmit() {
     const trimmed = value.trim();
@@ -47,7 +64,7 @@ export function ChatInput({
   return (
     <form
       className={cn(
-        "flex items-center gap-3 rounded-full border border-border/60 bg-muted/50 pl-5 pr-3 shadow-xs backdrop-blur transition-colors focus-within:border-border focus-within:bg-muted/70 dark:bg-muted/40 dark:focus-within:bg-muted/60",
+        "flex items-end gap-3 rounded-[28px] border border-border/60 bg-muted/50 pl-5 pr-3 shadow-xs backdrop-blur transition-colors focus-within:border-border focus-within:bg-muted/70 dark:bg-muted/40 dark:focus-within:bg-muted/60",
         large ? "min-h-14 py-2" : "min-h-13 py-2",
         className,
       )}
@@ -65,7 +82,7 @@ export function ChatInput({
         readOnly={disabled}
         aria-disabled={disabled}
         autoFocus={autoFocus}
-        className="max-h-40 min-h-8 flex-1 resize-none border-0 bg-transparent px-0 py-1 text-base shadow-none focus-visible:border-0 focus-visible:ring-0 md:text-base dark:bg-transparent"
+        className="max-h-40 min-h-8 flex-1 resize-none overflow-hidden border-0 bg-transparent px-0 py-1 text-base shadow-none [field-sizing:fixed] focus-visible:border-0 focus-visible:ring-0 md:text-base dark:bg-transparent"
         rows={1}
       />
       <Button

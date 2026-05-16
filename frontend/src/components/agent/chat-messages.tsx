@@ -441,7 +441,7 @@ export function ChatMessages({
                         defaultOpen={false}
                         className="mb-0"
                       >
-                        <ReasoningTrigger className="w-fit text-xs" />
+                        <ReasoningTrigger className="w-fit" />
                         <ReasoningContent className="mt-2 rounded-lg border bg-muted/30 p-3">
                           {part.text}
                         </ReasoningContent>

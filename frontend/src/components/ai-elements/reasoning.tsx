@@ -7,9 +7,9 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { BrainIcon, ChevronDownIcon } from "lucide-react";
+import { ChevronRightIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
-import { createContext, memo, useContext, useEffect, useState } from "react";
+import { createContext, memo, useContext, useEffect, useRef, useState } from "react";
 import { Streamdown } from "streamdown";
 import { Shimmer } from "./shimmer";
 
@@ -63,19 +63,24 @@ export const Reasoning = memo(
     });
 
     const [hasAutoClosed, setHasAutoClosed] = useState(false);
-    const [startTime, setStartTime] = useState<number | null>(null);
+    const startTimeRef = useRef<number | null>(null);
 
     // Track duration when streaming starts and ends
     useEffect(() => {
       if (isStreaming) {
-        if (startTime === null) {
-          setStartTime(Date.now());
+        if (startTimeRef.current === null) {
+          startTimeRef.current = Date.now();
         }
-      } else if (startTime !== null) {
-        setDuration(Math.ceil((Date.now() - startTime) / MS_IN_S));
-        setStartTime(null);
+      } else if (startTimeRef.current !== null) {
+        const elapsed = Math.ceil((Date.now() - startTimeRef.current) / MS_IN_S);
+        startTimeRef.current = null;
+        const timer = setTimeout(() => {
+          setDuration(elapsed);
+        }, 0);
+
+        return () => clearTimeout(timer);
       }
-    }, [isStreaming, startTime, setDuration]);
+    }, [isStreaming, setDuration]);
 
     // Auto-open when streaming starts, auto-close when streaming ends (once only)
     useEffect(() => {
@@ -119,8 +124,8 @@ const defaultGetThinkingMessage = (isStreaming: boolean, duration?: number) => {
   if (isStreaming || duration === 0) {
     return <Shimmer duration={1}>Thinking...</Shimmer>;
   }
-  if (duration === undefined) {
-    return <p>Thought for a few seconds</p>;
+  if (duration === undefined || duration <= 3) {
+    return <p>Thought for a couple of seconds</p>;
   }
   return <p>Thought for {duration} seconds</p>;
 };
@@ -132,19 +137,18 @@ export const ReasoningTrigger = memo(
     return (
       <CollapsibleTrigger
         className={cn(
-          "flex w-full items-center gap-2 text-muted-foreground text-sm transition-colors hover:text-foreground",
+          "flex w-full items-center gap-1.5 text-muted-foreground text-base leading-7 tracking-normal transition-colors hover:text-foreground",
           className
         )}
         {...props}
       >
         {children ?? (
           <>
-            <BrainIcon className="size-4" />
             {getThinkingMessage(isStreaming, duration)}
-            <ChevronDownIcon
+            <ChevronRightIcon
               className={cn(
                 "size-4 transition-transform",
-                isOpen ? "rotate-180" : "rotate-0"
+                isOpen ? "rotate-90" : "rotate-0"
               )}
             />
           </>
