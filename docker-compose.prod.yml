@@ -22,11 +22,11 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:80/api/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 15s
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:2019/config/ || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
     deploy:
       resources:
         limits:
