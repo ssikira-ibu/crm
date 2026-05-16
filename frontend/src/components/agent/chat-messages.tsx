@@ -42,30 +42,6 @@ interface ChatMessagesProps {
   contentClassName?: string;
 }
 
-const COMPLETED_TOOL_LABELS: Record<string, string> = {
-  "Searching CRM...": "Searched CRM",
-  "Loading dashboard...": "Loaded dashboard",
-  "Listing companies...": "Listed companies",
-  "Loading company...": "Loaded company",
-  "Loading pipeline overview...": "Loaded pipeline overview",
-  "Loading deal details...": "Loaded deal details",
-  "Loading tasks...": "Loaded tasks",
-  "Loading recent events...": "Loaded recent events",
-  "Loading contacts...": "Loaded contacts",
-  "Loading pipelines...": "Loaded pipelines",
-  "Logging activity...": "Logged activity",
-  "Creating task...": "Created task",
-  "Creating note...": "Created note",
-  "Creating company...": "Created company",
-  "Creating contact...": "Created contact",
-  "Creating deal...": "Created deal",
-  "Updating deal...": "Updated deal",
-  "Updating task...": "Updated task",
-  "Updating company...": "Updated company",
-  "Loading tags...": "Loaded tags",
-  "Adding tag...": "Added tag",
-  "Removing tag...": "Removed tag",
-};
 
 const ACTION_LABELS: Record<string, string> = {
   update_deal: "Update deal",
@@ -92,8 +68,7 @@ const TARGET_LABELS: Record<string, string> = {
 
 function toolLabel(tool: ToolEvent) {
   if (tool.status === "done") {
-    const normalized = tool.description.replace(/…$/, "...");
-    return COMPLETED_TOOL_LABELS[normalized] ?? tool.description.replace(/(?:\.\.\.|…)$/, "");
+    return tool.summary ?? tool.description.replace(/(?:\.\.\.|…)$/, "");
   }
   return tool.description;
 }
