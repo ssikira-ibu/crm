@@ -5,7 +5,7 @@
 
 :80 {
 	reverse_proxy frontend:3001 {
-		health_uri /api/health
+		health_uri /
 		health_interval 5s
 		health_timeout 3s
 
