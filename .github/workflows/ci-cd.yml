@@ -194,8 +194,13 @@ jobs:
               done
 
               echo "New ${service} container failed to become healthy — rolling back"
-              # Remove the failed new container
+              # Show container logs for debugging
               if [ -n "${NEW_CONTAINER}" ]; then
+                echo "--- Container logs ---"
+                docker logs --tail 30 "${NEW_CONTAINER}" 2>&1 || true
+                echo "--- Health status ---"
+                docker inspect --format='{{json .State.Health}}' "${NEW_CONTAINER}" 2>/dev/null || true
+                echo "---"
                 docker stop "${NEW_CONTAINER}" 2>/dev/null && docker rm "${NEW_CONTAINER}" 2>/dev/null
               fi
               docker compose -f docker-compose.prod.yml up -d --no-recreate --scale "${service}=1" "${service}"
