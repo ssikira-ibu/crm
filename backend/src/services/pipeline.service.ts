@@ -121,6 +121,9 @@ export async function updateStage(
   if (!stage) {
     throw new AppError(404, "STAGE_NOT_FOUND", "Pipeline stage not found");
   }
+  if (data.isWon && data.isLost) {
+    throw new AppError(400, "INVALID_STAGE_TYPE", "A stage cannot be both won and lost");
+  }
   return prisma.pipelineStage.update({
     where: { id: stageId },
     data,
@@ -143,6 +146,16 @@ export async function deleteStage(
   });
   if (!stage) {
     throw new AppError(404, "STAGE_NOT_FOUND", "Pipeline stage not found");
+  }
+  const activeDeals = await prisma.deal.count({
+    where: { pipelineId, stageId },
+  });
+  if (activeDeals > 0) {
+    throw new AppError(
+      409,
+      "STAGE_HAS_DEALS",
+      "Move deals out of this stage before archiving it",
+    );
   }
   await prisma.pipelineStage.delete({ where: { id: stageId } });
 }
