@@ -52,6 +52,11 @@ import type {
   InviteCreate,
   Invite,
   Pipeline,
+  PipelineCreate,
+  PipelineStage,
+  PipelineStageCreate,
+  PipelineStageUpdate,
+  PipelineUpdate,
 } from "./types";
 
 const API_URL =
@@ -317,12 +322,18 @@ const pipelines = {
     serverRequest<Single<Pipeline[]>>("/pipelines"),
   get: (id: string) =>
     serverRequest<Single<Pipeline>>(`/pipelines/${id}`),
-  create: (input: unknown) =>
+  create: (input: PipelineCreate) =>
     serverRequest<Single<Pipeline>>("/pipelines", { method: "POST", body: input }),
-  update: (id: string, input: unknown) =>
+  update: (id: string, input: PipelineUpdate) =>
     serverRequest<Single<Pipeline>>(`/pipelines/${id}`, { method: "PATCH", body: input }),
   remove: (id: string) =>
     serverRequest<void>(`/pipelines/${id}`, { method: "DELETE" }),
+  createStage: (pipelineId: string, input: PipelineStageCreate) =>
+    serverRequest<Single<PipelineStage>>(`/pipelines/${pipelineId}/stages`, { method: "POST", body: input }),
+  updateStage: (pipelineId: string, stageId: string, input: PipelineStageUpdate) =>
+    serverRequest<Single<PipelineStage>>(`/pipelines/${pipelineId}/stages/${stageId}`, { method: "PATCH", body: input }),
+  removeStage: (pipelineId: string, stageId: string) =>
+    serverRequest<void>(`/pipelines/${pipelineId}/stages/${stageId}`, { method: "DELETE" }),
 };
 
 export const serverApi = {
