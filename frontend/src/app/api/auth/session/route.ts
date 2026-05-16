@@ -1,5 +1,6 @@
 import { getAdminAuth } from "@/lib/firebase-admin";
 import { createSession, deleteSession } from "@/lib/session";
+import { allowedAccountMessage, isAllowedAccountEmail } from "@/lib/allowed-email";
 
 export async function POST(request: Request) {
   try {
@@ -12,7 +13,20 @@ export async function POST(request: Request) {
     }
 
     const decoded = await getAdminAuth().verifyIdToken(idToken);
-    await createSession(decoded.uid, decoded.email ?? "");
+    if (!isAllowedAccountEmail(decoded.email)) {
+      await deleteSession();
+      return Response.json(
+        { error: allowedAccountMessage() },
+        { status: 403 },
+      );
+    }
+
+    const displayName =
+      typeof decoded.name === "string" && decoded.name.trim()
+        ? decoded.name.trim()
+        : null;
+
+    await createSession(decoded.uid, decoded.email ?? "", displayName);
 
     return Response.json({ ok: true });
   } catch (err) {

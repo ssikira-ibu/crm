@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { LogOut, Monitor, Moon, Sun } from "lucide-react";
 import { toast } from "sonner";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -17,7 +17,13 @@ import {
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "@/lib/theme";
 
-function initialsFor(email: string | null | undefined): string {
+function initialsFor(name: string | null | undefined, email: string | null | undefined): string {
+  if (name?.trim()) {
+    const segments = name.trim().split(/\s+/).filter(Boolean);
+    const first = segments[0]?.[0] ?? "?";
+    const second = segments[1]?.[0] ?? "";
+    return (first + second).toUpperCase();
+  }
   if (!email) return "?";
   const localPart = email.split("@")[0] ?? "";
   const segments = localPart.split(/[._-]/).filter(Boolean);
@@ -31,6 +37,9 @@ export function UserMenu() {
   const { user, signOut } = useAuth();
   const { theme, setTheme } = useTheme();
   const email = user?.email ?? "";
+  const displayName = user?.displayName?.trim() ?? "";
+  const photoUrl = user?.photoURL ?? undefined;
+  const primaryLabel = displayName || email || "Signed in";
 
   async function onSignOut() {
     try {
@@ -45,15 +54,23 @@ export function UserMenu() {
     <DropdownMenu>
       <DropdownMenuTrigger className="flex w-full items-center gap-2 rounded-md p-2 text-left text-sm hover:bg-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">
         <Avatar className="size-8">
-          <AvatarFallback>{initialsFor(email)}</AvatarFallback>
+          {photoUrl && <AvatarImage src={photoUrl} alt="" referrerPolicy="no-referrer" />}
+          <AvatarFallback>{initialsFor(displayName, email)}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium">{email || "Signed in"}</div>
+          <div className="truncate font-medium">{primaryLabel}</div>
           <div className="truncate text-xs text-muted-foreground">Account</div>
         </div>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" side="top" className="w-60">
-        <DropdownMenuLabel className="truncate">{email}</DropdownMenuLabel>
+        <DropdownMenuLabel>
+          <span className="block truncate">{primaryLabel}</span>
+          {displayName && email && (
+            <span className="block truncate text-xs font-normal text-muted-foreground">
+              {email}
+            </span>
+          )}
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
           Theme

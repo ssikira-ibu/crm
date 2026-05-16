@@ -8,8 +8,8 @@ import type { ActorInfo } from "../types/index.js";
 
 const encodedKey = new TextEncoder().encode(config.S2S_JWT_SECRET);
 
-// Simple in-memory cache of known UIDs to avoid upserting on every request
-const knownUids = new Set<string>();
+// Simple in-memory cache of known profile state to avoid upserting on every request
+const knownProfiles = new Map<string, string>();
 
 export const authMiddleware: Middleware = async (ctx, next) => {
   const header = ctx.headers.authorization;
@@ -25,6 +25,10 @@ export const authMiddleware: Middleware = async (ctx, next) => {
     ctx.state.user = {
       uid: payload.uid as string,
       email: (payload.email as string) ?? "",
+      displayName:
+        typeof payload.displayName === "string"
+          ? payload.displayName
+          : null,
       actor: (payload.actor as ActorInfo) ?? null,
     };
   } catch {
@@ -32,12 +36,13 @@ export const authMiddleware: Middleware = async (ctx, next) => {
   }
 
   // Fire-and-forget upsert — only if not seen in this process lifetime
-  const { uid, email } = ctx.state.user;
-  if (!knownUids.has(uid)) {
-    knownUids.add(uid);
-    upsertUser(uid, email).catch(() => {
+  const { uid, email, displayName } = ctx.state.user;
+  const profileCacheKey = JSON.stringify({ email, displayName: displayName ?? null });
+  if (knownProfiles.get(uid) !== profileCacheKey) {
+    knownProfiles.set(uid, profileCacheKey);
+    upsertUser(uid, email, displayName ?? undefined).catch(() => {
       // If it fails, remove from cache so we retry next time
-      knownUids.delete(uid);
+      knownProfiles.delete(uid);
     });
   }
 
