@@ -64,7 +64,7 @@ export function ChatInput({
   return (
     <form
       className={cn(
-        "flex items-end gap-3 rounded-[28px] border border-border/60 bg-muted/50 pl-5 pr-3 shadow-xs backdrop-blur transition-colors focus-within:border-border focus-within:bg-muted/70 dark:bg-muted/40 dark:focus-within:bg-muted/60",
+        "flex items-center gap-3 rounded-[28px] border border-border/60 bg-muted/50 pl-5 pr-3 shadow-xs backdrop-blur transition-colors focus-within:border-border focus-within:bg-muted/70 dark:bg-muted/40 dark:focus-within:bg-muted/60",
         large ? "min-h-14 py-2" : "min-h-13 py-2",
         className,
       )}
@@ -82,7 +82,7 @@ export function ChatInput({
         readOnly={disabled}
         aria-disabled={disabled}
         autoFocus={autoFocus}
-        className="max-h-40 min-h-8 flex-1 resize-none overflow-hidden border-0 bg-transparent px-0 py-1 text-base shadow-none [field-sizing:fixed] focus-visible:border-0 focus-visible:ring-0 md:text-base dark:bg-transparent"
+        className="max-h-40 min-h-9 flex-1 resize-none overflow-hidden border-0 bg-transparent px-0 py-1.5 text-base leading-6 shadow-none [field-sizing:fixed] focus-visible:border-0 focus-visible:ring-0 md:text-base dark:bg-transparent"
         rows={1}
       />
       <Button
