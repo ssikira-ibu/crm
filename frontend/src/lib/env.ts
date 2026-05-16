@@ -7,6 +7,7 @@ export const serverEnv = z
     S2S_JWT_SECRET: z.string().min(32),
     FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
     GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
+    AGENT_URL: z.string().default("http://localhost:3002"),
   })
   .refine(
     (env) =>

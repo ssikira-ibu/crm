@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { LogOut, Monitor, Moon, Sun } from "lucide-react";
-import { useTheme } from "next-themes";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -16,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/lib/auth";
+import { useTheme } from "@/lib/theme";
 
 function initialsFor(email: string | null | undefined): string {
   if (!email) return "?";

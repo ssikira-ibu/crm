@@ -62,7 +62,7 @@ const API_URL =
 
 const encodedKey = new TextEncoder().encode(serverEnv.S2S_JWT_SECRET);
 
-async function createS2SToken(uid: string, email: string): Promise<string> {
+export async function createS2SToken(uid: string, email: string): Promise<string> {
   return new SignJWT({ uid, email })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()

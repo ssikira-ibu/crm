@@ -56,7 +56,12 @@ export type OrgContext = {
   organizationId: string;
   userId: string;
   role: OrgRole;
+  actor: RequestActor;
 };
+
+export type RequestActor =
+  | { type: "user" }
+  | { type: "agent"; conversationId: string; toolCallId?: string };
 
 export type MeResponse = {
   uid: string;
@@ -381,6 +386,111 @@ export type Paginated<T> = { data: T[]; meta: PageMeta };
 export type ApiErrorBody = {
   error: { code: string; message: string; details?: unknown };
 };
+
+// ---------------------------------------------------------------------------
+// Agent
+// ---------------------------------------------------------------------------
+
+export type AgentToolCall = {
+  id: string;
+  name: string;
+  input: Record<string, unknown>;
+};
+
+export type AgentMessage = {
+  role: "user" | "assistant";
+  content: string;
+  toolCalls?: AgentToolCall[];
+  createdAt: string;
+};
+
+export type AgentThinkingBlock = { thinking: string; signature: string };
+export type AgentRedactedThinkingBlock = { data: string };
+
+export type AgentProviderMessage =
+  | { role: "user"; content: string }
+  | {
+      role: "assistant";
+      content: string;
+      toolCalls?: AgentToolCall[];
+      /**
+       * Thinking blocks from this turn. Anthropic requires these to be sent
+       * back unchanged on subsequent turns whenever tool use is involved
+       * (the signature is verified server-side).
+       */
+      thinkingBlocks?: AgentThinkingBlock[];
+      redactedThinkingBlocks?: AgentRedactedThinkingBlock[];
+    }
+  | {
+      role: "tool";
+      toolUseId: string;
+      content: string;
+      isError: boolean;
+    };
+
+export type AgentActionStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED" | "EXPIRED";
+
+export type AgentActionRisk = "write" | "destructive" | "external";
+
+export type AgentActionContext = {
+  target?: {
+    type: "company" | "deal" | "task" | "tag";
+    id: string;
+    label: string;
+    subtitle?: string | null;
+  };
+  related?: {
+    type: "company" | "deal" | "task" | "tag";
+    id: string;
+    label: string;
+    subtitle?: string | null;
+  }[];
+  current?: Record<string, string | null>;
+};
+
+export type AgentPendingAction = {
+  id: string;
+  conversationId: string;
+  toolCallId: string;
+  toolName: string;
+  risk: AgentActionRisk;
+  summary: string;
+  input: Record<string, unknown>;
+  context?: AgentActionContext;
+  status: AgentActionStatus;
+  createdAt: string;
+  expiresAt: string;
+};
+
+export type AgentConversation = {
+  id: string;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AgentConversationDetail = AgentConversation & {
+  messages: AgentMessage[];
+  providerMessages: AgentProviderMessage[];
+  pendingActions: AgentPendingAction[];
+};
+
+export type AgentSSEEvent =
+  | { type: "text_delta"; delta: string }
+  | { type: "thinking_delta"; delta: string }
+  | { type: "tool_start"; tool: string; description: string }
+  | { type: "tool_end"; tool: string }
+  | { type: "confirmation_required"; action: AgentPendingAction }
+  | { type: "error"; message: string }
+  | {
+      type: "done";
+      conversationId: string;
+      /** True if the loop paused awaiting user confirmation on a gated tool. */
+      paused?: boolean;
+      messages?: AgentMessage[];
+      providerMessages?: AgentProviderMessage[];
+      tokenUsage?: { input: number; output: number };
+    };
 
 export type SearchResultItem = {
   id: string;

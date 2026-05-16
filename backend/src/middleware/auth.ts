@@ -4,6 +4,7 @@ import { config } from "../config.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "./errorHandler.js";
 import { upsertUser } from "../services/user.service.js";
+import type { ActorInfo } from "../types/index.js";
 
 const encodedKey = new TextEncoder().encode(config.S2S_JWT_SECRET);
 
@@ -24,6 +25,7 @@ export const authMiddleware: Middleware = async (ctx, next) => {
     ctx.state.user = {
       uid: payload.uid as string,
       email: (payload.email as string) ?? "",
+      actor: (payload.actor as ActorInfo) ?? null,
     };
   } catch {
     throw new AppError(401, "UNAUTHORIZED", "Invalid or expired token");

@@ -8,10 +8,12 @@ Reference for operating CRM in production. For local dev setup see the root `REA
 user -> Cloudflare (TLS, WAF, DNS for crm.ssikira.com)
      -> Cloudflare Tunnel (outbound only, no inbound ports on the box)
      -> docker network "crm_default" on Hetzner VPS
-          tunnel -> frontend:3001 (Next.js BFF, standalone output)
-          frontend -> backend:3000 (Koa, S2S JWT)
-          backend  -> db:5432 (Postgres 18)
-                    redis:6379 (rate limiting)
+          tunnel   -> frontend:3001 (Next.js BFF, standalone output)
+          frontend -> backend:3000  (Koa, S2S JWT)
+          frontend -> agent:3002    (Koa, S2S JWT — chat/SSE)
+          agent    -> backend:3000  (delegated S2S JWT, actor=agent)
+          backend  -> db:5432       (Postgres 18)
+                    redis:6379      (rate limiting)
 ```
 
 No inbound HTTP ports on the VPS — only `22/tcp` (SSH) is open in ufw. All web traffic arrives via the outbound cloudflared connection.
@@ -24,7 +26,7 @@ No inbound HTTP ports on the VPS — only `22/tcp` (SSH) is open in ufw. All web
 | Public hostname | `crm.ssikira.com` | CNAME auto-created by the tunnel |
 | Tunnel | Cloudflare Zero Trust > Networks > Tunnels | `crm-prod` connector, published application routing `crm.ssikira.com` -> `http://frontend:3001` |
 | VPS | Hetzner CPX21 (or similar), Falkenstein, Ubuntu 24.04 | IPv4 `178.104.210.26` |
-| Registry | GHCR (`ghcr.io/ssikira-ibu/crm/{backend,frontend}`) | Images pushed from CI |
+| Registry | GHCR (`ghcr.io/ssikira-ibu/crm/{backend,frontend,agent}`) | Images pushed from CI |
 | Firebase | Same project as dev | `crm.ssikira.com` is an authorized domain |
 
 ## Server layout
@@ -53,7 +55,9 @@ Everything the stack needs lives in `/home/deploy/crm/.env`. Template is `.env.p
 | `FIREBASE_SERVICE_ACCOUNT_JSON` | single-line JSON via `jq -c . key.json` | **must be wrapped in single quotes** in `.env` to survive `source .env`: `FIREBASE_SERVICE_ACCOUNT_JSON='{"type":...}'` |
 | `NEXT_PUBLIC_FIREBASE_*` | Firebase console | present both in `.env` *and* in GitHub Actions secrets (see below) |
 | `TUNNEL_TOKEN` | Cloudflare tunnel setup | starts with `eyJ...` |
-| `DOMAIN` | `crm.ssikira.com` | used as `ALLOWED_ORIGINS=https://${DOMAIN}` for backend CORS |
+| `DOMAIN` | `crm.ssikira.com` | used as `ALLOWED_ORIGINS=https://${DOMAIN}` for backend CORS and `CORS_ORIGIN` for agent |
+| `ANTHROPIC_API_KEY` | Anthropic console | consumed by the `agent` service for LLM calls |
+| `ANTHROPIC_MODEL` | e.g. `claude-haiku-4-5-20251001` | optional; agent default model |
 | `IMAGE_PREFIX` | `ghcr.io/ssikira-ibu/crm` | required when running `docker compose` manually on the server; CI exports it automatically |
 | `IMAGE_TAG` | commit SHA | optional; defaults to `latest` |
 
@@ -79,13 +83,13 @@ Everything the stack needs lives in `/home/deploy/crm/.env`. Template is `.env.p
 
 Triggered by any push to `main`.
 
-1. **Build** (matrix: backend + frontend). `docker/build-push-action@v6` builds the `production` target for each Dockerfile and pushes two tags per image: `:${sha}` and `:latest`. Frontend build receives `NEXT_PUBLIC_*` as `--build-arg`s so they're baked into the JS bundle.
+1. **Build** (matrix: backend + frontend + agent). `docker/build-push-action@v6` builds the `production` target for each Dockerfile and pushes two tags per image: `:${sha}` and `:latest`. Frontend build receives `NEXT_PUBLIC_*` as `--build-arg`s so they're baked into the JS bundle.
 2. **Deploy**. `scp` the current `docker-compose.prod.yml` to `~/crm/`, then SSH and run:
    - `set -a && source .env && set +a` — load secrets
    - read `.last_deployed_tag` into `PREVIOUS_TAG` (for rollback)
    - `docker login ghcr.io` with `GHCR_PAT`
-   - `docker compose pull backend frontend` then `up -d --remove-orphans`
-   - `sleep 10`, then run backend `/health` via `docker compose exec`
+   - `docker compose pull backend frontend agent` then `up -d --remove-orphans`
+   - `sleep 10`, then probe backend `/health` and agent `/health` via `docker compose exec`
    - on success: write the new SHA to `.last_deployed_tag`, `docker image prune -f`
    - on failure: re-export `IMAGE_TAG=$PREVIOUS_TAG`, pull, bring up again, re-check. If that also fails, `exit 2` (manual intervention).
 

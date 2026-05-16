@@ -15,7 +15,11 @@
     "incremental": true,
     "plugins": [{ "name": "next" }],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "zod": ["./node_modules/zod"],
+      "zod/v3": ["./node_modules/zod/v3"],
+      "zod/v4": ["./node_modules/zod/v4"],
+      "zod/v4/core": ["./node_modules/zod/v4/core"]
     }
   },
   "include": [

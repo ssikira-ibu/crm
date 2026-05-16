@@ -71,10 +71,44 @@ services:
         condition: service_healthy
     command: >
       sh -c "npx prisma migrate deploy && node dist/index.js"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3000/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
     deploy:
       resources:
         limits:
           cpus: "0.75"
+          memory: 512M
+
+  agent:
+    image: ${IMAGE_PREFIX}/agent:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    expose:
+      - "3002"
+    environment:
+      PORT: "3002"
+      NODE_ENV: production
+      BACKEND_URL: http://backend:3000
+      S2S_JWT_SECRET: ${S2S_JWT_SECRET}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      DEFAULT_MODEL: ${ANTHROPIC_MODEL:-claude-haiku-4-5-20251001}
+      CORS_ORIGIN: https://${DOMAIN}
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:3002/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
           memory: 512M
 
   frontend:
@@ -84,6 +118,7 @@ services:
       - "3001"
     environment:
       API_URL: http://backend:3000
+      AGENT_URL: http://agent:3002
       NODE_ENV: production
       PORT: "3001"
       HOSTNAME: "0.0.0.0"
@@ -97,7 +132,10 @@ services:
       NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
       NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+      agent:
+        condition: service_healthy
     deploy:
       resources:
         limits:
