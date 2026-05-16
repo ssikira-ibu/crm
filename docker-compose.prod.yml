@@ -6,8 +6,7 @@ services:
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN}
     depends_on:
-      caddy:
-        condition: service_healthy
+      - caddy
     deploy:
       resources:
         limits:
@@ -21,12 +20,6 @@ services:
       - "80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-    healthcheck:
-      test: ["CMD-SHELL", "wget -q -O- http://localhost:2019/config/ || exit 1"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
     deploy:
       resources:
         limits:
