@@ -18,6 +18,9 @@ export const createPipelineStageSchema = z.object({
   probability: z.number().int().min(0).max(100).optional(),
   isWon: z.boolean().optional(),
   isLost: z.boolean().optional(),
+}).refine((data) => !(data.isWon && data.isLost), {
+  message: "A stage cannot be both won and lost",
+  path: ["isLost"],
 });
 
 export type CreatePipelineStageInput = z.infer<typeof createPipelineStageSchema>;
