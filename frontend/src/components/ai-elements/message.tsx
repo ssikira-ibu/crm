@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import type { FileUIPart, UIMessage } from "ai";
+import Image from "next/image";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -347,13 +348,14 @@ export function MessageAttachment({
       )}
       {...props}
     >
-      {isImage ? (
+      {isImage && data.url ? (
         <>
-          <img
+          <Image
             alt={filename || "attachment"}
             className="size-full object-cover"
             height={100}
             src={data.url}
+            unoptimized
             width={100}
           />
           {onRemove && (
