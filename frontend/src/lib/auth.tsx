@@ -11,15 +11,25 @@ import {
 import { useRouter, usePathname } from "next/navigation";
 import {
   GoogleAuthProvider,
+  deleteUser,
   onIdTokenChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
+import {
+  ALLOWED_EMAIL_DOMAIN,
+  allowedAccountMessage,
+  isAllowedAccountEmail,
+} from "./allowed-email";
 import { getFirebaseAuth } from "./firebase";
 
 async function exchangeTokenForSession(user: User) {
+  if (!isAllowedAccountEmail(user.email)) {
+    throw new Error(allowedAccountMessage());
+  }
+
   const idToken = await user.getIdToken();
   const res = await fetch("/api/auth/session", {
     method: "POST",
@@ -85,13 +95,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       },
       signInWithGoogle: async () => {
+        const provider = new GoogleAuthProvider();
+        provider.setCustomParameters({
+          hd: ALLOWED_EMAIL_DOMAIN,
+          prompt: "select_account",
+        });
+
         const result = await signInWithPopup(
           getFirebaseAuth(),
-          new GoogleAuthProvider(),
+          provider,
         );
         try {
           await exchangeTokenForSession(result.user);
         } catch (err) {
+          if (!isAllowedAccountEmail(result.user.email)) {
+            await deleteUser(result.user).catch(() => undefined);
+          }
           await firebaseSignOut(getFirebaseAuth());
           throw err;
         }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FirebaseError } from "firebase/app";
-import { Loader2 } from "lucide-react";
+import { LogIn, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { ALLOWED_EMAIL_SUFFIX } from "@/lib/allowed-email";
 import { useAuth, useRedirectIfAuthed } from "@/lib/auth";
 
 const FRIENDLY_AUTH_ERRORS: Record<string, string> = {
@@ -120,7 +121,7 @@ export function LoginForm() {
           <div>
             <h1 className="text-xl font-semibold tracking-tight">Sign in</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Use your CRM account to continue.
+              Use your {ALLOWED_EMAIL_SUFFIX} account to continue.
             </p>
           </div>
 
@@ -197,7 +198,9 @@ export function LoginForm() {
                 <Loader2 className="size-3.5 animate-spin" /> Connecting
               </>
             ) : (
-              "Continue with Google"
+              <>
+                <LogIn className="size-3.5" /> Continue with Google
+              </>
             )}
           </Button>
         </div>
