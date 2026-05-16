@@ -14,6 +14,7 @@ import type {
 } from "@crm/shared";
 import * as pipelineService from "../services/pipeline.service.js";
 import { getOrgContext } from "../lib/orgContext.js";
+import { requireRole } from "../middleware/authorize.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -31,6 +32,7 @@ router.get("/pipelines", async (ctx) => {
 
 router.post(
   "/pipelines",
+  requireRole("ADMIN", "MANAGER"),
   validate(createPipelineSchema, "body"),
   async (ctx) => {
     const pipeline = await pipelineService.createPipeline(
@@ -52,6 +54,7 @@ router.get("/pipelines/:pipelineId", async (ctx) => {
 
 router.patch(
   "/pipelines/:pipelineId",
+  requireRole("ADMIN", "MANAGER"),
   validate(updatePipelineSchema, "body"),
   async (ctx) => {
     const pipeline = await pipelineService.updatePipeline(
@@ -63,13 +66,17 @@ router.patch(
   },
 );
 
-router.delete("/pipelines/:pipelineId", async (ctx) => {
-  await pipelineService.deletePipeline(
-    getOrgContext(ctx.state.user),
-    ctx.params.pipelineId,
-  );
-  ctx.status = 204;
-});
+router.delete(
+  "/pipelines/:pipelineId",
+  requireRole("ADMIN", "MANAGER"),
+  async (ctx) => {
+    await pipelineService.deletePipeline(
+      getOrgContext(ctx.state.user),
+      ctx.params.pipelineId,
+    );
+    ctx.status = 204;
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Pipeline Stages
@@ -77,6 +84,7 @@ router.delete("/pipelines/:pipelineId", async (ctx) => {
 
 router.post(
   "/pipelines/:pipelineId/stages",
+  requireRole("ADMIN", "MANAGER"),
   validate(createPipelineStageSchema, "body"),
   async (ctx) => {
     const stage = await pipelineService.createStage(
@@ -91,6 +99,7 @@ router.post(
 
 router.patch(
   "/pipelines/:pipelineId/stages/:stageId",
+  requireRole("ADMIN", "MANAGER"),
   validate(updatePipelineStageSchema, "body"),
   async (ctx) => {
     const stage = await pipelineService.updateStage(
@@ -105,6 +114,7 @@ router.patch(
 
 router.delete(
   "/pipelines/:pipelineId/stages/:stageId",
+  requireRole("ADMIN", "MANAGER"),
   async (ctx) => {
     await pipelineService.deleteStage(
       getOrgContext(ctx.state.user),
