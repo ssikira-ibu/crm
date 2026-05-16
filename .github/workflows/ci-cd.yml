@@ -116,15 +116,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          sparse-checkout: docker-compose.prod.yml
+          sparse-checkout: |
+            docker-compose.prod.yml
+            Caddyfile
 
-      - name: Copy compose file to server
+      - name: Copy deployment files to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: deploy
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: docker-compose.prod.yml
+          source: docker-compose.prod.yml,Caddyfile
           target: ~/crm
 
       - name: Deploy
@@ -154,37 +156,72 @@ jobs:
             # Login to GHCR
             echo "${GHCR_TOKEN}" | docker login ghcr.io -u "${GHCR_USER}" --password-stdin
 
-            # Pull new images and deploy
+            # Pull new images (while old containers keep serving)
             docker compose -f docker-compose.prod.yml pull backend frontend agent
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
 
-            # Wait for services, then verify health
-            echo "Waiting for services to be healthy..."
-            sleep 10
+            # Ensure caddy and infrastructure are up
+            docker compose -f docker-compose.prod.yml up -d caddy tunnel db redis
 
-            healthcheck() {
-              docker compose -f docker-compose.prod.yml exec -T backend \
-                wget -qO- http://localhost:3000/health > /dev/null 2>&1 \
-              && docker compose -f docker-compose.prod.yml exec -T agent \
-                wget -qO- http://localhost:3002/health > /dev/null 2>&1
+            # Rolling deploy each service: scale up new, wait healthy, remove old
+            rolling_deploy() {
+              local service=$1
+              echo "Rolling deploy: ${service}"
+
+              # Get current container ID before scaling
+              OLD_CONTAINER=$(docker compose -f docker-compose.prod.yml ps -q "${service}" | head -1)
+
+              # Scale to 2 — new container starts alongside old
+              docker compose -f docker-compose.prod.yml up -d --no-recreate --scale "${service}=2" "${service}"
+
+              # Wait for the new container to become healthy (up to 60s)
+              echo "Waiting for new ${service} container to be healthy..."
+              for i in $(seq 1 30); do
+                NEW_CONTAINER=$(docker compose -f docker-compose.prod.yml ps -q "${service}" | grep -v "${OLD_CONTAINER}" | head -1)
+                if [ -n "${NEW_CONTAINER}" ]; then
+                  HEALTH=$(docker inspect --format='{{.State.Health.Status}}' "${NEW_CONTAINER}" 2>/dev/null || echo "starting")
+                  if [ "${HEALTH}" = "healthy" ]; then
+                    echo "New ${service} container is healthy"
+                    # Stop old container
+                    if [ -n "${OLD_CONTAINER}" ]; then
+                      docker stop "${OLD_CONTAINER}" && docker rm "${OLD_CONTAINER}"
+                    fi
+                    # Scale back to 1
+                    docker compose -f docker-compose.prod.yml up -d --no-recreate --scale "${service}=1" "${service}"
+                    return 0
+                  fi
+                fi
+                sleep 2
+              done
+
+              echo "New ${service} container failed to become healthy — rolling back"
+              # Remove the failed new container
+              if [ -n "${NEW_CONTAINER}" ]; then
+                docker stop "${NEW_CONTAINER}" 2>/dev/null && docker rm "${NEW_CONTAINER}" 2>/dev/null
+              fi
+              docker compose -f docker-compose.prod.yml up -d --no-recreate --scale "${service}=1" "${service}"
+              return 1
             }
 
-            if ! healthcheck; then
-              echo "Health check failed (backend or agent) — rolling back to ${PREVIOUS_TAG}"
-              export IMAGE_TAG="${PREVIOUS_TAG}"
-              docker compose -f docker-compose.prod.yml pull backend frontend agent || true
-              docker compose -f docker-compose.prod.yml up -d --remove-orphans
-              sleep 10
-              if ! healthcheck; then
-                echo "Rollback also failed — manual intervention required"
-                exit 2
-              fi
-              echo "Rollback successful; new deploy aborted"
+            # Deploy backend first (frontend depends on it)
+            rolling_deploy backend || {
+              echo "Backend deploy failed — aborting"
               exit 1
-            fi
+            }
+
+            # Deploy agent
+            rolling_deploy agent || {
+              echo "Agent deploy failed — aborting"
+              exit 1
+            }
+
+            # Deploy frontend last
+            rolling_deploy frontend || {
+              echo "Frontend deploy failed — aborting"
+              exit 1
+            }
 
             # Record successful tag for next rollback
             echo "${IMAGE_TAG}" > .last_deployed_tag
 
-            echo "Deploy successful"
+            echo "Deploy successful — zero downtime"
             docker image prune -f
