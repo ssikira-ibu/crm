@@ -1,6 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { assertHumanOrApprovedAgent } from "../lib/orgContext.js";
 import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, TaskQueryParams, CreateTaskInput, UpdateTaskInput } from "@crm/shared";
@@ -155,6 +156,7 @@ export async function updateTask(
   data: UpdateTaskInput,
   companyId?: string,
 ) {
+  assertHumanOrApprovedAgent(ctx);
   if (companyId) {
     await ensureCompanyAccess(ctx, companyId);
   }

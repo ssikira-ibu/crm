@@ -1,0 +1,30 @@
+{
+  "name": "@crm/agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file=.env src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.96.0",
+    "@crm/shared": "*",
+    "@koa/cors": "^5.0.0",
+    "@koa/router": "^15.0.0",
+    "jose": "^6.2.2",
+    "koa": "^3.2.0",
+    "koa-body": "^7.0.1",
+    "pino": "^9.14.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/koa": "^3.0.2",
+    "@types/koa__cors": "^5.0.0",
+    "@types/koa__router": "^12.0.4",
+    "@types/node": "^25.6.0",
+    "tsx": "^4.19.4",
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,6 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { assertHumanOrApprovedAgent } from "../lib/orgContext.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, CompanyQueryParams, CreateCompanyInput, UpdateCompanyInput } from "@crm/shared";
 
@@ -96,6 +97,7 @@ export async function updateCompany(
   companyId: string,
   data: UpdateCompanyInput,
 ) {
+  assertHumanOrApprovedAgent(ctx);
   const old = await prisma.company.findFirst({ where: { id: companyId, ...companyWhere(ctx) } });
   if (!old) {
     throw new AppError(404, "COMPANY_NOT_FOUND", "Company not found");

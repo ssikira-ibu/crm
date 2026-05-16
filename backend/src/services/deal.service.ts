@@ -1,6 +1,7 @@
 import { Prisma } from "../generated/prisma/client.js";
 import { prisma } from "../lib/prisma.js";
 import { AppError } from "../middleware/errorHandler.js";
+import { assertHumanOrApprovedAgent } from "../lib/orgContext.js";
 import { ensureCompanyAccess } from "./company.service.js";
 import { recordEvent } from "./event.service.js";
 import type { OrgContext, DealQueryParams, CreateDealInput, UpdateDealInput } from "@crm/shared";
@@ -120,6 +121,7 @@ export async function updateDeal(
   dealId: string,
   data: UpdateDealInput,
 ) {
+  assertHumanOrApprovedAgent(ctx);
   await ensureCompanyAccess(ctx, companyId);
   const old = await prisma.deal.findFirst({
     where: { id: dealId, companyId },

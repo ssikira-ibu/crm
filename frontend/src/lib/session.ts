@@ -6,7 +6,6 @@ import { serverEnv } from "./env";
 const encodedKey = new TextEncoder().encode(serverEnv.SESSION_SECRET);
 const COOKIE_NAME = "session";
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
-const REFRESH_THRESHOLD_MS = SESSION_TTL_MS / 2; // refresh when < 12 hours remain
 
 export type SessionPayload = {
   uid: string;
@@ -69,17 +68,6 @@ export async function getSession(): Promise<{
 
   const expiresAt = new Date(payload.expiresAt);
   if (expiresAt < new Date()) return null;
-
-  const remaining = expiresAt.getTime() - Date.now();
-  if (remaining < REFRESH_THRESHOLD_MS) {
-    const newExpiresAt = new Date(Date.now() + SESSION_TTL_MS);
-    const newToken = await encrypt({
-      uid: payload.uid,
-      email: payload.email,
-      expiresAt: newExpiresAt.toISOString(),
-    });
-    await setCookie(newToken, newExpiresAt);
-  }
 
   return { uid: payload.uid, email: payload.email };
 }

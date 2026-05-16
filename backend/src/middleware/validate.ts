@@ -3,8 +3,9 @@ import { z } from "zod";
 import { AppError } from "./errorHandler.js";
 
 type Source = "body" | "query" | "params";
+type ParsableSchema = { parse: (data: unknown) => unknown };
 
-export function validate(schema: z.ZodType, source: Source): Middleware {
+export function validate(schema: ParsableSchema, source: Source): Middleware {
   return async (ctx, next) => {
     let data: unknown;
     if (source === "body") {

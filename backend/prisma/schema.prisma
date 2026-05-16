@@ -26,6 +26,8 @@ model User {
   assignedTasks  Task[]               @relation("taskAssignee")
   createdTasks   Task[]               @relation("taskCreator")
   events         Event[]
+  agentConversations AgentConversation[]
+  agentActions       AgentAction[]
 
   @@map("users")
 }
@@ -58,6 +60,8 @@ model Organization {
   deals                  Deal[]
   customFieldDefinitions CustomFieldDefinition[]
   tasks                  Task[]
+  agentConversations     AgentConversation[]
+  agentActions           AgentAction[]
 
   @@map("organizations")
 }
@@ -463,6 +467,89 @@ model Event {
   @@index([companyId, createdAt(sort: Desc)])
   @@index([entityType, entityId])
   @@map("events")
+}
+
+// ---------------------------------------------------------------------------
+// Agent
+// ---------------------------------------------------------------------------
+
+enum AgentActionStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXECUTED
+  EXPIRED
+}
+
+enum AgentActionRisk {
+  write
+  destructive
+  external
+}
+
+model AgentConversation {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id")
+  title          String?
+  provider       String?
+  model          String?
+  tokenUsage     Int      @default(0) @map("token_usage")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User           @relation(fields: [userId], references: [id])
+  messages     AgentMessage[]
+  actions      AgentAction[]
+
+  @@index([organizationId, userId, updatedAt(sort: Desc)])
+  @@map("agent_conversations")
+}
+
+model AgentMessage {
+  id              String   @id @default(uuid()) @db.Uuid
+  conversationId  String   @map("conversation_id") @db.Uuid
+  role            String
+  displayContent  String   @map("display_content") @db.Text
+  providerPayload Json     @map("provider_payload") @db.JsonB
+  sequence        Int
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, sequence])
+  @@index([conversationId, sequence])
+  @@map("agent_messages")
+}
+
+model AgentAction {
+  id             String            @id @default(uuid()) @db.Uuid
+  conversationId String            @map("conversation_id") @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  userId         String            @map("user_id")
+  toolCallId     String            @map("tool_call_id")
+  toolName       String            @map("tool_name")
+  risk           AgentActionRisk
+  summary        String
+  input          Json              @db.JsonB
+  result         Json?             @db.JsonB
+  status         AgentActionStatus @default(PENDING)
+  approvedAt     DateTime?         @map("approved_at")
+  rejectedAt     DateTime?         @map("rejected_at")
+  executedAt     DateTime?         @map("executed_at")
+  expiresAt      DateTime          @map("expires_at")
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  conversation AgentConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User              @relation(fields: [userId], references: [id])
+
+  @@unique([conversationId, toolCallId])
+  @@index([organizationId, userId, status])
+  @@index([conversationId, status])
+  @@map("agent_actions")
 }
 
 // ---------------------------------------------------------------------------
