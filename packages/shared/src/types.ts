@@ -479,7 +479,7 @@ export type AgentSSEEvent =
   | { type: "text_delta"; delta: string }
   | { type: "thinking_delta"; delta: string }
   | { type: "tool_start"; tool: string; description: string }
-  | { type: "tool_end"; tool: string }
+  | { type: "tool_end"; tool: string; summary?: string }
   | { type: "confirmation_required"; action: AgentPendingAction }
   | { type: "error"; message: string }
   | {

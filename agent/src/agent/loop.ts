@@ -51,6 +51,58 @@ function toolLabel(name: string): string {
   return `${TOOL_PRESENT_TENSE[name] ?? `Running ${name}`}…`;
 }
 
+function toolSummary(name: string, input: Record<string, unknown>): string {
+  const str = (key: string) => (input[key] as string) ?? "";
+  switch (name) {
+    case "search":
+      return `Searched for "${str("q")}"`;
+    case "get_dashboard":
+      return "Loaded dashboard";
+    case "list_companies":
+      return str("search") ? `Listed companies matching "${str("search")}"` : "Listed companies";
+    case "get_company":
+      return "Loaded company details";
+    case "get_deals_overview":
+      return "Loaded pipeline overview";
+    case "get_deal_detail":
+      return "Loaded deal details";
+    case "list_tasks":
+      return "Loaded tasks";
+    case "list_events":
+      return "Loaded recent events";
+    case "list_contacts":
+      return "Loaded contacts";
+    case "list_pipelines":
+      return "Loaded pipelines";
+    case "create_activity":
+      return `Logged activity: ${str("title")}`;
+    case "create_task":
+      return `Created task: ${str("title")}`;
+    case "create_note":
+      return `Created note: ${str("title")}`;
+    case "create_company":
+      return `Created company ${str("name")}`;
+    case "create_contact":
+      return `Created contact ${[str("firstName"), str("lastName")].filter(Boolean).join(" ")}`;
+    case "create_deal":
+      return `Created deal: ${str("title")}`;
+    case "update_deal":
+      return "Updated deal";
+    case "update_task":
+      return "Updated task";
+    case "update_company":
+      return "Updated company";
+    case "list_tags":
+      return "Loaded tags";
+    case "add_tag_to_company":
+      return "Added tag";
+    case "remove_tag_from_company":
+      return "Removed tag";
+    default:
+      return `Ran ${name}`;
+  }
+}
+
 export interface RunAgentLoopParams {
   client: Anthropic;
   model: string;
@@ -228,7 +280,7 @@ export async function runAgentLoop(
           isError: true,
         }),
       );
-      for (const t of toolUses) params.emit({ type: "tool_end", tool: t.name });
+      for (const t of toolUses) params.emit({ type: "tool_end", tool: t.name, summary: toolSummary(t.name, t.input) });
 
       await params.backendClient.appendAgentConversation(params.conversationId, {
         messages: [assistantDisplayMessage],
@@ -250,7 +302,7 @@ export async function runAgentLoop(
           gatedToolUse.id,
           gatedToolUse.input,
         );
-        params.emit({ type: "tool_end", tool: gatedToolUse.name });
+        params.emit({ type: "tool_end", tool: gatedToolUse.name, summary: toolSummary(gatedToolUse.name, gatedToolUse.input) });
         params.emit({ type: "confirmation_required", action });
         await params.backendClient.appendAgentConversation(params.conversationId, {
           messages: [assistantDisplayMessage],
@@ -262,7 +314,7 @@ export async function runAgentLoop(
         break;
       } catch (err) {
         logger.error({ err, tool: gatedToolUse.name }, "failed to create pending action");
-        params.emit({ type: "tool_end", tool: gatedToolUse.name });
+        params.emit({ type: "tool_end", tool: gatedToolUse.name, summary: toolSummary(gatedToolUse.name, gatedToolUse.input) });
         const toolProviderMessage: AgentProviderMessage = {
           role: "tool",
           toolUseId: gatedToolUse.id,
@@ -295,7 +347,7 @@ export async function runAgentLoop(
           toolUse.input,
           params.abortSignal,
         );
-        params.emit({ type: "tool_end", tool: toolUse.name });
+        params.emit({ type: "tool_end", tool: toolUse.name, summary: toolSummary(toolUse.name, toolUse.input) });
         return {
           providerMessage: {
             role: "tool" as const,

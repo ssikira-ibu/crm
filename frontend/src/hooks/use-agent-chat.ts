@@ -7,6 +7,7 @@ export interface ToolEvent {
   name: string;
   description: string;
   status: "running" | "done";
+  summary?: string;
 }
 
 export type AgentPart =
@@ -191,7 +192,7 @@ export function useAgentChat(): UseAgentChatReturn {
                     ) {
                       parts[i] = {
                         type: "tool",
-                        tool: { ...p.tool, status: "done" },
+                        tool: { ...p.tool, status: "done", ...(event.summary ? { summary: event.summary } : {}) },
                       };
                       break;
                     }
@@ -199,7 +200,7 @@ export function useAgentChat(): UseAgentChatReturn {
                   const events = [...(m.toolEvents ?? [])];
                   for (let i = events.length - 1; i >= 0; i--) {
                     if (events[i].name === event.tool && events[i].status === "running") {
-                      events[i] = { ...events[i], status: "done" };
+                      events[i] = { ...events[i], status: "done", ...(event.summary ? { summary: event.summary } : {}) };
                       break;
                     }
                   }
