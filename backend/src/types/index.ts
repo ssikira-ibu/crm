@@ -5,6 +5,7 @@ export type ActorInfo = Extract<RequestActor, { type: "agent" }>;
 export interface AuthUser {
   uid: string;
   email: string;
+  displayName?: string | null;
   actor?: ActorInfo | null;
 }
 

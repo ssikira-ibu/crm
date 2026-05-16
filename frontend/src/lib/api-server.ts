@@ -62,8 +62,12 @@ const API_URL =
 
 const encodedKey = new TextEncoder().encode(serverEnv.S2S_JWT_SECRET);
 
-export async function createS2SToken(uid: string, email: string): Promise<string> {
-  return new SignJWT({ uid, email })
+export async function createS2SToken(
+  uid: string,
+  email: string,
+  displayName?: string | null,
+): Promise<string> {
+  return new SignJWT({ uid, email, displayName: displayName ?? null })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("60s")
@@ -112,7 +116,11 @@ async function serverRequest<T>(
     throw new ServerApiError(401, "UNAUTHORIZED", "No active session");
   }
 
-  const token = await createS2SToken(session.uid, session.email);
+  const token = await createS2SToken(
+    session.uid,
+    session.email,
+    session.displayName,
+  );
 
   const headers: Record<string, string> = {
     Accept: "application/json",

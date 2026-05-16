@@ -10,6 +10,7 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 export type SessionPayload = {
   uid: string;
   email: string;
+  displayName?: string | null;
   expiresAt: string;
 };
 
@@ -45,11 +46,16 @@ async function setCookie(token: string, expiresAt: Date) {
   });
 }
 
-export async function createSession(uid: string, email: string) {
+export async function createSession(
+  uid: string,
+  email: string,
+  displayName?: string | null,
+) {
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
   const token = await encrypt({
     uid,
     email,
+    displayName: displayName ?? null,
     expiresAt: expiresAt.toISOString(),
   });
   await setCookie(token, expiresAt);
@@ -58,6 +64,7 @@ export async function createSession(uid: string, email: string) {
 export async function getSession(): Promise<{
   uid: string;
   email: string;
+  displayName: string | null;
 } | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get(COOKIE_NAME)?.value;
@@ -69,7 +76,11 @@ export async function getSession(): Promise<{
   const expiresAt = new Date(payload.expiresAt);
   if (expiresAt < new Date()) return null;
 
-  return { uid: payload.uid, email: payload.email };
+  return {
+    uid: payload.uid,
+    email: payload.email,
+    displayName: payload.displayName ?? null,
+  };
 }
 
 export async function deleteSession() {
