@@ -19,6 +19,8 @@ import meRoutes from "./me.js";
 import organizationRoutes from "./organizations.js";
 import inviteRoutes from "./invites.js";
 import agentRoutes from "./agent.js";
+import workflowRoutes from "./workflows.js";
+import notificationRoutes from "./notifications.js";
 
 // Auth-only routes (user authenticated but no org membership required)
 const authOnlyRouter = new Router({ prefix: "/api" });
@@ -92,6 +94,14 @@ apiRouter.use(
 apiRouter.use(
   agentRoutes.routes(),
   agentRoutes.allowedMethods(),
+);
+apiRouter.use(
+  workflowRoutes.routes(),
+  workflowRoutes.allowedMethods(),
+);
+apiRouter.use(
+  notificationRoutes.routes(),
+  notificationRoutes.allowedMethods(),
 );
 
 export { healthRouter, apiRouter, authOnlyRouter };
