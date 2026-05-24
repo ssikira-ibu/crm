@@ -5,6 +5,7 @@ export function makeOrgContext(overrides?: Partial<OrgContext>): OrgContext {
     organizationId: "org-1",
     userId: "user-1",
     role: "ADMIN",
+    actor: { type: "user" },
     ...overrides,
   };
 }
