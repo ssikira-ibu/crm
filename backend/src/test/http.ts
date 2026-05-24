@@ -3,7 +3,7 @@ import type { AddressInfo } from "node:net";
 import { SignJWT } from "jose";
 import type Koa from "koa";
 import { config } from "../config.js";
-import { makePrismaMock } from "../test-helpers.ts";
+import { makePrismaMock } from "../test-helpers.js";
 import type { OrgRole } from "@crm/shared";
 
 const secret = new TextEncoder().encode(config.S2S_JWT_SECRET);
