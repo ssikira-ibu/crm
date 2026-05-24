@@ -14,6 +14,7 @@ import type {
 import { CUSTOM_FIELD_ENTITIES } from "@crm/shared";
 import * as customFieldService from "../services/customField.service.js";
 import { getOrgContext } from "../lib/orgContext.js";
+import { requireRole } from "../middleware/authorize.js";
 import { AppError } from "../middleware/errorHandler.js";
 import type { AppState } from "../types/index.js";
 
@@ -47,6 +48,7 @@ router.post(
 
 router.patch(
   "/custom-fields/definitions/:definitionId",
+  requireRole("ADMIN", "MANAGER"),
   validate(updateCustomFieldDefinitionSchema, "body"),
   async (ctx) => {
     const definition = await customFieldService.updateDefinition(
@@ -60,6 +62,7 @@ router.patch(
 
 router.delete(
   "/custom-fields/definitions/:definitionId",
+  requireRole("ADMIN", "MANAGER"),
   async (ctx) => {
     await customFieldService.deleteDefinition(
       getOrgContext(ctx.state.user),

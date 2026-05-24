@@ -210,6 +210,57 @@ describe("PUT /api/companies/:companyId/tags/:tagId — attach", () => {
   });
 });
 
+describe("role policy for tag mutations", () => {
+  it("SALESPERSON can create a tag", async () => {
+    mockOrgMembership(prismaMock, { role: "SALESPERSON" });
+    prismaMock.tag.create = mock.fn(() =>
+      Promise.resolve({ id: "tg1", name: "Lead" }),
+    );
+    const res = await apiRequest(server, "/api/tags", {
+      method: "POST",
+      token,
+      body: { name: "Lead" },
+    });
+    assert.equal(res.status, 201);
+  });
+
+  it("SALESPERSON cannot rename a tag (403)", async () => {
+    mockOrgMembership(prismaMock, { role: "SALESPERSON" });
+    const res = await apiRequest(server, "/api/tags/tg1", {
+      method: "PATCH",
+      token,
+      body: { name: "Renamed" },
+    });
+    assert.equal(res.status, 403);
+    assert.equal(res.body.error.code, "FORBIDDEN");
+    assert.equal((prismaMock.tag.update as ReturnType<typeof mock.fn>).mock.callCount(), 0);
+  });
+
+  it("SALESPERSON cannot delete a tag (403)", async () => {
+    mockOrgMembership(prismaMock, { role: "SALESPERSON" });
+    const res = await apiRequest(server, "/api/tags/tg1", {
+      method: "DELETE",
+      token,
+    });
+    assert.equal(res.status, 403);
+    assert.equal((prismaMock.tag.delete as ReturnType<typeof mock.fn>).mock.callCount(), 0);
+  });
+
+  it("MANAGER can rename a tag", async () => {
+    mockOrgMembership(prismaMock, { role: "MANAGER" });
+    prismaMock.tag.findFirst = mock.fn(() => Promise.resolve({ id: "tg1" }));
+    prismaMock.tag.update = mock.fn(() =>
+      Promise.resolve({ id: "tg1", name: "Renamed" }),
+    );
+    const res = await apiRequest(server, "/api/tags/tg1", {
+      method: "PATCH",
+      token,
+      body: { name: "Renamed" },
+    });
+    assert.equal(res.status, 200);
+  });
+});
+
 describe("DELETE /api/companies/:companyId/tags/:tagId — detach", () => {
   it("204s and writes an UNTAGGED event", async () => {
     prismaMock.company.findFirst = mock.fn(() => Promise.resolve({ id: "comp-1" }));

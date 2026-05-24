@@ -4,6 +4,7 @@ import { createTagSchema, updateTagSchema } from "@crm/shared";
 import type { CreateTagInput, UpdateTagInput } from "@crm/shared";
 import * as tagService from "../services/tag.service.js";
 import { getOrgContext } from "../lib/orgContext.js";
+import { requireRole } from "../middleware/authorize.js";
 import type { AppState } from "../types/index.js";
 
 const router = new Router<AppState>();
@@ -24,6 +25,7 @@ router.post("/tags", validate(createTagSchema, "body"), async (ctx) => {
 
 router.patch(
   "/tags/:tagId",
+  requireRole("ADMIN", "MANAGER"),
   validate(updateTagSchema, "body"),
   async (ctx) => {
     const tag = await tagService.updateTag(
@@ -35,10 +37,14 @@ router.patch(
   },
 );
 
-router.delete("/tags/:tagId", async (ctx) => {
-  await tagService.deleteTag(getOrgContext(ctx.state.user), ctx.params.tagId);
-  ctx.status = 204;
-});
+router.delete(
+  "/tags/:tagId",
+  requireRole("ADMIN", "MANAGER"),
+  async (ctx) => {
+    await tagService.deleteTag(getOrgContext(ctx.state.user), ctx.params.tagId);
+    ctx.status = 204;
+  },
+);
 
 router.put(
   "/companies/:companyId/tags/:tagId",
