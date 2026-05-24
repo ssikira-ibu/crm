@@ -297,6 +297,53 @@ const search = {
     serverRequest<Single<SearchResults>>("/search", { query: params }),
 };
 
+const notifications = {
+  list: (params?: { limit?: number; unreadOnly?: boolean; cursor?: string }) =>
+    serverRequest<{ data: NotificationItem[]; unreadCount: number }>(
+      "/notifications",
+      { query: params as Record<string, string | number | boolean | undefined> },
+    ),
+  markRead: (id: string) =>
+    serverRequest<Single<NotificationItem>>(`/notifications/${id}/read`, {
+      method: "POST",
+    }),
+  markAllRead: () =>
+    serverRequest<void>("/notifications/read-all", { method: "POST" }),
+};
+
+const workflows = {
+  list: (params?: { enabled?: boolean }) =>
+    serverRequest<{ data: WorkflowItem[] }>("/workflows", {
+      query: params as Record<string, string | number | boolean | undefined>,
+    }),
+  create: (input: unknown) =>
+    serverRequest<Single<WorkflowItem>>("/workflows", { method: "POST", body: input }),
+  remove: (id: string) =>
+    serverRequest<void>(`/workflows/${id}`, { method: "DELETE" }),
+};
+
+export type NotificationItem = {
+  id: string;
+  organizationId: string;
+  userId: string;
+  workflowId: string | null;
+  title: string;
+  body: string | null;
+  link: string | null;
+  metadata: Record<string, unknown> | null;
+  readAt: string | null;
+  createdAt: string;
+};
+
+export type WorkflowItem = {
+  id: string;
+  name: string;
+  enabled: boolean;
+  trigger: unknown;
+  action: unknown;
+  createdAt: string;
+};
+
 const me = {
   get: () => serverRequest<Single<MeResponse>>("/me"),
 };
@@ -361,4 +408,6 @@ export const serverApi = {
   events,
   search,
   pipelines,
+  notifications,
+  workflows,
 };

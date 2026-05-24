@@ -291,4 +291,73 @@ export const toolDefinitions: ToolDefinition[] = [
     }),
     execute: (params, client) => client.removeTagFromCompany(params.companyId as string, params.tagId as string),
   },
+
+  // --- Workflows (automation rules) ---
+  {
+    name: "list_workflows",
+    description:
+      "List the user's automation workflows (trigger -> action rules). Use to show, audit, or find a workflow before deleting it.",
+    parameters: z.object({
+      enabled: z.boolean().optional().describe("Only return enabled workflows"),
+    }),
+    execute: (params, client) =>
+      client.listWorkflows(params as { enabled?: boolean }),
+  },
+  {
+    name: "create_workflow",
+    description: [
+      "Create an automation workflow that fires when a CRM event matches the trigger.",
+      "Triggers: entityType is one of DEAL|COMPANY|CONTACT|TASK|ACTIVITY|NOTE|TAG.",
+      "Actions: one of CREATED|UPDATED|DELETED|STATUS_CHANGED|STAGE_CHANGED|COMPLETED|TAGGED|UNTAGGED|CLOSED_WON|CLOSED_LOST|CLOSED.",
+      "CLOSED_WON/CLOSED_LOST/CLOSED are synthetic and match a DEAL STAGE_CHANGED into a won/lost terminal stage.",
+      "Filters compare paths against values. Supported paths: metadata.* (event metadata) and entity.* (resolved entity, e.g. entity.id, entity.value, entity.stage.isWon).",
+      "Action types: notify (in-app notification to the workflow owner) or create_task (creates a task linked to the entity).",
+      "Title/body/link support {{path}} interpolation against {metadata, entity, event}.",
+      "Example: notify when a specific deal closes won --",
+      '{ name: "Renewal close alert", trigger: { entityType: "DEAL", action: "CLOSED_WON", filters: [{ path: "entity.id", op: "eq", value: "<dealId>" }] }, action: { type: "notify", title: "Deal won: {{entity.title}}", link: "/companies/{{entity.companyId}}/deals/{{entity.id}}" } }',
+    ].join(" "),
+    parameters: z.object({
+      name: z.string().describe("Human-readable workflow name"),
+      enabled: z.boolean().optional().describe("Defaults to true"),
+      trigger: z.object({
+        entityType: z.enum(["DEAL", "COMPANY", "CONTACT", "TASK", "ACTIVITY", "NOTE", "TAG"]),
+        action: z.enum([
+          "CREATED", "UPDATED", "DELETED", "STATUS_CHANGED", "STAGE_CHANGED",
+          "COMPLETED", "TAGGED", "UNTAGGED",
+          "CLOSED_WON", "CLOSED_LOST", "CLOSED",
+        ]),
+        filters: z.array(z.object({
+          path: z.string(),
+          op: z.enum(["eq", "ne", "in", "gt", "lt", "gte", "lte", "exists"]),
+          value: z.unknown().optional(),
+        })).optional(),
+      }),
+      action: z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("notify"),
+          userId: z.string().optional(),
+          title: z.string(),
+          body: z.string().optional(),
+          link: z.string().optional(),
+        }),
+        z.object({
+          type: z.literal("create_task"),
+          title: z.string(),
+          description: z.string().optional(),
+          dueInDays: z.number().int().min(0).max(365).optional(),
+          assigneeId: z.string().optional(),
+          linkToEntity: z.boolean().optional(),
+        }),
+      ]),
+    }),
+    execute: (params, client) => client.createWorkflow(params),
+  },
+  {
+    name: "delete_workflow",
+    description: "Soft-delete an automation workflow by ID.",
+    parameters: z.object({
+      workflowId: z.string().describe("Workflow UUID"),
+    }),
+    execute: (params, client) => client.deleteWorkflow(params.workflowId as string),
+  },
 ];

@@ -168,6 +168,13 @@ export function createBackendClient(ctx: RequestContext, signal?: AbortSignal) {
     removeTagFromCompany: (companyId: string, tagId: string) =>
       del(`/companies/${companyId}/tags/${tagId}`),
 
+    // Workflows
+    listWorkflows: (params?: { enabled?: boolean }) =>
+      get("/workflows", params as Record<string, string | number | boolean> | undefined),
+    createWorkflow: (body: unknown) => post("/workflows", body),
+    deleteWorkflow: (id: string) => del(`/workflows/${id}`),
+    updateWorkflow: (id: string, body: unknown) => patch(`/workflows/${id}`, body),
+
     // Events
     listEvents: (params?: { limit?: number; cursor?: string }) =>
       get("/events", params),
