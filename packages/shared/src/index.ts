@@ -16,3 +16,5 @@ export * from "./schemas/organization.js";
 export * from "./schemas/pipeline.js";
 export * from "./schemas/customField.js";
 export * from "./schemas/agent.js";
+export * from "./schemas/workflow.js";
+export * from "./schemas/notification.js";

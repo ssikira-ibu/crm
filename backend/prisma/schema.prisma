@@ -28,6 +28,8 @@ model User {
   events         Event[]
   agentConversations AgentConversation[]
   agentActions       AgentAction[]
+  workflows          Workflow[]
+  notifications      Notification[]
 
   @@map("users")
 }
@@ -62,6 +64,9 @@ model Organization {
   tasks                  Task[]
   agentConversations     AgentConversation[]
   agentActions           AgentAction[]
+  workflows              Workflow[]
+  notifications          Notification[]
+  scheduledActions       ScheduledAction[]
 
   @@map("organizations")
 }
@@ -608,4 +613,84 @@ model CustomFieldValue {
   @@index([entityId])
   @@index([entityId, deletedAt])
   @@map("custom_field_values")
+}
+
+// ---------------------------------------------------------------------------
+// Workflows & Notifications
+// ---------------------------------------------------------------------------
+
+model Workflow {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id")
+  name           String
+  enabled        Boolean  @default(true)
+  trigger        Json     @db.JsonB
+  action         Json     @db.JsonB
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  deletedAt      DateTime? @map("deleted_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([organizationId, enabled, deletedAt])
+  @@index([userId])
+  @@map("workflows")
+}
+
+model Notification {
+  id             String   @id @default(uuid()) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  userId         String   @map("user_id")
+  workflowId     String?  @map("workflow_id") @db.Uuid
+  title          String
+  body           String?  @db.Text
+  link           String?
+  metadata       Json?    @db.JsonB
+  readAt         DateTime? @map("read_at")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id])
+
+  @@index([userId, readAt, createdAt(sort: Desc)])
+  @@index([organizationId])
+  @@map("notifications")
+}
+
+enum ScheduledActionStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+model ScheduledAction {
+  id             String                @id @default(uuid()) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  workflowId     String?               @map("workflow_id") @db.Uuid
+  runAt          DateTime              @map("run_at")
+  payload        Json                  @db.JsonB
+  status         ScheduledActionStatus @default(PENDING)
+  attempts       Int                   @default(0)
+  lastError      String?               @map("last_error") @db.Text
+  createdAt      DateTime              @default(now()) @map("created_at")
+  updatedAt      DateTime              @updatedAt @map("updated_at")
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([status, runAt])
+  @@index([organizationId])
+  @@map("scheduled_actions")
+}
+
+// Tracks the last processed event sequence per worker — used by the outbox poller.
+model WorkflowCursor {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @unique
+  sequence  Int      @default(0)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("workflow_cursors")
 }
