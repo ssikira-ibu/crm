@@ -1,4 +1,4 @@
-FROM node:24-alpine AS base
+FROM node:24.22.1-alpine AS base
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -45,7 +45,7 @@ WORKDIR /app/frontend
 RUN npm run build
 
 # Production
-FROM node:24-alpine AS production
+FROM node:24.22.1-alpine AS production
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 # Next.js standalone output preserves the workspace layout under /app.

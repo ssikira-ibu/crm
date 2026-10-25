@@ -1,4 +1,4 @@
-FROM node:24-alpine AS base
+FROM node:24.22.1-alpine AS base
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -23,7 +23,7 @@ COPY agent ./agent/
 RUN npm run --workspace=agent build
 
 # Production
-FROM node:24-alpine AS production
+FROM node:24.22.1-alpine AS production
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app/agent
 COPY --from=build /app/agent/dist ./dist

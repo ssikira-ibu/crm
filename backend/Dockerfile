@@ -1,4 +1,4 @@
-FROM node:24-alpine AS base
+FROM node:24.22.1-alpine AS base
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -27,7 +27,7 @@ RUN cd backend && npx prisma generate
 RUN npm run --workspace=backend build
 
 # Production
-FROM node:24-alpine AS production
+FROM node:24.22.1-alpine AS production
 RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app/backend
 COPY --from=build /app/backend/dist ./dist
