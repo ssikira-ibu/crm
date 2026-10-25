@@ -1,4 +1,5 @@
 FROM node:24.22.1-alpine AS base
+RUN apk add --no-cache --upgrade ca-certificates
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -16,7 +17,8 @@ CMD ["npx", "tsx", "watch", "src/index.ts"]
 
 # Build
 FROM base AS build
-RUN npm ci --workspace=packages/shared --workspace=agent --include-workspace-root
+RUN npm ci --workspace=packages/shared --workspace=agent --include-workspace-root \
+    && mkdir -p /app/agent/node_modules
 COPY packages/shared ./packages/shared/
 RUN npm run --workspace=packages/shared build
 COPY agent ./agent/
@@ -24,7 +26,8 @@ RUN npm run --workspace=agent build
 
 # Production
 FROM node:24.22.1-alpine AS production
-RUN addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache --upgrade ca-certificates \
+    && addgroup -S app && adduser -S app -G app
 WORKDIR /app/agent
 COPY --from=build /app/agent/dist ./dist
 COPY --from=build /app/agent/node_modules ./node_modules

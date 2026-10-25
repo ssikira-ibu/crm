@@ -1,4 +1,5 @@
 FROM node:24.22.1-alpine AS base
+RUN apk add --no-cache --upgrade ca-certificates
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -46,7 +47,8 @@ RUN npm run build
 
 # Production
 FROM node:24.22.1-alpine AS production
-RUN addgroup -S app && adduser -S app -G app
+RUN apk add --no-cache --upgrade ca-certificates \
+    && addgroup -S app && adduser -S app -G app
 WORKDIR /app
 # Next.js standalone output preserves the workspace layout under /app.
 # server.js ends up at /app/frontend/server.js; static + public go under it.
